@@ -13,7 +13,7 @@ import { globalLimiter } from './middleware/rateLimit.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { setupSocket } from './socket/index.js';
 import { setupSwagger } from './swagger.js';
-
+import axios from "axios"
 // Route'lar
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
@@ -67,7 +67,21 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/staff', adminRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api', gamesRoutes);
+const keepServerAlive = () => {
+  if (!process.env.BASE_URL) {
+    console.warn('⚠️ BASE_URL is not set. Skipping ping.')
+    return
+  }
 
+  setInterval(() => {
+    axios
+      .get(`${process.env.BASE_URL}/health`)
+      .then(() => console.log('🔄 Server active'))
+      .catch(err => console.log('⚠️ Ping failed:', err.message))
+  }, 10 * 60 * 1000)
+}
+
+keepServerAlive()
 // Swagger hujjatlar (faqat production'da ham ochiq - dokumentatsiya uchun)
 setupSwagger(app);
 
