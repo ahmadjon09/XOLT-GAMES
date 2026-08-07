@@ -23,7 +23,7 @@ import uploadRoutes from './routes/upload.routes.js';
 import gamesRoutes from './routes/games.routes.js';
 
 const app = express();
-
+app.set('trust proxy', 1)
 // ============ XAVFSIZLIK ============
 
 // Strict CORS - faqat ruxsat etilgan originlar
