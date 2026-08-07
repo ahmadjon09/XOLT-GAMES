@@ -30,9 +30,12 @@ const app = express();
 app.use(
   cors({
     origin(origin, cb) {
-      // originsiz so'rovlar (curl, server-server) ruxsat etiladi
+      console.log('Request Origin:', origin);
+      console.log('Allowed Origins:', env.corsOrigins);
+
       if (!origin) return cb(null, true);
       if (env.corsOrigins.includes(origin)) return cb(null, true);
+
       return cb(new Error('CORS_NOT_ALLOWED'));
     },
     credentials: true,
