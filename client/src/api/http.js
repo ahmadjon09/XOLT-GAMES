@@ -1,5 +1,6 @@
 import axios from 'axios';
 import i18n from '../i18n/index.js';
+import { api } from './api.js';
 
 export const TOKEN_KEY = 'xolt_token';
 
@@ -24,7 +25,7 @@ export const clearToken = () => deleteCookie(TOKEN_KEY);
 // -------------------------
 
 export const http = axios.create({
-  baseURL: 'https://api.xolt.uz/api',
+  baseURL: `${api}/api`,
   timeout: 20000,
 });
 

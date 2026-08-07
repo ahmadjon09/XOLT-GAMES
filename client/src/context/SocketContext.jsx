@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { getToken } from '../api/fetcher.js';
 import { useAuth } from './AuthContext.jsx';
+import { api } from '../api/api.js';
 
 const SocketData = createContext(null);
 
@@ -18,8 +19,8 @@ export function SocketProvider({ children }) {
       return;
     }
 
-    
-    const s = io('/', {
+
+    const s = io(api, {
       auth: { token: getToken() },
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -33,7 +34,7 @@ export function SocketProvider({ children }) {
     s.on('disconnect', () => setConnected(false));
     s.on('connect_error', () => setConnected(false));
 
-    
+
     s.on('error', (err) => {
       window.dispatchEvent(new CustomEvent('xolt:socket_error', { detail: err }));
     });

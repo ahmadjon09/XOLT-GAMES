@@ -1,0 +1,1 @@
+export var api = "https://api.xolt.uz"
