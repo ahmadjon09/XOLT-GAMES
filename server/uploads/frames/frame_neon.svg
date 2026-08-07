@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="gframe_neon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+    <filter id="fframe_neon" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+  </defs>
+  <rect x="6" y="6" width="188" height="188" rx="36" fill="none" stroke="url(#gframe_neon)" stroke-width="8" filter="url(#fframe_neon)" />
+</svg>

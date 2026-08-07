@@ -1,0 +1,318 @@
+// XOLT Games - Prisma sxemasi
+// O'quvchi (User) bir vaqtning o'zida bir nechta guruhga a'zo bo'la oladi (GroupMember orqali)
+// Staff: teacher (o'qituvchi), cashier (kassir), admin - rollar orqali ajratilgan
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  TEACHER
+  CASHIER
+  ADMIN
+}
+
+// ============ O'QUVCHI ============
+model User {
+  id              String       @id @default(cuid())
+  telegramId      String?      @unique
+  full_name       String
+  avatar          String?
+  phone           String       @unique
+  username        String?      @unique
+  password        String
+  coin            Int          @default(0)
+  discount        Int          @default(0) // chegirma foizi (0-100)
+  week_score      Int          @default(0)
+  month_score     Int          @default(0)
+  score           Int          @default(0)
+
+  // Joriy tanlangan profil buyumlari
+  currentFrameId  String?
+  currentFrame    Frame?       @relation("CurrentUserFrame", fields: [currentFrameId], references: [id])
+  currentEffectId String?
+  currentEffect   Effect?      @relation("CurrentUserEffect", fields: [currentEffectId], references: [id])
+
+  // Sotib olingan buyumlar
+  frames          UserFrame[]
+  effects         UserEffect[]
+
+  // Bir nechta guruhga a'zolik
+  groupMembers    GroupMember[]
+  payments        Payment[]
+  attendances     Attendance[]
+  typingRecords   TypingRecord[]
+
+  // Kim tomonidan yaratilgan (admin yoki kassir)
+  createdById     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([score])
+  @@index([createdAt])
+  @@index([phone])
+}
+
+// ============ XODIM (teacher / cashier / admin) ============
+model Staff {
+  id          String    @id @default(cuid())
+  full_name   String
+  phone       String    @unique
+  avatar      String?
+  password    String
+  role        Role      @default(TEACHER)
+  active      Boolean   @default(true)
+  groups      Group[]
+  quizzes     Quiz[]
+  typingTexts TypingText[]
+  codeQuestions CodeQuestion[]
+  payments    Payment[] // kassir tomonidan qo'shilgan to'lovlar
+  attendances Attendance[] // o'qituvchi tomonidan qo'yilgan davomatlar
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([phone])
+}
+
+// ============ GURUH ============
+model Group {
+  id          String       @id @default(cuid())
+  name        String
+  rank        Int          @default(0)
+  monthlyFee  Float        @default(0) // oylik to'lov summasi (so'm)
+  teacherId   String
+  teacher     Staff        @relation(fields: [teacherId], references: [id])
+  members     GroupMember[]
+  payments    Payment[]
+  attendances Attendance[]
+  createdAt   DateTime     @default(now())
+
+  @@index([teacherId])
+}
+
+// Guruh-o'quvchi bog'lanish jadvali (ko'p-ko'plik)
+model GroupMember {
+  id       String   @id @default(cuid())
+  userId   String
+  groupId  String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+
+  @@unique([userId, groupId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+// ============ SHOP: FRAME (avatar ramkasi) ============
+model Frame {
+  id           String       @id
+  name         String
+  description  String?
+  image        String?
+  rarity       String       @default("common")
+  price        Int          @default(0)
+  animation    String?
+  active       Boolean      @default(true)
+  sortOrder    Int          @default(0)
+  users        UserFrame[]
+  currentUsers User[]       @relation("CurrentUserFrame")
+  createdAt    DateTime     @default(now())
+}
+
+// ============ SHOP: EFFECT (nom animatsiyasi) ============
+model Effect {
+  id           String       @id
+  name         String
+  description  String?
+  type         String
+  price        Int          @default(0)
+  config       Json?
+  active       Boolean      @default(true)
+  sortOrder    Int          @default(0)
+  users        UserEffect[]
+  currentUsers User[]       @relation("CurrentUserEffect")
+  createdAt    DateTime     @default(now())
+}
+
+model UserFrame {
+  id         String   @id @default(cuid())
+  userId     String
+  frameId    String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  frame      Frame    @relation(fields: [frameId], references: [id], onDelete: Cascade)
+  purchasedAt DateTime @default(now())
+
+  @@unique([userId, frameId])
+}
+
+model UserEffect {
+  id         String   @id @default(cuid())
+  userId     String
+  effectId   String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  effect     Effect   @relation(fields: [effectId], references: [id], onDelete: Cascade)
+  purchasedAt DateTime @default(now())
+
+  @@unique([userId, effectId])
+}
+
+// ============ VIKTORINA (Kahoot uslubida) ============
+model Quiz {
+  id          String     @id @default(cuid())
+  name        String
+  keywords    String[]   @default([])
+  image       String?
+  createdById String
+  createdBy   Staff      @relation(fields: [createdById], references: [id])
+  questions   Question[]
+  createdAt   DateTime   @default(now())
+
+  @@index([createdById])
+}
+
+model Question {
+  id        String   @id @default(cuid())
+  text      String
+  answer    String
+  variants  String[]
+  image     String?  // savol rasmi
+  timeLimit Int      @default(20) // sekund
+  points    Int      @default(1000)
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([quizId])
+}
+
+// ============ KODING SAVOLLARI ============
+model CodingQuestion {
+  id          String   @id @default(cuid())
+  title       String
+  question_uz String   @db.Text
+  question_ru String   @db.Text
+  difficulty  String   @default("easy")
+  coin        Int      @default(10)
+  timeLimit   Int      @default(1000) // ms
+  memoryLimit Int      @default(128) // MB
+  main        Json
+  tests       Json
+  starterCode Json?
+  solution    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============ TO'LOV (kassir boshqaradi) ============
+model Payment {
+  id          String    @id @default(cuid())
+  userId      String
+  groupId     String
+  amount      Float
+  month       String    // "2026-08" formatida
+  status      String    @default("unpaid") // paid | unpaid
+  note        String?
+  paidAt      DateTime?
+  createdById String?
+  createdBy   Staff?    @relation(fields: [createdById], references: [id])
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, groupId, month])
+  @@index([groupId])
+  @@index([month])
+  @@index([status])
+}
+
+// ============ DAVOMAT (har guruh uchun alohida) ============
+model Attendance {
+  id        String    @id @default(cuid())
+  userId    String
+  groupId   String
+  staffId   String?
+  staff     Staff?    @relation(fields: [staffId], references: [id])
+  date      DateTime  @db.Date
+  status    String    // present | absent | late
+  note      String?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, groupId, date])
+  @@index([groupId, date])
+  @@index([userId])
+}
+
+// ============ TEZ YOZISH (TYPE RACING) ============
+model TypingText {
+  id          String   @id @default(cuid())
+  title       String
+  lang        String   @default("uz") // uz | ru | en
+  content     String   @db.Text
+  difficulty  String   @default("easy") // easy | normal | hard
+  createdById String?
+  createdBy   Staff?   @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([lang])
+}
+
+// Solo va poyga natijalari (WPM reyting uchun)
+model TypingRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wpm       Float
+  accuracy  Float
+  duration  Int      // soniya
+  chars     Int
+  mode      String   @default("solo") // solo | race
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
+// ============ CODE BATTLE (output topish) ============
+model CodeQuestion {
+  id          String   @id @default(cuid())
+  title       String
+  category    String   @default("js") // js | python | csharp | java | php | sql
+  code        String   @db.Text
+  answer      String
+  explanation String?  @db.Text
+  timeLimit   Int      @default(20)
+  points      Int      @default(1000)
+  createdById String?
+  createdBy   Staff?   @relation(fields: [createdById], references: [id])
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([category])
+}
+
+// ============ O'YIN TARIXI (admin statistikasi uchun) ============
+model GameRecord {
+  id           String   @id @default(cuid())
+  type         String   // math | quiz | tictactoe
+  roomCode     String?
+  winnerId     String?
+  winnerName   String?
+  totalPlayers Int      @default(0)
+  totalBets    Int      @default(0)
+  commission   Int      @default(0)
+  payload      Json?
+  createdAt    DateTime @default(now())
+
+  @@index([type])
+  @@index([createdAt])
+}
