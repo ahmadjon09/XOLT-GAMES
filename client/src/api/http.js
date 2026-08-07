@@ -24,7 +24,7 @@ export const clearToken = () => deleteCookie(TOKEN_KEY);
 // -------------------------
 
 export const http = axios.create({
-  baseURL: '/api',
+  baseURL: 'https://api.xolt.uz/api',
   timeout: 20000,
 });
 

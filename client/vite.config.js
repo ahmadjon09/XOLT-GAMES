@@ -5,16 +5,16 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: {
-    host: '0.0.0.0',
-    port: 5173,
-    allowedHosts: true,
-    proxy: {
-      '/api': { target: 'https://api.xolt.uz', changeOrigin: true },
-      '/uploads': { target: 'https://api.xolt.uz', changeOrigin: true },
-      '/socket.io': { target: 'https://api.xolt.uz', changeOrigin: true, ws: true },
-    },
-  },
+  // server: {
+  //   host: '0.0.0.0',
+  //   port: 5173,
+  //   allowedHosts: true,
+  //   proxy: {
+  //     '/api': { target: 'https://api.xolt.uz', changeOrigin: true },
+  //     '/uploads': { target: 'https://api.xolt.uz', changeOrigin: true },
+  //     '/socket.io': { target: 'https://api.xolt.uz', changeOrigin: true, ws: true },
+  //   },
+  // },
   build: {
     outDir: 'dist',
     sourcemap: false,
