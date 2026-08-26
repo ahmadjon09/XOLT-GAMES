@@ -263,7 +263,7 @@ export default function Login() {
               </button>
             </form>
 
-            <div className="mt-5 text-center">
+            {/* <div className="mt-5 text-center">
               <button
                 type="button"
                 onClick={switchMode}
@@ -271,7 +271,7 @@ export default function Login() {
               >
                 {mode === 'login' ? t('auth.no_acc') : t('auth.has_acc')}
               </button>
-            </div>
+            </div> */}
 
             {/* Demo hisoblar */}
             {/* <div className="mt-6 pt-5 border-t border-white/12">
