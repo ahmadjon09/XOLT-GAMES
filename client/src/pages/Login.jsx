@@ -274,7 +274,7 @@ export default function Login() {
             </div>
 
             {/* Demo hisoblar */}
-            <div className="mt-6 pt-5 border-t border-white/12">
+            {/* <div className="mt-6 pt-5 border-t border-white/12">
               <div className="text-[11px] font-bold uppercase tracking-wider text-white/45 text-center mb-3">
                 {t('auth.demoAccounts')}
               </div>
@@ -292,7 +292,7 @@ export default function Login() {
                 ))}
               </div>
               <div className="text-[11px] text-white/40 text-center mt-3">{t('auth.demoHint')}</div>
-            </div>
+            </div> */}
           </div>
         </div>
       </main>
