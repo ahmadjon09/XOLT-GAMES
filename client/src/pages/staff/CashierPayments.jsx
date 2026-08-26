@@ -115,7 +115,7 @@ export default function CashierPayments() {
   const hasError = rowsError || overviewError;
 
   return (
-    <div className="page-staff pt-3.5">
+    <div className="page-staff pt-4">
       {/* Header */}
       <PageHeader
         icon={Wallet}
@@ -125,7 +125,7 @@ export default function CashierPayments() {
       />
 
       {/* Selectors */}
-      <Card className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3.5">
+      <Card className="grid-fit mb-[var(--gap)]" style={{ '--col': '280px' }}>
         <Field label={t('cashP.group')} className="mb-0">
           <Select value={groupId} onChange={(e) => setGroupId(e.target.value)} disabled={busy}>
             {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -138,7 +138,7 @@ export default function CashierPayments() {
 
       {/* Overview stats */}
       {overview && !overviewError && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3.5">
+        <div className="grid-fit mb-[var(--gap)]" style={{ '--col': '200px' }}>
           <MiniStat icon={CheckCircle2} value={overview.reduce((s, o) => s + o.paid, 0)} label={t('cashP.paidCount')} color="var(--color-success)" bg="var(--color-success-soft)" />
           <MiniStat icon={XCircle} value={overview.reduce((s, o) => s + o.unpaid, 0)} label={t('cashP.unpaidCount')} color="var(--color-danger)" bg="var(--color-danger-soft)" />
           <MiniStat icon={Clock3} value={overview.reduce((s, o) => s + (o.partial || 0), 0)} label={t('payments.partial')} color="#9a6d00" bg="var(--color-accent-soft)" />

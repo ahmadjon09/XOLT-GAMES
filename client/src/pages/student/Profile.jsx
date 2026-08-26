@@ -6,7 +6,7 @@ import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Avatar, AnimatedName, Button, Input, Field, CoinBadge, Sheet, Toggle, LangSwitcher, ConfirmDialog } from '../../components/ui.jsx';
+import { Avatar, AnimatedName, Button, Input, Field, CoinBadge, Sheet, Toggle, LangSwitcher, ConfirmDialog, AutoGrid, Card } from '../../components/ui.jsx';
 import ImageCropper from '../../components/ImageCropper.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { fmtNum, fmtDate, fmtPhone } from '../../utils/format.js';
@@ -112,19 +112,20 @@ export default function Profile() {
     return (
       <>
         <TopBar title={t('profile.title')} />
-        <div className="page pt-3.5">
-          <div className="bg-surface border border-border rounded-[18px] p-5 shadow-card">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-[104px] h-[104px] rounded-full bg-surface-3 animate-pulse" />
-              <div className="h-6 w-40 bg-surface-3 animate-pulse rounded-lg" />
-              <div className="h-4 w-52 bg-surface-3 animate-pulse rounded-lg" />
+        <div className="page pt-4 space-y-[var(--gap)]">
+          <div className="grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] gap-[var(--gap)] items-start">
+            <div className="space-y-[var(--gap)]">
+              <Card className="flex flex-col items-center gap-3">
+                <div className="skeleton w-[104px] h-[104px] rounded-full" />
+                <div className="skeleton h-6 w-40" />
+                <div className="skeleton h-4 w-52" />
+              </Card>
+              <AutoGrid col={150}>
+                {[...Array(4)].map((_, i) => <div key={i} className="skeleton h-[96px]" style={{ borderRadius: 'var(--r-md)' }} />)}
+              </AutoGrid>
             </div>
+            <div className="skeleton h-[260px]" style={{ borderRadius: 'var(--r-lg)' }} />
           </div>
-          <div className="grid grid-cols-4 gap-2 mt-3">
-            {[...Array(4)].map((_, i) => <div key={i} className="h-[70px] bg-surface-3 animate-pulse rounded-[18px]" />)}
-          </div>
-          <div className="h-6 w-32 bg-surface-3 animate-pulse rounded-lg mt-4 mb-2.5" />
-          <div className="h-[160px] bg-surface-3 animate-pulse rounded-[18px]" />
         </div>
       </>
     );
@@ -144,86 +145,116 @@ export default function Profile() {
           </div>
         }
       />
-      <div className="page pt-3.5">
-        <div className="bg-surface border border-border rounded-[18px] p-5 shadow-card text-center">
-          <div className="relative inline-block">
-            <Avatar w={104} avatar={profile.avatar} frame={profile.currentFrame} />
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={avatarUploading}
-              className="absolute -right-1 -bottom-1 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shadow-[0_4px_12px_rgba(91,30,166,0.45)] hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {avatarUploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { onAvatarPick(e.target.files[0]); e.target.value = ''; }} />
-          </div>
-          <div className="mt-3 text-[20px] font-black">
-            <AnimatedName config={profile.currentEffect?.config}>{profile.full_name}</AnimatedName>
-          </div>
-          <div className="text-muted text-[13px] tabular-nums">
-            {fmtPhone(profile.phone)} {profile.username ? `@${profile.username}` : ''}
-          </div>
-          <div className="flex justify-center gap-2 mt-3 flex-wrap">
-            <CoinBadge value={profile.coin} />
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-surface-3 text-muted">{t('profile.memberSince')}: {fmtDate(profile.createdAt)}</span>
-          </div>
-          <Button variant="soft" size="sm" className="mt-3.5" onClick={() => { setForm({ username: profile.username || '', full_name: profile.full_name }); setEditOpen(true); }}>
-            <Pencil size={14} /> {t('profile.edit')}
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-4 gap-2 mt-3">
-          {[
-            { label: t('profile.score'), value: fmtNum(profile.score) },
-            { label: t('profile.weekScore'), value: fmtNum(profile.week_score) },
-            { label: t('profile.monthScore'), value: fmtNum(profile.month_score) },
-            { label: t('profile.groups'), value: profile.groups.length },
-          ].map((s) => (
-            <div key={s.label} className="bg-surface border border-border rounded-[18px] py-3 px-2 shadow-card text-center">
-              <div className="font-black text-[17px]">{s.value}</div>
-              <div className="text-[10.5px] text-muted font-semibold">{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="text-base font-extrabold mt-4 mb-2.5">{t('profile.myGroups')}</div>
-        <div className="bg-surface border border-border rounded-[18px] p-3.5 shadow-card">
-          {profile.groups.length === 0 ? (
-            <div className="text-center text-muted py-4 text-[13.5px]">{t('profile.noGroups')}</div>
-          ) : (
-            profile.groups.map((g) => (
-              <div key={g.id} className="flex items-center gap-3 py-3 border-b border-border last:border-b-0">
-                <div className="w-10 h-10 rounded-[13px] bg-surface-2 flex items-center justify-center font-extrabold text-primary shrink-0">
-                  {g.name.slice(0, 1)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-[14.5px] truncate">{g.name}</div>
-                  <div className="text-[12px] text-muted">{g.teacher ? g.teacher.full_name : ''}</div>
-                </div>
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-success-soft text-success whitespace-nowrap">{t('attendance.present')}: {g.attendance.present}</span>
-                {g.attendance.absent > 0 && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-danger-soft text-danger whitespace-nowrap">{t('attendance.absent')}: {g.attendance.absent}</span>
-                )}
+      <div className="page pt-4">
+        <div className="grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] gap-[var(--gap)] items-start">
+          {/* Chap ustun: profil + statistika */}
+          <div className="space-y-[var(--gap)]">
+            <Card className="text-center">
+              <div className="relative inline-block">
+                <Avatar w={112} avatar={profile.avatar} frame={profile.currentFrame} />
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="absolute -right-1 -bottom-1 w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center shadow-[0_4px_12px_rgba(91,30,166,0.45)] hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {avatarUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { onAvatarPick(e.target.files[0]); e.target.value = ''; }} />
               </div>
-            ))
-          )}
-        </div>
+              <div className="mt-3.5 text-[21px] font-extrabold tracking-tight">
+                <AnimatedName config={profile.currentEffect?.config}>{profile.full_name}</AnimatedName>
+              </div>
+              <div className="text-muted text-[13px] tabular-nums mt-0.5">
+                {fmtPhone(profile.phone)} {profile.username ? `@${profile.username}` : ''}
+              </div>
+              <div className="flex justify-center gap-2 mt-3.5 flex-wrap">
+                <CoinBadge value={profile.coin} />
+                <span className="badge neutral">{t('profile.memberSince')}: {fmtDate(profile.createdAt)}</span>
+              </div>
+              <Button variant="soft" size="sm" className="mt-4" onClick={() => { setForm({ username: profile.username || '', full_name: profile.full_name }); setEditOpen(true); }}>
+                <Pencil size={15} /> {t('profile.edit')}
+              </Button>
+            </Card>
 
-        <div className="bg-surface border border-border rounded-[18px] p-3.5 shadow-card mt-3">
-          <Link to="/attendance" className="block">
-            <div className="flex items-center gap-3 py-3 border-b border-border">
-              <CalendarCheck2 size={19} className="text-success" />
-              <div className="flex-1 min-w-0"><div className="font-bold text-[14.5px]">{t('attendance.title')}</div><div className="text-[12.5px] text-muted">{t('attendance.totalDays')}: {attendanceTotal} / {t('attendance.absent')}: {absenceTotal}</div></div>
-              <ChevronRight size={17} className="text-muted" />
-            </div>
-          </Link>
-          <Link to="/payments" className="block">
-            <div className="flex items-center gap-3 py-3">
-              <Wallet size={19} className="text-[#9a6d00]" />
-              <div className="flex-1 min-w-0"><div className="font-bold text-[14.5px]">{t('payments.title')}</div><div className="text-[12.5px] text-muted">{t('payments.status')}</div></div>
-              <ChevronRight size={17} className="text-muted" />
-            </div>
-          </Link>
+            <AutoGrid col={150}>
+              {[
+                { label: t('profile.score'), value: fmtNum(profile.score) },
+                { label: t('profile.weekScore'), value: fmtNum(profile.week_score) },
+                { label: t('profile.monthScore'), value: fmtNum(profile.month_score) },
+                { label: t('profile.groups'), value: profile.groups.length },
+              ].map((st) => (
+                <div key={st.label} className="tile">
+                  <div className="tile-v">{st.value}</div>
+                  <div className="tile-l">{st.label}</div>
+                </div>
+              ))}
+            </AutoGrid>
+          </div>
+
+          {/* O'ng ustun: guruhlar + havolalar */}
+          <div className="space-y-[var(--gap)]">
+            <section>
+              <div className="section-title">
+                <div className="t">{t('profile.myGroups')}</div>
+                {profile.groups.length > 0 && <span className="badge neutral">{profile.groups.length}</span>}
+              </div>
+              <Card flush>
+                {profile.groups.length === 0 ? (
+                  <div className="text-center text-muted py-6 text-[13.5px]">{t('profile.noGroups')}</div>
+                ) : (
+                  profile.groups.map((g) => (
+                    <div key={g.id} className="list-row">
+                      <div
+                        className="w-11 h-11 bg-surface-2 flex items-center justify-center font-extrabold text-primary shrink-0"
+                        style={{ borderRadius: 'var(--r-sm)' }}
+                      >
+                        {g.name.slice(0, 1)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-[14.5px] truncate">{g.name}</div>
+                        <div className="text-[12px] text-muted truncate">{g.teacher ? g.teacher.full_name : ''}</div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="badge present">{t('attendance.present')}: {g.attendance.present}</span>
+                        {g.attendance.absent > 0 && (
+                          <span className="badge absent">{t('attendance.absent')}: {g.attendance.absent}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </Card>
+            </section>
+
+            <section>
+              <Card flush>
+                <Link to="/attendance" className="block">
+                  <div className="list-row tap">
+                    <div className="w-11 h-11 bg-success-soft text-success flex items-center justify-center shrink-0" style={{ borderRadius: 'var(--r-sm)' }}>
+                      <CalendarCheck2 size={20} />
+                    </div>
+                    <div className="grow">
+                      <div className="title">{t('attendance.title')}</div>
+                      <div className="sub">{t('attendance.totalDays')}: {attendanceTotal} • {t('attendance.absent')}: {absenceTotal}</div>
+                    </div>
+                    <ChevronRight size={18} className="text-muted shrink-0" />
+                  </div>
+                </Link>
+                <Link to="/payments" className="block">
+                  <div className="list-row tap">
+                    <div className="w-11 h-11 bg-accent-soft text-[#9a6d00] flex items-center justify-center shrink-0" style={{ borderRadius: 'var(--r-sm)' }}>
+                      <Wallet size={20} />
+                    </div>
+                    <div className="grow">
+                      <div className="title">{t('payments.title')}</div>
+                      <div className="sub">{t('payments.status')}</div>
+                    </div>
+                    <ChevronRight size={18} className="text-muted shrink-0" />
+                  </div>
+                </Link>
+              </Card>
+            </section>
+          </div>
         </div>
       </div>
 

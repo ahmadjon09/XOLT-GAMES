@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaTrophy, FaCalendarWeek, FaCalendarAlt, FaInfinity, FaChevronLeft, FaChevronRight, FaUsers, FaCrown, FaMedal, FaExclamationTriangle } from 'react-icons/fa';
+import { FaTrophy, FaCalendarWeek, FaCalendarAlt, FaInfinity, FaUsers, FaCrown, FaMedal, FaExclamationTriangle } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useGet } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { Avatar, AnimatedName } from '../../components/ui.jsx';
+import { Avatar, AnimatedName, Pagination } from '../../components/ui.jsx';
 import { fmtNum } from '../../utils/format.js';
 import gg1 from '../../assets/gg1.png';
 import gg2 from '../../assets/gg2.png';
@@ -46,8 +46,8 @@ export default function Leaderboard() {
 
   if (isLoading && !data) {
     return (
-      <div className="mx-auto space-y-5 p-4 pt-6 max-w-[1060px]">
-        <div className="h-[88px] rounded-2xl bg-surface border border-border shadow-card p-4">
+      <div className="page pt-4 space-y-[var(--gap)]">
+        <div className="card h-[88px]">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-surface-2 animate-pulse" />
             <div className="space-y-2 flex-1">
@@ -143,8 +143,8 @@ export default function Leaderboard() {
   };
 
   return (
-    <div className="mx-auto space-y-5 p-4 pt-6">
-      <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-border shadow-card px-6 py-5">
+    <div className="page pt-4 space-y-[var(--gap)]">
+      <div className="card">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 text-yellow-400 flex items-center justify-center">
@@ -155,7 +155,7 @@ export default function Leaderboard() {
               <p className="text-sm text-muted">{t('lb.top')}</p>
             </div>
           </div>
-          <div className="flex gap-2 bg-white/60 backdrop-blur-sm rounded-xl p-1.5 shadow-sm">
+          <div className="segment scroll">
             {PERIODS.map(({ key, labelKey, icon: Icon }) => (
               <button
                 key={key}
@@ -163,8 +163,7 @@ export default function Leaderboard() {
                   setPeriod(key);
                   setPage(1);
                 }}
-                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${period === key ? 'bg-primary text-white shadow-md scale-105' : 'text-muted hover:bg-white/60 hover:shadow-sm'
-                  }`}
+                className={period === key ? 'active' : ''}
                 aria-label={t(labelKey)}
               >
                 <Icon size={16} />
@@ -176,7 +175,7 @@ export default function Leaderboard() {
       </div>
 
       {topThree.length > 0 && (
-        <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 shadow-xl bg-top-top border border-white/40">
+        <div className="card relative overflow-hidden p-6 sm:p-8 shadow-card-lg">
           <div className="scale-[0.78] sm:scale-[0.9] md:scale-100 grid grid-cols-3 items-end max-w-3xl mx-auto pt-14 sm:pt-16">
             <div className="flex justify-center order-1">{topThree[1] && <PodiumCard item={topThree[1]} rank={2} />}</div>
             <div className="-mt-8 sm:-mt-10 md:-mt-14 -translate-y-3 sm:-translate-y-5 flex justify-center z-10 order-2">
@@ -188,7 +187,7 @@ export default function Leaderboard() {
       )}
 
       {currentUser && (
-        <div className="bg-gradient-to-r from-primary-soft to-surface-2 rounded-2xl shadow-card border-2 border-primary-soft p-5">
+        <div className="card border-primary/25" style={{ background: 'var(--grad-primary-soft)' }}>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="relative">
               <Avatar w={60} frame={currentUser.currentFrame} avatar={currentUser.avatar} />
@@ -216,7 +215,7 @@ export default function Leaderboard() {
         </div>
       )}
 
-      <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm border border-white/30 overflow-hidden">
+      <div className="card flush">
         {rest.length === 0 && topThree.length === 0 ? (
           <div className="p-12 text-center">
             <FaUsers className="text-5xl mx-auto mb-4 text-gray-300" />
@@ -228,7 +227,7 @@ export default function Leaderboard() {
               <div
                 key={student.id}
                 onClick={() => student.id === user?.id ? navigate('/profile') : navigate(`/staff/users/${student.id}`)}
-                className="flex items-center gap-4 p-4 hover:bg-white/40 transition-all duration-200 group cursor-pointer"
+                className="list-row tap gap-4 py-4"
                 role="row"
               >
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${rankColors[student.rank] || 'text-gray-500 bg-gray-50'}`}>
@@ -260,27 +259,7 @@ export default function Leaderboard() {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between gap-4 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm border border-white/30 p-4">
-          <button
-            onClick={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page === 1}
-            className="px-5 py-2.5 rounded-xl border-2 border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 font-medium"
-          >
-            <FaChevronLeft />
-            <span className="hidden sm:inline">{t('common.previous')}</span>
-          </button>
-          <span className="text-sm text-gray-600 font-medium bg-white/50 px-4 py-2 rounded-lg">
-            {page} / {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-            disabled={page === totalPages}
-            className="px-5 py-2.5 rounded-xl border-2 border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 font-medium"
-          >
-            <span className="hidden sm:inline">{t('common.next')}</span>
-            <FaChevronRight />
-          </button>
-        </div>
+        <Pagination page={page} total={totalPages} pageSize={1} onChange={setPage} />
       )}
     </div>
   );

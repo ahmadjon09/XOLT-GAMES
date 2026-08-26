@@ -8,7 +8,7 @@ import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import {
   Card, Button, Input, Field, PageLoader, EmptyState, Sheet, ConfirmDialog,
-  PageHeader, NumberInput,
+  PageHeader, NumberInput, AutoGrid,
 } from '../../components/ui.jsx';
 import { fmtMoney } from '../../utils/format.js';
 
@@ -59,7 +59,7 @@ export default function TeacherGroups() {
   };
 
   return (
-    <div className="page-staff pt-3.5">
+    <div className="page-staff pt-4">
       <PageHeader
         icon={Users}
         title={t('groupsP.title')}
@@ -78,16 +78,19 @@ export default function TeacherGroups() {
           <EmptyState icon={Users} title={t('groupsP.noGroups')} action={<Button onClick={() => setCreateOpen(true)}><Plus size={16} /> {t('groupsP.createGroup')}</Button>} />
         </Card>
       ) : (
-        <div className="flex flex-col gap-2.5">
+        <AutoGrid col={320}>
           {groups.map((g) => (
-            <Card key={g.id} tap className="p-3.5 flex items-center gap-3">
+            <Card key={g.id} tap className="flex items-center gap-3">
               <Link to={`/staff/groups/${g.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-[46px] h-[46px] rounded-[15px] bg-primary-soft text-primary flex items-center justify-center font-extrabold text-[17px] shrink-0">
+                <div
+                  className="w-12 h-12 bg-primary-soft text-primary flex items-center justify-center font-extrabold text-[17px] shrink-0"
+                  style={{ borderRadius: 'var(--r-sm)' }}
+                >
                   {g.name.slice(0, 1)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-extrabold text-[14.5px] truncate">{g.name}</div>
-                  <div className="text-[12px] text-muted mt-0.5 flex items-center gap-1 flex-wrap">
+                  <div className="font-extrabold text-[15px] truncate">{g.name}</div>
+                  <div className="text-[12.5px] text-muted mt-0.5 flex items-center gap-1 flex-wrap">
                     <span className="inline-flex items-center gap-1"><Users size={12} /> {g.membersCount} {t('groupsP.members')}</span>
                     {g.monthlyFee > 0 && <span className="tabular-nums">• {fmtMoney(g.monthlyFee)} so'm/oy</span>}
                     {g.rank > 0 && <span>• {t('groupsP.rank')}: {g.rank}</span>}
@@ -95,15 +98,16 @@ export default function TeacherGroups() {
                 </div>
               </Link>
               <button
-                className="w-[38px] h-[38px] rounded-[13px] flex items-center justify-center text-danger hover:bg-danger-soft transition-all shrink-0"
+                className="btn ico text-danger hover:bg-danger-soft"
                 onClick={() => setDeleteTarget(g)}
                 title={t('common.delete')}
+                aria-label={t('common.delete')}
               >
-                <Trash2 size={16} />
+                <Trash2 size={17} />
               </button>
             </Card>
           ))}
-        </div>
+        </AutoGrid>
       )}
 
       <Sheet open={createOpen} onClose={() => setCreateOpen(false)} title={t('groupsP.createGroup')}>

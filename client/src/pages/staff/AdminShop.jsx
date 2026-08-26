@@ -142,7 +142,7 @@ export default function AdminShop() {
   };
 
   return (
-    <div className="page-staff pt-3.5">
+    <div className="page-staff pt-4">
       {/* Header */}
       <PageHeader
         icon={Store}
@@ -183,7 +183,7 @@ export default function AdminShop() {
           />
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid-auto" style={{ '--col': '260px' }}>
           {items.map((item) => (
             <Card key={item.id} className="p-4 flex flex-col">
               <div className="flex items-center justify-center min-h-[80px] mb-3">

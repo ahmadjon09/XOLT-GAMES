@@ -2,11 +2,11 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Calculator, ListChecks, Grid3x3, Keyboard, Code2, Trophy,
-  CalendarCheck2, Wallet, ChevronRight, QrCode, KeyRound, User, Swords
+  CalendarCheck2, Wallet, ChevronRight, QrCode, KeyRound, User, Swords, Coins,
 } from 'lucide-react';
 import { useGet } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { Card, CoinBadge, EmptyState } from '../../components/ui.jsx';
+import { AutoGrid, Card, CoinBadge, EmptyState } from '../../components/ui.jsx';
 import { fmtNum } from '../../utils/format.js';
 
 const gameMeta = {
@@ -32,126 +32,147 @@ export default function Home() {
     { key: 'ttt', to: '/game/ttt', icon: Grid3x3, title: t('home.tttTitle'), desc: t('home.tttDesc'), tag: '1v1' },
   ];
 
+  const stats = [
+    { label: t('home.myCoins'), value: fmtNum(user?.coin ?? 0), color: '#9a6d00', bg: 'var(--color-accent-soft)', icon: Coins },
+    { label: t('home.myScore'), value: fmtNum(user?.score ?? 0), color: 'var(--color-primary)', bg: 'var(--color-primary-soft)', icon: Trophy },
+    { label: t('home.groupsCount'), value: groups ? groups.length : '…', color: 'var(--color-ink)', bg: 'var(--color-surface-2)', icon: User },
+  ];
+
+  const quick = [
+    { to: '/quiz/join', icon: QrCode, label: t('home.scanQr'), color: 'var(--color-primary)' },
+    { to: '/game/math', icon: KeyRound, label: t('home.joinWithCode'), color: 'var(--color-primary)' },
+    { to: '/attendance', icon: CalendarCheck2, label: t('home.attendanceShort'), color: 'var(--color-success)' },
+    { to: '/payments', icon: Wallet, label: t('home.paymentsShort'), color: '#9a6d00' },
+  ];
+
   return (
-    <div className="page pt-3.5 space-y-4">
-      {/* Welcome */}
-      <Card className="p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-[19px] font-extrabold tracking-tight truncate">
-              {t('auth.welcome')}, {user?.full_name?.split(' ')[0]}!
-            </div>
-            <div className="text-[13px] text-muted font-semibold mt-0.5">{t('home.heroSub')}</div>
+    <div className="page pt-4 space-y-[var(--gap)]">
+      {/* Salomlashuv */}
+      <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="text-[22px] font-extrabold tracking-tight truncate">
+            {t('auth.welcome')}, {user?.full_name?.split(' ')[0]}!
           </div>
-          <CoinBadge value={user?.coin ?? 0} size={16} />
+          <div className="text-[13.5px] text-muted font-semibold mt-1">{t('home.heroSub')}</div>
+        </div>
+        <div className="shrink-0">
+          <CoinBadge value={user?.coin ?? 0} size={17} />
         </div>
       </Card>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2.5">
-        {[
-          { label: t('home.myCoins'), value: fmtNum(user?.coin ?? 0), color: '#9a6d00', bg: 'var(--color-accent-soft)' },
-          { label: t('home.myScore'), value: fmtNum(user?.score ?? 0), color: 'var(--color-primary)', bg: 'var(--color-primary-soft)' },
-          { label: t('home.groupsCount'), value: groups ? groups.length : '…', color: 'var(--color-ink)', bg: 'var(--color-surface-2)' },
-        ].map((s) => (
-          <div key={s.label} className="bg-surface border border-border rounded-[16px] p-3 shadow-card text-center">
-            <div className="text-[19px] font-extrabold tabular-nums truncate" style={{ color: s.color }}>{s.value}</div>
-            <div className="text-[10.5px] text-muted font-bold uppercase tracking-wide truncate">{s.label}</div>
+      {/* Statistika — barcha plitalar teng */}
+      <AutoGrid col={150}>
+        {stats.map((s) => (
+          <div key={s.label} className="tile">
+            <div
+              className="w-10 h-10 flex items-center justify-center mb-2"
+              style={{ background: s.bg, color: s.color, borderRadius: 'var(--r-sm)' }}
+            >
+              <s.icon size={19} strokeWidth={2.2} />
+            </div>
+            <div className="tile-v" style={{ color: s.color }}>{s.value}</div>
+            <div className="tile-l">{s.label}</div>
           </div>
         ))}
-      </div>
+      </AutoGrid>
 
-      {/* Games */}
-      <div>
-        <div className="text-[15px] font-extrabold mb-2.5">{t('home.gamesTitle')}</div>
-        <div className="flex flex-col gap-2.5">
+      {/* O'yinlar */}
+      <section>
+        <div className="section-title">
+          <div className="t">{t('home.gamesTitle')}</div>
+        </div>
+        <AutoGrid col={260}>
           {games.map((g) => {
             const meta = gameMeta[g.key];
             return (
-              <Link key={g.key} to={g.to} className="block">
-                <Card tap className="p-4 flex items-center gap-3.5">
-                  <div className="w-[52px] h-[52px] rounded-[16px] flex items-center justify-center shrink-0" style={{ background: meta.bg }}>
-                    <g.icon size={26} color={meta.color} strokeWidth={2.2} />
+              <Link key={g.key} to={g.to} className="block h-full">
+                <Card tap className="h-full flex flex-col gap-3.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div
+                      className="w-14 h-14 flex items-center justify-center shrink-0"
+                      style={{ background: meta.bg, borderRadius: 'var(--r-md)' }}
+                    >
+                      <g.icon size={27} color={meta.color} strokeWidth={2.1} />
+                    </div>
+                    <span className="badge primary">{g.tag}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-extrabold text-[15px]">{g.title}</span>
-                      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-primary-soft text-primary">{g.tag}</span>
-                    </div>
-                    <div className="text-[12.5px] text-muted mt-0.5">{g.desc}</div>
+                    <div className="font-extrabold text-[16px] tracking-tight truncate">{g.title}</div>
+                    <div className="text-[13px] text-muted mt-1 leading-snug">{g.desc}</div>
                   </div>
-                  <ChevronRight size={19} className="text-muted shrink-0" />
+                  <div className="flex items-center gap-1 text-[13px] font-bold text-primary">
+                    {t('home.playNow')}
+                    <ChevronRight size={16} />
+                  </div>
                 </Card>
               </Link>
             );
           })}
-        </div>
-      </div>
+        </AutoGrid>
+      </section>
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <Link to="/quiz/join" className="block">
-          <Card tap className="p-4 flex items-center gap-3">
-            <QrCode size={22} className="text-primary shrink-0" />
-            <span className="font-bold text-[13.5px] truncate">{t('home.scanQr')}</span>
-          </Card>
-        </Link>
-        <Link to="/game/math" className="block">
-          <Card tap className="p-4 flex items-center gap-3">
-            <KeyRound size={22} className="text-primary shrink-0" />
-            <span className="font-bold text-[13.5px] truncate">{t('home.joinWithCode')}</span>
-          </Card>
-        </Link>
-        <Link to="/attendance" className="block">
-          <Card tap className="p-4 flex items-center gap-3">
-            <CalendarCheck2 size={22} className="text-success shrink-0" />
-            <span className="font-bold text-[13.5px] truncate">{t('home.attendanceShort')}</span>
-          </Card>
-        </Link>
-        <Link to="/payments" className="block">
-          <Card tap className="p-4 flex items-center gap-3">
-            <Wallet size={22} className="text-[#9a6d00] shrink-0" />
-            <span className="font-bold text-[13.5px] truncate">{t('home.paymentsShort')}</span>
-          </Card>
-        </Link>
-      </div>
+      {/* Tezkor amallar */}
+      <section>
+        <AutoGrid col={220}>
+          {quick.map((q) => (
+            <Link key={q.to + q.label} to={q.to} className="block h-full">
+              <Card tap className="h-full flex items-center gap-3.5">
+                <div
+                  className="w-11 h-11 flex items-center justify-center shrink-0 bg-surface-2"
+                  style={{ color: q.color, borderRadius: 'var(--r-sm)' }}
+                >
+                  <q.icon size={21} />
+                </div>
+                <span className="font-bold text-[14px] truncate">{q.label}</span>
+                <ChevronRight size={17} className="text-muted shrink-0 ml-auto" />
+              </Card>
+            </Link>
+          ))}
+        </AutoGrid>
+      </section>
 
-      {/* Groups */}
+      {/* Guruhlar */}
       {groups !== null && (
-        <div>
-          <div className="text-[15px] font-extrabold mb-2.5">{t('profile.myGroups')}</div>
+        <section>
+          <div className="section-title">
+            <div className="t">{t('profile.myGroups')}</div>
+            {groups.length > 0 && <span className="badge neutral">{groups.length}</span>}
+          </div>
           {groups.length === 0 ? (
             <Card>
               <EmptyState icon={User} title={t('profile.noGroups')} />
             </Card>
           ) : (
-            <Card className="p-0 -my-1.5">
-              {groups.slice(0, 3).map((g) => (
-                <Link key={g.id} to="/attendance" className="block">
-                  <div className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-surface-2/60 transition-colors">
-                    <div className="w-[44px] h-[44px] rounded-[14px] bg-primary-soft text-primary flex items-center justify-center font-extrabold text-[16px] shrink-0">
+            <AutoGrid col={300}>
+              {groups.slice(0, 6).map((g) => (
+                <Link key={g.id} to="/attendance" className="block h-full">
+                  <Card tap className="h-full flex items-center gap-3.5">
+                    <div
+                      className="w-12 h-12 bg-primary-soft text-primary flex items-center justify-center font-extrabold text-[17px] shrink-0"
+                      style={{ borderRadius: 'var(--r-sm)' }}
+                    >
                       {g.name.slice(0, 1)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-[14.5px] truncate">{g.name}</div>
-                      <div className="text-[12px] text-muted">
+                      <div className="text-[12px] text-muted mt-0.5">
                         {t('attendance.present')}: {g.attendance.present} • {t('attendance.absent')}: {g.attendance.absent}
                       </div>
                     </div>
                     <CalendarCheck2 size={18} className="text-muted shrink-0" />
-                  </div>
+                  </Card>
                 </Link>
               ))}
-            </Card>
+            </AutoGrid>
           )}
-        </div>
+        </section>
       )}
 
-      {/* Leaderboard teaser */}
-      <div className="text-center pt-1">
+      {/* Reyting */}
+      <div className="text-center pt-2 pb-1">
         <Link
           to="/leaderboard"
-          className="inline-flex items-center gap-2 text-[13.5px] font-bold text-primary hover:underline underline-offset-2 transition-colors"
+          className="inline-flex items-center gap-2 text-[13.5px] font-bold text-primary hover:underline underline-offset-4 transition-colors"
         >
           <Trophy size={17} />
           {t('home.myRank')}

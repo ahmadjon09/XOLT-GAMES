@@ -23,9 +23,9 @@ export default function AdminDashboard() {
   const { data: charts } = useGet(`/staff/stats/charts?days=${days}`);
 
   if (!overview) return (
-    <div className="page-staff pt-3.5">
+    <div className="page-staff pt-4">
       <PageHeader icon={Activity} title={t('statsP.title')} />
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 mb-3.5">
+      <div className="grid-fit mb-[var(--gap)]" style={{ '--col': '210px' }}>
         {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
           <div key={i} className="bg-surface border border-border rounded-[18px] p-3.5 shadow-card flex items-center gap-3">
             <div className="w-[42px] h-[42px] rounded-[14px] bg-surface-2 animate-pulse shrink-0" />
@@ -49,10 +49,10 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <div className="page-staff pt-3.5">
+      <div className="page-staff pt-4">
         <PageHeader icon={Activity} title={t('statsP.title')} sub={t('statsP.overview')} />
         {/* Umumiy ko'rsatkichlar */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 mb-3.5">
+        <div className="grid-fit mb-[var(--gap)]" style={{ '--col': '210px' }}>
           <StatCard icon={Users} label={t('statsP.totalUsers')} value={fmtNum(overview.usersCount)} sub={`${t('statsP.activeToday')}: ${overview.activeToday}`} color="var(--primary)" />
           <StatCard icon={UserCog} label={t('statsP.totalStaff')} value={fmtNum(overview.staffCount)} color="var(--info)" />
           <StatCard icon={Layers} label={t('statsP.totalGroups')} value={fmtNum(overview.groupsCount)} color="var(--success)" />
@@ -137,7 +137,7 @@ export default function AdminDashboard() {
               </ResponsiveContainer>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+            <div className="grid-fit" style={{ '--col': '460px' }}>
               {/* Xodimlar rollari */}
               <Card>
                 <div className="font-extrabold text-[14.5px] mb-2">{t('statsP.roleDistribution')}</div>

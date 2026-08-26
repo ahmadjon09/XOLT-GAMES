@@ -5,7 +5,7 @@ import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Card, Button, EmptyState, CoinBadge, CoinIcon, Avatar, AnimatedName, Segmented, ConfirmDialog, SkeletonGrid } from '../../components/ui.jsx';
+import { Card, Button, EmptyState, CoinBadge, CoinIcon, Avatar, AnimatedName, Segmented, ConfirmDialog, SkeletonGrid, AutoGrid } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { sounds } from '../../utils/sound.js';
 
@@ -32,9 +32,9 @@ export default function Shop() {
   if (!data) return (
     <>
       <TopBar title={t('shop.title')} right={<CoinBadge value={user?.coin} />} />
-      <div className="page pt-3.5">
-        <div className="h-[48px] bg-surface-2 rounded-[14px] animate-pulse mb-3.5" />
-        <SkeletonGrid cols={2} count={4} h={220} />
+      <div className="page pt-4 space-y-[var(--gap)]">
+        <div className="skeleton h-[54px]" style={{ borderRadius: 'var(--r-sm)' }} />
+        <SkeletonGrid count={6} col={200} h={230} />
       </div>
     </>
   );
@@ -80,8 +80,8 @@ export default function Shop() {
   return (
     <>
       <TopBar title={t('shop.title')} right={<CoinBadge value={data.coin} />} />
-      <div className="page pt-3.5">
-        <div className="mb-3.5">
+      <div className="page pt-4 space-y-[var(--gap)]">
+        <div className="lg:max-w-[520px]">
           <Segmented
             value={tab}
             onChange={setTab}
@@ -95,13 +95,13 @@ export default function Shop() {
         {items.length === 0 ? (
           <Card><EmptyState icon={isFrame ? FrameIcon : Sparkles} title={isFrame ? t('shop.noFrames') : t('shop.noEffects')} /></Card>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <AutoGrid col={200}>
             {items.map((item) => {
               const isOwned = owned.includes(item.id);
               const isCurrent = current?.id === item.id;
               return (
-                <Card key={item.id} className="flex flex-col gap-2.5">
-                  <div className="flex items-center justify-center py-2.5 min-h-[96px]">
+                <Card key={item.id} className="h-full flex flex-col gap-3">
+                  <div className="flex items-center justify-center py-2.5 min-h-[104px] bg-surface-2" style={{ borderRadius: 'var(--r-md)' }}>
                     {isFrame ? (
                       <Avatar w={84} avatar={user?.avatar} frame={item.image} />
                     ) : (
@@ -156,7 +156,7 @@ export default function Shop() {
                 </Card>
               );
             })}
-          </div>
+          </AutoGrid>
         )}
       </div>
 

@@ -153,7 +153,7 @@ export default function UserDetails() {
     return (
       <>
         <TopBar title={t('userDetail.title')} back />
-        <div className="page-staff pt-3.5">
+        <div className="page-staff pt-4">
           <Card className="p-5 flex flex-col items-center gap-3">
             <div className="w-[104px] h-[104px] rounded-[24px] bg-surface-2 animate-pulse" />
             <div className="h-[18px] w-48 rounded-md bg-surface-2 animate-pulse" />
@@ -163,7 +163,7 @@ export default function UserDetails() {
               <div className="h-[24px] w-[70px] rounded-full bg-surface-2 animate-pulse" />
             </div>
           </Card>
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 mt-3.5">
+          <div className="grid-fit mt-[var(--gap)]" style={{ '--col': '170px' }}>
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="h-[64px] bg-surface border border-border rounded-[18px] shadow-card p-3">
                 <div className="h-[13px] w-3/4 rounded-md bg-surface-2 animate-pulse" />
@@ -239,7 +239,7 @@ export default function UserDetails() {
           </div>
         }
       />
-      <div className="page-staff pt-3.5">
+      <div className="page-staff pt-4">
         {/* ===== PROFIL KARTASI ===== */}
         <Card style={{ padding: 20, textAlign: 'center', marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'center' }}>

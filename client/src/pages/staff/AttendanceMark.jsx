@@ -89,7 +89,7 @@ export default function AttendanceMark() {
   if (!groups || groupsLoading) {
     return (
       <>
-        <div className="page-staff pt-3.5">
+        <div className="page-staff pt-4">
         <PageHeader icon={CalendarCheck2} title={t('attMark.title')} />
         <PageLoader />
       </div>
@@ -99,14 +99,14 @@ export default function AttendanceMark() {
 
   return (
     <>
-      <div className="page-staff pt-3.5 space-y-3.5">
+      <div className="page-staff pt-4 space-y-3.5">
         <PageHeader
           icon={CalendarCheck2}
           title={t('attMark.title')}
           sub={groups.find((g) => g.id === groupId)?.name}
         />
         {/* Group & date/month selectors */}
-        <Card className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Card className="grid-fit" style={{ '--col': '280px' }}>
           <Field label={t('attMark.group')} className="mb-0">
             <Select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
               {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
