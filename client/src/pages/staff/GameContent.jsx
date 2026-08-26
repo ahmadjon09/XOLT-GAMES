@@ -79,7 +79,7 @@ export function TypingTexts() {
         back
         right={<Button className="sm primary" onClick={openCreate}><Plus size={15} /> {t('typing.addText')}</Button>}
       />
-      <div className="page-staff pt-3.5">
+      <div className="page-staff pt-4">
         <div style={{ marginBottom: 12 }}>
           <Segmented
             value={langFilter}
@@ -221,7 +221,7 @@ export function CodeQuestions() {
         back
         right={<Button className="sm primary" onClick={openCreate}><Plus size={15} /> {t('code.addQuestion')}</Button>}
       />
-      <div className="page-staff pt-3.5">
+      <div className="page-staff pt-4">
         <div style={{ marginBottom: 12 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <button

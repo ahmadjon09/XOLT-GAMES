@@ -133,7 +133,7 @@ export default function QuizEditor() {
   if (loading || quizLoading) return <PageLoader />;
 
   return (
-    <div className="page-staff pt-3.5 space-y-3.5">
+    <div className="page-staff pt-4 space-y-3.5">
       {/* Header */}
       <PageHeader
         icon={ListChecks}

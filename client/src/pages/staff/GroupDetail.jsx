@@ -71,7 +71,7 @@ export default function GroupDetail() {
   const absentTotal = (members || []).reduce((s, m) => s + m.attendance.absent, 0);
 
   return (
-    <div className="page-staff pt-3.5">
+    <div className="page-staff pt-4">
       <PageHeader
         icon={Users}
         title={group?.name || t('groupsP.title')}
@@ -92,13 +92,13 @@ export default function GroupDetail() {
       ) : (
         <>
           {/* Tezkor statistika */}
-          <div className="grid grid-cols-3 gap-2.5 mb-3.5">
+          <div className="grid-fit mb-[var(--gap)]" style={{ '--col': '150px' }}>
             <MiniStat icon={Users} value={members.length} label={t('groupsP.members')} color="var(--color-primary)" bg="var(--color-primary-soft)" />
             <MiniStat icon={CheckCircle2} value={presentTotal} label={t('attMark.present')} color="var(--color-success)" bg="var(--color-success-soft)" />
             <MiniStat icon={XCircle} value={absentTotal} label={t('attMark.absent')} color="var(--color-danger)" bg="var(--color-danger-soft)" />
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 mb-3.5">
+          <div className="grid-fit mb-[var(--gap)]" style={{ '--col': '150px' }}>
             <Link to={`/staff/attendance?groupId=${id}`} className="block">
               <Button variant="soft" className="w-full"><CalendarCheck2 size={16} /> {t('staff.attendance')}</Button>
             </Link>

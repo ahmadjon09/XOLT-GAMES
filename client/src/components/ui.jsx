@@ -9,35 +9,12 @@ import { setLang } from '../i18n/index.js';
 import { cx, digitsOnly, formatDigits } from '../utils/format.js';
 import { initAudio, sounds } from '../utils/sound.js';
 
-const b = {
-  primary: 'text-white',
-  soft: 'bg-primary-soft text-primary hover:bg-[#e3d9fb]',
-  outline: 'bg-white border-border text-ink hover:bg-surface-2 shadow-card',
-  danger: 'bg-danger text-white hover:bg-red-600',
-  'danger-soft': 'bg-danger-soft text-danger hover:bg-[#fbdcdc]',
-  success: 'bg-success text-white hover:bg-green-700',
-  'success-soft': 'bg-success-soft text-success hover:bg-[#d5f0e0]',
-  accent: 'text-white',
-  ghost: 'bg-transparent text-muted hover:bg-surface-2 hover:text-ink',
-};
-
-const bStyle = {
-  primary: { background: 'var(--grad-primary)', boxShadow: 'var(--glow-primary)' },
-  accent: { background: 'var(--grad-gold)', boxShadow: 'var(--glow-gold)' },
-};
-
+// Barcha tugmalar global.css dagi `.btn` tizimidan foydalanadi (bir xil balandlik/radius)
 export function Button({ children, variant = 'primary', size, loading, className, style, ...rest }) {
   return (
     <button
-      className={cx(
-        'inline-flex items-center justify-center gap-2 font-semibold text-[15px] px-5 py-3 rounded-[14px] border border-transparent transition-all duration-150 select-none whitespace-nowrap active:scale-[0.97] disabled:opacity-55 disabled:cursor-not-allowed',
-        variant === 'primary' && 'hover:-translate-y-px disabled:hover:translate-y-0',
-        b[variant],
-        size === 'sm' && 'px-3.5 py-2 text-[14px] rounded-[12px]',
-        size === 'lg' && 'px-6 py-[15px] text-base rounded-[16px]',
-        className
-      )}
-      style={{ ...bStyle[variant], ...style }}
+      className={cx('btn', variant, size, className)}
+      style={style}
       disabled={loading || rest.disabled}
       {...rest}
     >
@@ -49,12 +26,20 @@ export function Button({ children, variant = 'primary', size, loading, className
 
 export function Card({ children, className, tap, ...rest }) {
   return (
+    <div className={cx('card', tap && 'tap', className)} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+// Simmetrik to'r: barcha box'lar har doim teng kenglikda bo'ladi
+// col: minimal ustun kengligi (px) — ekran kengligiga qarab ustunlar soni o'zi moslashadi
+// fit: true bo'lsa qator butunlay to'ldiriladi (statistika plitalari uchun)
+export function AutoGrid({ children, col = 280, gap, fit, className, style, ...rest }) {
+  return (
     <div
-      className={cx(
-        'bg-surface border border-border rounded-[18px] p-4 shadow-card',
-        tap && 'transition-transform duration-150 cursor-pointer hover:-translate-y-0.5 hover:shadow-card-lg active:scale-[0.98]',
-        className
-      )}
+      className={cx(fit ? 'grid-fit' : 'grid-auto', className)}
+      style={{ '--col': `${col}px`, ...(gap ? { '--gap': `${gap}px` } : null), ...style }}
       {...rest}
     >
       {children}
@@ -64,37 +49,37 @@ export function Card({ children, className, tap, ...rest }) {
 
 export function Field({ label, error, children, hint, className }) {
   return (
-    <div className={cx('mb-3.5', className)}>
-      {label && <label className="block text-[13.5px] font-semibold text-muted mb-1.5">{label}</label>}
+    <div className={cx('field', className)}>
+      {label && <label>{label}</label>}
       {children}
-      {error && <div className="text-danger text-[12.5px] mt-1">{error}</div>}
-      {hint && <div className="text-[12px] text-muted mt-1">{hint}</div>}
+      {error && <div className="field-error">{error}</div>}
+      {hint && <div className="text-[12px] text-muted mt-1.5">{hint}</div>}
     </div>
   );
 }
 
-const inputCls =
-  'w-full px-4 py-[13px] border-[1.5px] border-border rounded-[14px] bg-surface outline-none transition-colors focus:border-primary focus:shadow-[0_0_0_4px_rgba(91,30,166,0.12)]';
+// Barcha forma elementlari uchun yagona klass (telefon inputi ham shu o'lchamda)
+const inputCls = 'input';
 
 export function Input({ error, className, ...rest }) {
-  return <input className={cx(inputCls, error && 'border-danger', className)} {...rest} />;
+  return <input className={cx(inputCls, error && 'error', className)} {...rest} />;
 }
 
 export function Select({ error, className, children, ...rest }) {
   return (
-    <select className={cx(inputCls, error && 'border-danger', 'appearance-none bg-no-repeat pr-10', className)} {...rest}>
+    <select className={cx(inputCls, error && 'error', className)} {...rest}>
       {children}
     </select>
   );
 }
 
 export function Textarea({ error, className, ...rest }) {
-  return <textarea className={cx(inputCls, error && 'border-danger', 'min-h-[80px] resize-y', className)} {...rest} />;
+  return <textarea className={cx(inputCls, error && 'error', className)} {...rest} />;
 }
 
 // ============ SAYHA BOSH QISMI (hamma sahifalarda bir xil) ============
 
-// Kichik ikonka tugmasi (refresh, edit, delete...)
+// Kichik ikonka tugmasi (refresh, edit, delete...) — har doim 40x40
 export function IconButton({ icon: Icon, label, onClick, danger, loading, disabled, className }) {
   return (
     <button
@@ -104,7 +89,7 @@ export function IconButton({ icon: Icon, label, onClick, danger, loading, disabl
       title={label}
       aria-label={label}
       className={cx(
-        'w-[38px] h-[38px] rounded-[13px] flex items-center justify-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed',
+        'btn ico',
         danger ? 'text-danger hover:bg-danger-soft' : 'text-muted hover:bg-surface-2 hover:text-ink',
         className
       )}
@@ -118,12 +103,12 @@ export function IconButton({ icon: Icon, label, onClick, danger, loading, disabl
 export function PageHeader({ icon: Icon, title, count, sub, actions, back, onBack }) {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-3 mb-4">
+    <div className="flex items-center gap-3 mb-5 flex-wrap">
       {back && (
         <button
           type="button"
           onClick={onBack}
-          className="w-[38px] h-[38px] rounded-[13px] bg-surface border border-border flex items-center justify-center text-muted hover:text-ink hover:bg-surface-2 transition-all shrink-0"
+          className="btn ico outline shrink-0"
           aria-label={t('common.back')}
         >
           <ChevronLeft size={20} />
@@ -131,22 +116,22 @@ export function PageHeader({ icon: Icon, title, count, sub, actions, back, onBac
       )}
       {Icon && (
         <div
-          className="w-[46px] h-[46px] rounded-[16px] text-white flex items-center justify-center shrink-0"
-          style={{ background: 'var(--grad-primary)', boxShadow: 'var(--glow-primary)' }}
+          className="w-12 h-12 text-white flex items-center justify-center shrink-0"
+          style={{ background: 'var(--grad-primary)', boxShadow: 'var(--glow-primary)', borderRadius: 'var(--r-md)' }}
         >
           <Icon size={23} strokeWidth={2.2} />
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h1 className="text-[19px] font-extrabold tracking-tight truncate">{title}</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-[20px] font-extrabold tracking-tight truncate">{title}</h1>
           {count !== undefined && count !== null && (
-            <span className="text-[12px] font-bold text-primary bg-primary-soft px-2 py-0.5 rounded-full whitespace-nowrap">{count}</span>
+            <span className="badge primary">{count}</span>
           )}
         </div>
-        {sub && <div className="text-[12.5px] text-muted font-semibold truncate mt-0.5">{sub}</div>}
+        {sub && <div className="text-[13px] text-muted font-semibold truncate mt-0.5">{sub}</div>}
       </div>
-      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+      {actions && <div className="flex items-center gap-2 shrink-0 flex-wrap">{actions}</div>}
     </div>
   );
 }
@@ -155,9 +140,9 @@ export function PageHeader({ icon: Icon, title, count, sub, actions, back, onBac
 export function SearchInput({ value, onChange, placeholder, className, ...rest }) {
   return (
     <div className={cx('relative', className)}>
-      <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+      <Search size={17} className="absolute left-[15px] top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
       <input
-        className={cx(inputCls, 'pl-10')}
+        className={cx(inputCls, 'pl-11')}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
@@ -230,13 +215,13 @@ export function PhoneInput({ value, onChange, defaultCountry = 'UZ', dark, stati
 export function PageError({ onRetry, message }) {
   const { t } = useTranslation();
   return (
-    <div className="bg-surface border border-border rounded-[18px] p-8 text-center shadow-card">
+    <div className="card text-center py-10">
       <div className="w-[52px] h-[52px] rounded-full bg-danger-soft text-danger flex items-center justify-center mx-auto mb-3">
         <AlertTriangle size={24} />
       </div>
       <div className="font-bold text-[15px] text-ink mb-1">{message || t('common.serverError')}</div>
       {onRetry && (
-        <Button variant="soft" className="mt-3" onClick={onRetry}>
+        <Button variant="soft" size="sm" className="mt-4" onClick={onRetry}>
           <RefreshCw size={15} /> {t('common.retry')}
         </Button>
       )}
@@ -247,25 +232,25 @@ export function PageError({ onRetry, message }) {
 // Bo'lim sarlavhasi (ro'yxat ustida)
 export function SectionTitle({ children, right, className }) {
   return (
-    <div className={cx('flex items-center justify-between mb-2.5 mt-4 first:mt-0', className)}>
-      <div className="text-[15px] font-extrabold">{children}</div>
+    <div className={cx('section-title', className)}>
+      <div className="t truncate">{children}</div>
       {right}
     </div>
   );
 }
 
-// Mini statistika kartasi (katta raqam + tavsif)
+// Mini statistika plitasi — barcha plitalar bir xil o'lchamda
 export function MiniStat({ icon: Icon, value, label, color = 'var(--color-ink)', bg = 'var(--color-surface-2)', sub }) {
   return (
-    <div className="bg-surface border border-border rounded-[16px] p-3 shadow-card text-center">
+    <div className="tile">
       {Icon && (
-        <div className="w-9 h-9 rounded-[12px] flex items-center justify-center mx-auto mb-1.5" style={{ background: bg, color }}>
+        <div className="w-9 h-9 flex items-center justify-center mb-2" style={{ background: bg, color, borderRadius: 'var(--r-sm)' }}>
           <Icon size={18} />
         </div>
       )}
-      <div className="text-[18px] font-extrabold tabular-nums truncate" style={{ color }}>{value}</div>
-      <div className="text-[11px] text-muted font-semibold truncate">{label}</div>
-      {sub && <div className="text-[10.5px] text-muted truncate">{sub}</div>}
+      <div className="tile-v" style={{ color }}>{value}</div>
+      <div className="tile-l">{label}</div>
+      {sub && <div className="text-[11px] text-muted truncate w-full">{sub}</div>}
     </div>
   );
 }
@@ -276,22 +261,22 @@ export function Pagination({ page, total, pageSize = 20, onChange }) {
   const pages = Math.max(1, Math.ceil((total || 0) / pageSize));
   if (pages <= 1) return null;
   return (
-    <div className="flex items-center justify-center gap-3 pt-1">
+    <div className="flex items-center justify-center gap-3 pt-2">
       <button
         type="button"
-        className="w-[38px] h-[38px] rounded-[13px] bg-surface border border-border flex items-center justify-center text-muted hover:text-ink hover:bg-surface-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        className="btn ico outline"
         disabled={page <= 1}
         onClick={() => onChange(page - 1)}
         aria-label={t('common.previous')}
       >
         <ChevronLeft size={18} />
       </button>
-      <span className="text-[13.5px] font-bold text-muted tabular-nums min-w-[52px] text-center">
+      <span className="text-[13.5px] font-bold text-muted tabular-nums min-w-[64px] text-center">
         {page} / {pages}
       </span>
       <button
         type="button"
-        className="w-[38px] h-[38px] rounded-[13px] bg-surface border border-border flex items-center justify-center text-muted hover:text-ink hover:bg-surface-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        className="btn ico outline"
         disabled={page >= pages}
         onClick={() => onChange(page + 1)}
         aria-label={t('common.next')}
@@ -302,37 +287,22 @@ export function Pagination({ page, total, pageSize = 20, onChange }) {
   );
 }
 
-const badgeMap = {
-  success: 'bg-success-soft text-success',
-  danger: 'bg-danger-soft text-danger',
-  warn: 'bg-accent-soft text-[#9a6d00]',
-  info: 'bg-info-soft text-info',
-  neutral: 'bg-surface-3 text-muted',
-  primary: 'bg-primary-soft text-primary',
-  late: 'bg-[#fef3c7] text-[#9a6d00]',
-  present: 'bg-success-soft text-success',
-  absent: 'bg-danger-soft text-danger',
-  unmarked: 'bg-surface-3 text-muted',
-};
+const BADGE_COLORS = [
+  'success', 'danger', 'warn', 'info', 'neutral', 'primary',
+  'late', 'present', 'absent', 'unmarked',
+];
 
 export function Badge({ color = 'neutral', children, className, style }) {
+  const known = BADGE_COLORS.includes(color);
   return (
-    <span className={cx('inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap', badgeMap[color] || color, className)} style={style}>
+    <span className={cx('badge', known ? color : '', !known && color, className)} style={style}>
       {children}
     </span>
   );
 }
 
 export function Spinner({ white, small }) {
-  return (
-    <span
-      className={cx(
-        'inline-block w-[22px] h-[22px] rounded-full animate-spin border-[3px] border-primary-soft border-t-primary',
-        white && 'border-white/30 border-t-white',
-        small && 'w-[15px] h-[15px] border-2'
-      )}
-    />
-  );
+  return <span className={cx('spinner inline-block', white && 'white', small && 'sm')} />;
 }
 
 export function PageLoader() {
@@ -345,47 +315,47 @@ export function PageLoader() {
 
 export function EmptyState({ icon: Icon, title, sub, action }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-5 py-12 text-center text-muted">
+    <div className="empty">
       <div
-        className="w-[76px] h-[76px] rounded-[26px] flex items-center justify-center text-white"
+        className="icon-wrap"
         style={{ background: 'var(--grad-primary-soft)', border: '1px solid rgba(124,58,237,.14)' }}
       >
         {Icon && <Icon size={32} strokeWidth={1.8} className="text-primary" />}
       </div>
       <div className="font-bold text-[15px] text-ink">{title}</div>
-      {sub && <div className="text-[13px] max-w-[280px]">{sub}</div>}
+      {sub && <div className="text-[13px] max-w-[340px]">{sub}</div>}
       {action}
     </div>
   );
 }
 
 export function Skeleton({ w = '100%', h = 16, style }) {
-  return <div className="rounded-[10px] bg-surface-2 animate-pulse" style={{ width: w, height: h, ...style }} />;
+  return <div className="skeleton" style={{ width: w, height: h, ...style }} />;
 }
 
 // Ro'yxat satr skeletoni (avatar + 2 qator)
 export function SkeletonRow() {
   return (
-    <div className="flex items-center gap-3.5 px-4 py-3.5 border-b border-border last:border-b-0">
-      <div className="w-[46px] h-[46px] rounded-[14px] bg-surface-2 animate-pulse shrink-0" />
+    <div className="list-row">
+      <div className="w-[46px] h-[46px] skeleton shrink-0" style={{ borderRadius: 'var(--r-sm)' }} />
       <div className="flex-1 min-w-0 space-y-2">
-        <div className="h-[13px] w-2/5 rounded-md bg-surface-2 animate-pulse" />
-        <div className="h-[11px] w-3/5 rounded-md bg-surface-2 animate-pulse" />
+        <div className="skeleton h-[13px] w-2/5" />
+        <div className="skeleton h-[11px] w-3/5" />
       </div>
-      <div className="w-[60px] h-[22px] rounded-full bg-surface-2 animate-pulse shrink-0" />
+      <div className="skeleton w-[60px] h-[22px] rounded-full shrink-0" />
     </div>
   );
 }
 
-// Kartalar grid skeletoni
-export function SkeletonGrid({ cols = 2, count = 4, h = 180 }) {
+// Kartalar grid skeletoni — real to'r bilan bir xil ustunlar
+export function SkeletonGrid({ cols, count = 4, h = 180, col = 240 }) {
   return (
-    <div className={cx('grid gap-3', cols === 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3')}>
+    <div className={cx('grid-auto', !cols && 'c-240', cols === 2 && 'grid-cols-2')} style={cols ? undefined : { '--col': `${col}px` }}>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="bg-surface border border-border rounded-[18px] shadow-card p-4 flex flex-col gap-3">
-          <div className="rounded-[14px] bg-surface-2 animate-pulse" style={{ height: h - 90 }} />
-          <div className="h-[13px] w-3/4 rounded-md bg-surface-2 animate-pulse" />
-          <div className="h-[11px] w-1/2 rounded-md bg-surface-2 animate-pulse" />
+        <div key={i} className="card flex flex-col gap-3">
+          <div className="skeleton" style={{ height: h - 90, borderRadius: 'var(--r-md)' }} />
+          <div className="skeleton h-[13px] w-3/4" />
+          <div className="skeleton h-[11px] w-1/2" />
         </div>
       ))}
     </div>
@@ -394,15 +364,11 @@ export function SkeletonGrid({ cols = 2, count = 4, h = 180 }) {
 
 export function Segmented({ options, value, onChange, scroll, className }) {
   return (
-    <div className={cx('flex bg-surface-2 rounded-[14px] p-1 gap-1 overflow-x-auto', scroll && 'justify-start', className)}>
+    <div className={cx('segment', scroll && 'scroll', className)}>
       {options.map((o) => (
         <button
           key={o.value}
-          className={cx(
-            'px-3.5 py-2 rounded-[11px] text-[13.5px] font-semibold transition-all whitespace-nowrap',
-            scroll ? 'flex-none' : 'flex-1 min-w-max',
-            value === o.value ? 'bg-surface text-ink shadow-[0_2px_8px_rgba(21,27,46,0.08)]' : 'text-muted'
-          )}
+          className={value === o.value ? 'active' : ''}
           onClick={() => onChange(o.value)}
         >
           {o.label}
@@ -415,19 +381,19 @@ export function Segmented({ options, value, onChange, scroll, className }) {
 export function Sheet({ open, onClose, title, children, footer }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 bg-[rgba(15,20,38,0.45)] z-[60] flex items-end justify-center animate-[fadeIn_.18s_ease]" onClick={onClose}>
-      <div className="bg-surface w-full max-w-[560px] max-h-[88vh] overflow-y-auto rounded-t-[24px] px-4 pt-5 pb-7 animate-[slideUp_.22s_ease]" onClick={(e) => e.stopPropagation()}>
-        <div className="w-[42px] h-[4.5px] rounded-full bg-surface-3 -mt-2 mb-3.5 mx-auto" />
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-handle" />
         {title && (
-          <div className="flex items-center justify-between mb-3.5">
-            <div className="text-[17px] font-extrabold">{title}</div>
-            <button onClick={onClose} className="text-muted flex p-1">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-[18px] font-extrabold tracking-tight">{title}</div>
+            <button onClick={onClose} className="btn ico ghost" aria-label="close">
               <X size={20} />
             </button>
           </div>
         )}
         {children}
-        {footer && <div className="mt-4 flex gap-2.5">{footer}</div>}
+        {footer && <div className="mt-5 flex gap-2.5">{footer}</div>}
       </div>
     </div>
   );
@@ -436,8 +402,8 @@ export function Sheet({ open, onClose, title, children, footer }) {
 export function ModalBox({ open, onClose, children, width }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 bg-[rgba(15,20,38,0.45)] z-[60] flex items-center justify-center animate-[fadeIn_.18s_ease]" onClick={onClose}>
-      <div className="bg-surface w-full max-w-[420px] m-4 rounded-[24px] p-[22px] shadow-card-lg animate-[pop_.2s_ease]" style={width ? { maxWidth: width } : undefined} onClick={(e) => e.stopPropagation()}>
+    <div className="overlay modal-center" onClick={onClose}>
+      <div className="modal-box" style={width ? { maxWidth: width } : undefined} onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>
@@ -448,11 +414,11 @@ export function ConfirmDialog({ open, title, message, onConfirm, onClose, danger
   const { t } = useTranslation();
   if (!open) return null;
   return (
-    <ModalBox open={open} onClose={onClose}>
+    <ModalBox open={open} onClose={onClose} width={420}>
       <div className="text-center py-1.5">
-        <div className="text-[17px] font-extrabold mb-2">{title}</div>
-        <div className="text-muted text-[14px] mb-5">{message}</div>
-        <div className="flex gap-2.5">
+        <div className="text-[18px] font-extrabold tracking-tight mb-2">{title}</div>
+        {message && <div className="text-muted text-[14px] mb-5">{message}</div>}
+        <div className="flex gap-2.5 mt-5">
           <Button variant="outline" className="flex-1" onClick={onClose}>
             {t('common.cancel')}
           </Button>
@@ -477,24 +443,27 @@ export function CoinIcon({ size = 15 }) {
 
 export function CoinBadge({ value, size = 15 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 font-extrabold text-[#9a6d00] bg-accent-soft px-2.5 py-1 rounded-full text-[13px] whitespace-nowrap">
+    <span className="badge warn tabular-nums">
       <CoinIcon size={size} />
       {value ?? 0}
     </span>
   );
 }
 
-export function StatCard({ icon: Icon, label, value, color = 'var(--primary)', sub }) {
+export function StatCard({ icon: Icon, label, value, color = 'var(--color-primary)', sub }) {
   return (
-    <div className="bg-surface border border-border rounded-[18px] p-3.5 shadow-card">
-      <div className="flex items-center gap-3">
-        <div className="w-[42px] h-[42px] rounded-[14px] bg-surface-2 flex items-center justify-center shrink-0" style={{ color }}>
+    <div className="tile items-stretch text-left" style={{ minHeight: 88 }}>
+      <div className="flex items-center gap-3 w-full">
+        <div
+          className="w-11 h-11 bg-surface-2 flex items-center justify-center shrink-0"
+          style={{ color, borderRadius: 'var(--r-sm)' }}
+        >
           <Icon size={20} strokeWidth={2.2} />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="text-[12px] text-muted font-semibold truncate">{label}</div>
-          <div className="text-[19px] font-extrabold leading-tight">{value}</div>
-          {sub && <div className="text-[11.5px] text-muted">{sub}</div>}
+          <div className="text-[20px] font-extrabold leading-tight tabular-nums truncate">{value}</div>
+          {sub && <div className="text-[11.5px] text-muted truncate">{sub}</div>}
         </div>
       </div>
     </div>
@@ -937,9 +906,9 @@ export function VsHeader({ left, right, score, leftIsYou, rightIsYou }) {
 
 export function ListItem({ title, sub, right, icon, onClick }) {
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-border last:border-b-0" onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}>
+    <div className={cx('row-item', onClick && 'cursor-pointer hover:bg-surface-2/60 transition-colors px-1 -mx-1')} onClick={onClick}>
       {icon && (
-        <div className="w-[38px] h-[38px] rounded-[12px] bg-surface-2 flex items-center justify-center text-primary shrink-0">{icon}</div>
+        <div className="w-10 h-10 bg-surface-2 flex items-center justify-center text-primary shrink-0" style={{ borderRadius: 'var(--r-sm)' }}>{icon}</div>
       )}
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-[14.5px] truncate">{title}</div>
@@ -955,7 +924,7 @@ export function CopyButton({ text, label }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
-      className="inline-flex items-center gap-2 font-semibold text-[14px] px-3.5 py-2 rounded-[12px] border border-border text-ink hover:bg-surface-2 transition"
+      className="btn sm outline"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
@@ -980,7 +949,7 @@ export function CopyButton({ text, label }) {
 export function GameVisibilityToggle({ value, onChange, disabled }) {
   const { t } = useTranslation();
   return (
-    <div className="flex bg-surface-2 rounded-[14px] p-1 gap-1">
+    <div className="segment">
       {[
         { v: true, label: t('game.public'), icon: Users },
         { v: false, label: t('game.private'), icon: Lock },
@@ -990,10 +959,7 @@ export function GameVisibilityToggle({ value, onChange, disabled }) {
           type="button"
           disabled={disabled}
           onClick={() => onChange(o.v)}
-          className={cx(
-            'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-[11px] text-[13px] font-bold transition-all disabled:opacity-50',
-            value === o.v ? 'bg-surface text-primary shadow-[0_2px_8px_rgba(21,27,46,0.08)]' : 'text-muted'
-          )}
+          className={cx('disabled:opacity-50', value === o.v && 'active')}
         >
           <o.icon size={14} />
           {o.label}

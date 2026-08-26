@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Users, CalendarCheck2, ListChecks, Wallet, Store, Trophy, User as UserIcon, Keyboard, Code2, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { Card } from '../../components/ui.jsx';
+import { AutoGrid, Card } from '../../components/ui.jsx';
 
 export default function StaffHome() {
   const { t } = useTranslation();
@@ -24,30 +24,40 @@ export default function StaffHome() {
   ].filter((s) => s.roles.includes(role));
 
   return (
-    <div className="page-staff pt-3.5">
-      <div className="mb-4">
-        <div className="text-[21px] font-extrabold tracking-tight">{t('staff.welcome')}, {user?.full_name?.split(' ')[0]}!</div>
-        <div className="text-[13.5px] text-muted font-semibold mt-0.5">
-          {t('staff.staffPanel')} — {t(`staff.role${role === 'ADMIN' ? 'Admin' : role === 'CASHIER' ? 'Cashier' : 'Teacher'}`)}
+    <div className="page-staff pt-4 space-y-[var(--gap)]">
+      <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="text-[22px] font-extrabold tracking-tight truncate">
+            {t('staff.welcome')}, {user?.full_name?.split(' ')[0]}!
+          </div>
+          <div className="text-[13.5px] text-muted font-semibold mt-1">
+            {t('staff.staffPanel')} — {t(`staff.role${role === 'ADMIN' ? 'Admin' : role === 'CASHIER' ? 'Cashier' : 'Teacher'}`)}
+          </div>
         </div>
-      </div>
+        <span className="badge primary shrink-0">{sections.length}</span>
+      </Card>
 
-      <div className="flex flex-col gap-3">
+      <AutoGrid col={300}>
         {sections.map((s) => (
-          <Link key={s.to} to={s.to} className="block">
-            <Card tap className="p-4 flex items-center gap-3.5">
-              <div className="w-[52px] h-[52px] rounded-[16px] flex items-center justify-center shrink-0" style={{ background: s.bg }}>
-                <s.icon size={24} color={s.color} className="icon-hover" />
+          <Link key={s.to} to={s.to} className="block h-full">
+            <Card tap className="h-full flex flex-col gap-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <div
+                  className="w-14 h-14 flex items-center justify-center shrink-0"
+                  style={{ background: s.bg, borderRadius: 'var(--r-md)' }}
+                >
+                  <s.icon size={26} color={s.color} className="icon-hover" />
+                </div>
+                <ChevronRight size={19} className="text-muted shrink-0" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-extrabold text-[15px]">{s.title}</div>
-                <div className="text-[12.5px] text-muted mt-0.5">{s.desc}</div>
+              <div className="min-w-0">
+                <div className="font-extrabold text-[16px] tracking-tight">{s.title}</div>
+                <div className="text-[13px] text-muted mt-1 leading-snug">{s.desc}</div>
               </div>
-              <ChevronRight size={19} className="text-muted shrink-0" />
             </Card>
           </Link>
         ))}
-      </div>
+      </AutoGrid>
     </div>
   );
 }

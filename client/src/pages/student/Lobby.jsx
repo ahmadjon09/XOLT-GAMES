@@ -8,7 +8,7 @@ import {
 import { useGet } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import {
-  Card, Button, EmptyState, Segmented, Avatar, CoinBadge, SkeletonRow,
+  Card, Button, EmptyState, Segmented, Avatar, CoinBadge, SkeletonRow, AutoGrid,
 } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { fmtInt } from '../../utils/format.js';
@@ -77,36 +77,37 @@ export default function Lobby() {
           </button>
         }
       />
-      <div className="page pt-3.5">
-        {/* Jonli ko'rsatkich */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-60" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success" />
-          </span>
-          <span className="text-[12.5px] font-bold text-muted">
-            {t('lobby.live')} • {shown.length} {t('lobby.roomsOpen')}
-          </span>
-        </div>
-
-        {/* Filtr */}
-        <Segmented
-          value={filter}
-          onChange={(v) => { sounds.click(); setFilter(v); }}
-          scroll
-          className="mb-3.5"
-          options={[
+      <div className="page pt-4 space-y-[var(--gap)]">
+        {/* Jonli ko'rsatkich + filtr */}
+        <Card className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-60" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success" />
+            </span>
+            <span className="text-[13px] font-bold text-muted">
+              {t('lobby.live')} • {shown.length} {t('lobby.roomsOpen')}
+            </span>
+          </div>
+          <div className="lg:max-w-[560px] lg:flex-1">
+            <Segmented
+              value={filter}
+              onChange={(v) => { sounds.click(); setFilter(v); }}
+              scroll
+              options={[
             { value: 'all', label: t('common.all') },
             { value: 'math', label: t('lobby.math') },
             { value: 'tictactoe', label: t('lobby.tictactoe') },
             { value: 'chess', label: t('lobby.chess') },
             { value: 'typerace', label: t('lobby.typerace') },
             { value: 'codebattle', label: t('lobby.codebattle') },
-          ]}
-        />
+              ]}
+            />
+          </div>
+        </Card>
 
         {isLoading ? (
-          <Card className="p-0 -my-1.5">
+          <Card flush>
             {[1, 2, 3].map((i) => <SkeletonRow key={i} />)}
           </Card>
         ) : shown.length === 0 ? (
@@ -118,40 +119,43 @@ export default function Lobby() {
             />
           </Card>
         ) : (
-          <div className="flex flex-col gap-2.5">
+          <AutoGrid col={330}>
             {shown.map((room) => {
               const meta = TYPE_META[room.type] || TYPE_META.math;
               const Icon = meta.icon;
               return (
-                <Card key={`${room.type}-${room.gameId}`} className="p-3.5 flex items-center gap-3">
-                  <div className="w-[50px] h-[50px] rounded-[16px] flex items-center justify-center shrink-0" style={{ background: meta.bg }}>
-                    <Icon size={24} color={meta.color} strokeWidth={2.2} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-extrabold text-[14.5px]">{t(meta.key)}</span>
-                      {room.bet > 0 && <CoinBadge value={fmtInt(room.bet)} size={12} />}
+                <Card key={`${room.type}-${room.gameId}`} className="flex flex-col gap-3">
+                  <div className="flex items-start gap-3.5">
+                    <div
+                      className="w-12 h-12 flex items-center justify-center shrink-0"
+                      style={{ background: meta.bg, borderRadius: 'var(--r-md)' }}
+                    >
+                      <Icon size={24} color={meta.color} strokeWidth={2.1} />
                     </div>
-                    <div className="text-[12px] text-muted mt-0.5 truncate flex items-center gap-1.5">
-                      <Avatar w={16} avatar={room.host?.avatar} frame={room.host?.currentFrame} />
-                      <span className="truncate">{room.host?.full_name || '—'}</span>
-                      <span>•</span>
-                      <span className="truncate">{metaLine(room)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-[15px] tracking-tight truncate">{t(meta.key)}</span>
+                        {room.bet > 0 && <CoinBadge value={fmtInt(room.bet)} size={12} />}
+                      </div>
+                      <div className="text-[12.5px] text-muted mt-0.5 truncate">
+                        {room.host?.full_name || '—'} • {metaLine(room)}
+                      </div>
                     </div>
                   </div>
-                  <Button size="sm" onClick={() => join(room)}>
-                    <Users size={14} /> {t('lobby.join')}
-                  </Button>
+                  <div className="flex items-center gap-2 mt-auto">
+                    <Avatar w={22} avatar={room.host?.avatar} frame={room.host?.currentFrame} />
+                    <Button size="sm" className="ml-auto" onClick={() => join(room)}>
+                      <Users size={15} /> {t('lobby.join')}
+                    </Button>
+                  </div>
                 </Card>
               );
             })}
-          </div>
+          </AutoGrid>
         )}
 
-        <div className="text-center mt-4">
-          <div className="text-[12px] text-muted font-semibold">
-            {t('lobby.createHint')}
-          </div>
+        <div className="text-center pt-2">
+          <div className="text-[12px] text-muted font-semibold">{t('lobby.createHint')}</div>
         </div>
       </div>
     </>

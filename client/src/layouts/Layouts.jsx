@@ -19,39 +19,39 @@ export function TopBar({ title, right, back }) {
     <div className="topbar">
       <div className="topbar-inner">
         {back && (
-          <button onClick={() => navigate(-1)} className="btn ghost sm p-1.5">
+          <button onClick={() => navigate(-1)} className="btn ico ghost" aria-label="back">
             <ChevronLeft size={20} />
           </button>
         )}
         <div className="flex-1 min-w-0">
-          <div className="font-extrabold text-[17px] truncate">{title}</div>
+          <div className="font-extrabold text-[17px] truncate tracking-tight">{title}</div>
         </div>
-        {right && <div className="flex items-center gap-1.5">{right}</div>}
+        {right && <div className="flex items-center gap-2 shrink-0">{right}</div>}
       </div>
     </div>
   );
 }
 
-// ---------- BottomNav ----------
+// ---------- BottomNav (markazlashgan suzuvchi panel) ----------
 export function BottomNav({ items }) {
   return (
-    <div className="bottomnav">
+    <nav className="bottomnav" aria-label="navigation">
       <div className="bottomnav-inner">
         {items.map((it) => (
           <NavLink key={it.to} to={it.to} end={it.end}>
             {({ isActive }) => (
               <button className={isActive ? 'active' : ''} aria-current={isActive ? 'page' : undefined}>
                 <span className="nav-ico">
-                  <it.icon size={21} strokeWidth={isActive ? 2.5 : 2} />
+                  <it.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                 </span>
-                {it.label}
+                <span className="truncate max-w-full px-1">{it.label}</span>
                 <span className="nav-dot" />
               </button>
             )}
           </NavLink>
         ))}
       </div>
-    </div>
+    </nav>
   );
 }
 
@@ -64,13 +64,13 @@ function SidebarLang() {
     { code: 'en', label: 'En' },
   ];
   return (
-    <div className="flex rounded-xl bg-black/20 p-1">
+    <div className="flex rounded-xl bg-black/25 p-1">
       {langs.map((l) => (
         <button
           key={l.code}
           onClick={() => i18n.changeLanguage(l.code)}
           className={cx(
-            'flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition',
+            'flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all',
             i18n.language === l.code ? 'bg-[#fdc700] text-[#472692]' : 'text-white/70 hover:text-white'
           )}
         >
@@ -81,60 +81,65 @@ function SidebarLang() {
   );
 }
 
-// ---------- Sidebar (single definition) ----------
+// ---------- Sidebar (desktop uchun yagona yon panel) ----------
 function Sidebar({ items, title, sub, footer }) {
-  const { t } = useTranslation();
   const { connected } = useSocket();
   return (
-    <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 z-40 flex-col">
-      <div className="flex h-full w-full flex-col" style={{ background: 'var(--grad-sidebar)' }}>
-        <div className="flex items-center gap-3 px-6 pt-7 pb-5">
-          <div className="relative">
-            <Logo size={40} />
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black text-white" style={{ background: 'var(--grad-gold)', boxShadow: 'var(--glow-gold)' }}>
-              <Zap size={9} strokeWidth={3} />
-            </span>
-          </div>
-          <div>
-            <div className="text-lg font-extrabold leading-tight tracking-tight text-white">{title}</div>
-            <div className="text-[11px] font-semibold text-white/60">{sub}</div>
-          </div>
+    <aside
+      className="sidebar hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col"
+      style={{ background: 'var(--grad-sidebar)' }}
+    >
+      <div className="flex items-center gap-3 px-6 pt-7 pb-6">
+        <div className="relative">
+          <Logo size={42} />
+          <span
+            className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black text-white"
+            style={{ background: 'var(--grad-gold)', boxShadow: 'var(--glow-gold)' }}
+          >
+            <Zap size={9} strokeWidth={3} />
+          </span>
         </div>
+        <div className="min-w-0">
+          <div className="text-lg font-extrabold leading-tight tracking-tight text-white truncate">{title}</div>
+          <div className="text-[11px] font-semibold text-white/55 truncate">{sub}</div>
+        </div>
+      </div>
 
-        <nav className="mt-2 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-          {items.map((it) => (
-            <NavLink key={it.to} to={it.to} end={it.end}>
-              {({ isActive }) => (
-                <span
-                  className={cx(
-                    'group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all relative',
-                    isActive ? 'bg-white/15 text-white shadow-inner' : 'text-white/65 hover:bg-white/10 hover:text-white'
-                  )}
-                >
-                  {isActive && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full" style={{ background: 'var(--grad-gold)' }} />
-                  )}
-                  <it.icon
-                    size={19}
-                    strokeWidth={isActive ? 2.5 : 2}
-                    className={isActive ? 'text-[#fbbf24]' : 'text-white/60 group-hover:text-[#fbbf24] transition-colors'}
+      <nav className="mt-1 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
+        {items.map((it) => (
+          <NavLink key={it.to} to={it.to} end={it.end}>
+            {({ isActive }) => (
+              <span
+                className={cx(
+                  'group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold transition-all relative',
+                  isActive ? 'bg-white/14 text-white' : 'text-white/60 hover:bg-white/8 hover:text-white'
+                )}
+              >
+                {isActive && (
+                  <span
+                    className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full"
+                    style={{ background: 'var(--grad-gold)' }}
                   />
-                  {it.label}
-                  {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ background: 'var(--grad-gold)' }} />}
-                </span>
-              )}
-            </NavLink>
-          ))}
-        </nav>
+                )}
+                <it.icon
+                  size={19}
+                  strokeWidth={isActive ? 2.5 : 2}
+                  className={isActive ? 'text-[#fbbf24]' : 'text-white/55 group-hover:text-[#fbbf24] transition-colors'}
+                />
+                <span className="truncate">{it.label}</span>
+              </span>
+            )}
+          </NavLink>
+        ))}
+      </nav>
 
-        <div className="space-y-3 px-5 pb-6">
-          {footer}
-          <div className="flex items-center justify-between rounded-2xl bg-black/15 px-4 py-3">
-            <span className="flex items-center gap-2 text-xs font-bold text-white/70">
-              {connected ? <Wifi size={14} className="text-emerald-300" /> : <WifiOff size={14} className="text-red-300" />}
-            </span>
-            <SidebarLang />
-          </div>
+      <div className="space-y-3 px-4 pb-5">
+        {footer}
+        <div className="flex items-center justify-between rounded-2xl bg-black/20 px-3 py-2.5">
+          <span className="flex items-center gap-2 text-xs font-bold text-white/65">
+            {connected ? <Wifi size={14} className="text-emerald-300" /> : <WifiOff size={14} className="text-red-300" />}
+          </span>
+          <SidebarLang />
         </div>
       </div>
     </aside>
@@ -171,20 +176,22 @@ export function StudentLayout() {
       {!hideTopbar && (
         <div className="topbar lg:hidden">
           <div className="topbar-inner">
-            <Link to="/" className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-2 min-w-0">
               <Logo size={30} />
-              <span className="brand">{t('common.appName')}</span>
+              <span className="brand truncate">{t('common.appName')}</span>
             </Link>
             <div className="flex-1" />
-            {connected ? <Wifi size={15} className="text-success" /> : <WifiOff size={15} className="text-danger" />}
-            <CoinBadge value={user?.coin ?? 0} />
-            <button
-              onClick={() => setLogoutOpen(true)}
-              className="ml-1 p-1.5 rounded-lg hover:bg-black/5 transition-colors"
-              aria-label={t('nav.logout')}
-            >
-              <LogOut size={18} className="text-muted" />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {connected ? <Wifi size={15} className="text-success" /> : <WifiOff size={15} className="text-danger" />}
+              <CoinBadge value={user?.coin ?? 0} />
+              <button
+                onClick={() => setLogoutOpen(true)}
+                className="btn ico ghost"
+                aria-label={t('nav.logout')}
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -209,7 +216,7 @@ export function StudentLayout() {
         }
       />
 
-      <main className="lg:ml-64">
+      <main className="lg:ml-[var(--sidebar-w)]">
         <Outlet />
       </main>
 
@@ -264,16 +271,17 @@ export function StaffLayout() {
           <Logo size={30} />
           <div className="flex-1 min-w-0">
             <div className="font-extrabold text-[15px] truncate">{user?.full_name}</div>
-            <div className="text-[11.5px] font-bold text-primary">{roleLabel}</div>
+            <div className="text-[11.5px] font-bold text-primary truncate">{roleLabel}</div>
           </div>
-          <button className="btn ghost sm" onClick={() => setLogoutOpen(true)} title={t('nav.logout')}>
-            <LogOut size={17} />
+          <button className="btn ico ghost" onClick={() => setLogoutOpen(true)} title={t('nav.logout')}>
+            <LogOut size={18} />
           </button>
         </div>
       </div>
 
-      <div className="lg:hidden sticky top-[55px] z-[35] bg-[#f6f4fb] px-3 py-2 border-b border-border">
-        <div className="segment scroll max-w-[760px] mx-auto">
+      {/* Mobil bo'limlar paneli — topbar ostida yopishqoq */}
+      <div className="lg:hidden sticky top-[var(--topbar-h)] z-[35] bg-[rgba(246,244,252,0.92)] backdrop-blur-md px-3 py-2.5 border-b border-border">
+        <div className="segment scroll w-full">
           {menu.map((m) => (
             <NavLink key={m.to} to={m.to} end={m.end}>
               {({ isActive }) => (
@@ -299,7 +307,7 @@ export function StaffLayout() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-bold text-white">{user?.full_name}</div>
-                <div className="text-[11px] font-semibold text-white/60">{roleLabel}</div>
+                <div className="text-[11px] font-semibold text-white/55">{roleLabel}</div>
               </div>
             </div>
             <button
@@ -312,7 +320,7 @@ export function StaffLayout() {
         }
       />
 
-      <main className="lg:ml-64">
+      <main className="lg:ml-[var(--sidebar-w)]">
         <Outlet />
       </main>
 

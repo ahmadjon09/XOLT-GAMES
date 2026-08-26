@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CalendarCheck2, CheckCircle2, XCircle, Clock3, Loader2 } from 'lucide-react';
 import { useGet } from '../../api/hooks.js';
-import { EmptyState, Badge, Select } from '../../components/ui.jsx';
+import { EmptyState, Badge, Select, AutoGrid, Card } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 
 const statusMeta = {
@@ -30,9 +30,9 @@ export default function Attendance() {
   return (
     <>
       <TopBar title={t('attendance.title')} />
-      <div className="page pt-3.5">
+      <div className="page pt-4 space-y-[var(--gap)]">
         {groups.length > 0 && (
-          <div className="mb-3.5">
+          <div className="lg:max-w-[420px]">
             <Select
               value={groupId}
               onChange={(e) => setGroupId(e.target.value)}
@@ -46,85 +46,94 @@ export default function Attendance() {
         )}
 
         {!data && isLoading ? (
-          <div className="space-y-3.5">
-            <div className="grid grid-cols-3 gap-2.5">
-              {[1, 2, 3].map((i) => <div key={i} className="h-[74px] bg-surface border border-border rounded-[18px] shadow-card p-3"><div className="h-[15px] w-1/2 mx-auto rounded-md bg-surface-2 animate-pulse" /><div className="h-[11px] w-1/3 mx-auto rounded-md bg-surface-2 animate-pulse mt-2" /></div>)}
-            </div>
-            <div className="h-[120px] bg-surface border border-border rounded-[18px] shadow-card p-3.5">
-              <div className="grid grid-cols-10 gap-2">{Array.from({ length: 20 }).map((_, i) => <div key={i} className="aspect-square max-w-[26px] rounded-[8px] bg-surface-2 animate-pulse" />)}</div>
-            </div>
-          </div>
+          <>
+            <AutoGrid col={150}>
+              {[1, 2, 3].map((i) => <div key={i} className="skeleton h-[96px]" style={{ borderRadius: 'var(--r-md)' }} />)}
+            </AutoGrid>
+            <div className="skeleton h-[160px]" style={{ borderRadius: 'var(--r-lg)' }} />
+          </>
         ) : (
-          <div className="relative">
-            {/* Loading overlay when refetching but data already exists */}
+          <div className="relative space-y-[var(--gap)]">
+            {/* Qayta yuklanayotganda ustki qatlam */}
             {isLoading && data && (
               <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
                 <Loader2 size={32} className="animate-spin text-primary" />
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-2.5 mb-3.5">
-              <div className="bg-surface border border-border rounded-[18px] py-3.5 shadow-card text-center">
-                <CheckCircle2 size={20} className="text-success mx-auto mb-1.5" />
-                <div className="font-black text-[18px]">{data?.summary.present ?? 0}</div>
-                <div className="text-[11px] text-muted font-semibold">{t('attendance.present')}</div>
-              </div>
-              <div className="bg-surface border border-border rounded-[18px] py-3.5 shadow-card text-center">
-                <Clock3 size={20} className="text-[#9a6d00] mx-auto mb-1.5" />
-                <div className="font-black text-[18px]">{data?.summary.late ?? 0}</div>
-                <div className="text-[11px] text-muted font-semibold">{t('attendance.late')}</div>
-              </div>
-              <div className="bg-surface border border-border rounded-[18px] py-3.5 shadow-card text-center">
-                <XCircle size={20} className="text-danger mx-auto mb-1.5" />
-                <div className="font-black text-[18px]">{data?.summary.absent ?? 0}</div>
-                <div className="text-[11px] text-muted font-semibold">{t('attendance.absent')}</div>
-              </div>
-            </div>
-
-            <div className="text-[15px] font-extrabold mb-2.5">{t('attendance.last30days')}</div>
-            <div className="bg-surface border border-border rounded-[18px] p-3.5 shadow-card">
-              <div className="grid grid-cols-10 gap-2 justify-center">
-                {(data?.days ?? []).map((d, i) => {
-                  const meta = statusMeta[d.status];
-                  return (
-                    <div key={i} className="flex flex-col items-center gap-0.5">
-                      <div
-                        className="w-full aspect-square max-w-[26px] rounded-[8px] flex items-center justify-center text-[10px] font-extrabold"
-                        style={{
-                          background: meta ? meta.bg : 'var(--color-surface-3)',
-                          color: meta ? meta.color : 'var(--color-muted)',
-                        }}
-                        title={`${d.date}: ${d.status ? t(statusMeta[d.status]?.label || '') : t('attendance.unmarked')}`}
-                      >
-                        {meta ? meta.ch : '·'}
-                      </div>
-                      <div className="text-[8px] text-muted font-semibold">{Number(d.date.slice(8))}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="text-[15px] font-extrabold mt-4 mb-2.5">{t('attendance.summary')}</div>
-            {data?.records.length === 0 ? (
-              <div className="bg-surface border border-border rounded-[18px] p-4 shadow-card">
-                <EmptyState icon={CalendarCheck2} title={t('attendance.noRecords')} />
-              </div>
-            ) : (
-              <div className="bg-surface border border-border rounded-[18px] p-3.5 shadow-card">
-                {(data?.records ?? []).map((r) => (
-                  <div key={r.id} className="flex items-center gap-3 py-3 border-b border-border last:border-b-0">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-[13.5px]">
-                        {new Date(r.date).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' })}
-                      </div>
-                      {r.note && <div className="text-[12.5px] text-muted">{r.note}</div>}
-                    </div>
-                    <Badge color={r.status}>{t(`attendance.${r.status}`)}</Badge>
+            <AutoGrid col={150}>
+              {[
+                { icon: CheckCircle2, v: data?.summary.present ?? 0, l: t('attendance.present'), c: 'var(--color-success)', bg: 'var(--color-success-soft)' },
+                { icon: Clock3, v: data?.summary.late ?? 0, l: t('attendance.late'), c: '#9a6d00', bg: 'var(--color-accent-soft)' },
+                { icon: XCircle, v: data?.summary.absent ?? 0, l: t('attendance.absent'), c: 'var(--color-danger)', bg: 'var(--color-danger-soft)' },
+              ].map((x) => (
+                <div key={x.l} className="tile">
+                  <div
+                    className="w-10 h-10 flex items-center justify-center mb-2"
+                    style={{ background: x.bg, color: x.c, borderRadius: 'var(--r-sm)' }}
+                  >
+                    <x.icon size={20} />
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="tile-v" style={{ color: x.c }}>{x.v}</div>
+                  <div className="tile-l">{x.l}</div>
+                </div>
+              ))}
+            </AutoGrid>
+
+            <div className="grid xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-[var(--gap)] items-start">
+              <section>
+                <div className="section-title">
+                  <div className="t">{t('attendance.last30days')}</div>
+                </div>
+                <Card>
+                  <div className="grid grid-cols-10 gap-2 justify-center">
+                    {(data?.days ?? []).map((d, i) => {
+                      const meta = statusMeta[d.status];
+                      return (
+                        <div key={i} className="flex flex-col items-center gap-1">
+                          <div
+                            className="w-full aspect-square max-w-[30px] rounded-[9px] flex items-center justify-center text-[10.5px] font-extrabold"
+                            style={{
+                              background: meta ? meta.bg : 'var(--color-surface-3)',
+                              color: meta ? meta.color : 'var(--color-muted)',
+                            }}
+                            title={`${d.date}: ${d.status ? t(statusMeta[d.status]?.label || '') : t('attendance.unmarked')}`}
+                          >
+                            {meta ? meta.ch : '·'}
+                          </div>
+                          <div className="text-[9px] text-muted font-semibold">{Number(d.date.slice(8))}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </section>
+
+              <section>
+                <div className="section-title">
+                  <div className="t">{t('attendance.summary')}</div>
+                </div>
+                {data?.records.length === 0 ? (
+                  <Card>
+                    <EmptyState icon={CalendarCheck2} title={t('attendance.noRecords')} />
+                  </Card>
+                ) : (
+                  <Card flush className="max-h-[520px] overflow-y-auto">
+                    {(data?.records ?? []).map((r) => (
+                      <div key={r.id} className="list-row">
+                        <div className="grow">
+                          <div className="title">
+                            {new Date(r.date).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' })}
+                          </div>
+                          {r.note && <div className="sub">{r.note}</div>}
+                        </div>
+                        <Badge color={r.status}>{t(`attendance.${r.status}`)}</Badge>
+                      </div>
+                    ))}
+                  </Card>
+                )}
+              </section>
+            </div>
           </div>
         )}
       </div>

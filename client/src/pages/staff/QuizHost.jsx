@@ -120,7 +120,7 @@ export default function QuizHost() {
   // ---- FINAL ----
   if (final) {
     return (
-      <div className="page-staff pt-3.5 space-y-3.5">
+      <div className="page-staff pt-4 space-y-3.5">
         <Confetti />
         <div className="text-center">
           <h2 className="text-2xl font-black">{t('hostP.podium')}</h2>
@@ -159,7 +159,7 @@ export default function QuizHost() {
   if (question && session?.status === 'playing') {
     const answered = session.players.filter((p) => p.answered).length;
     return (
-      <div className="page-staff pt-3.5 space-y-3.5">
+      <div className="page-staff pt-4 space-y-3.5">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">{session.quizName} — {t('hostP.question')} {question.index + 1}</h2>
           <Button variant="outline" size="sm" onClick={endSession} disabled={busy}>
@@ -217,7 +217,7 @@ export default function QuizHost() {
   if (session) {
     const players = session.players || [];
     return (
-      <div className="page-staff pt-3.5 space-y-3.5">
+      <div className="page-staff pt-4 space-y-3.5">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">{session.quizName}</h2>
           <Button variant="outline" size="sm" onClick={resetAll} disabled={busy}>
@@ -279,7 +279,7 @@ export default function QuizHost() {
 
   // ---- SELECT QUIZ ----
   return (
-    <div className="page-staff pt-3.5 space-y-3.5">
+    <div className="page-staff pt-4 space-y-3.5">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">{t('hostP.selectQuiz')}</h2>
         <Button variant="outline" size="sm" onClick={() => navigate('/staff/quizzes')}>
