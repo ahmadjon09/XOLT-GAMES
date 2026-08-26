@@ -13,11 +13,12 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import {
-  Card, Avatar, AnimatedName, Badge, Button, Input, Field, PageLoader, EmptyState,
+  Card, Avatar, AnimatedName, Badge, Button, Input, Field, EmptyState,
   Sheet, ConfirmDialog, CoinBadge, StatCard, Select, Segmented,
+  PageHeader, NumberInput,
 } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
-import { fmtNum, fmtDate, monthLabel, cx, currentMonth } from '../../utils/format.js';
+import { fmtNum, fmtMoney, fmtDate, fmtPhone, monthLabel, cx, currentMonth } from '../../utils/format.js';
 
 const statusBadge = { present: 'present', absent: 'absent', late: 'late' };
 const statusMeta = {
@@ -100,7 +101,7 @@ export default function UserDetails() {
 
   const savePayment = async () => {
     if (!payForm.groupId) return toast.error(t('common.required'));
-    const amount = parseFloat(payForm.amount);
+    const amount = Number(payForm.amount) || 0;
     if (!amount || amount <= 0) return toast.error(t('cashP.amountRequired'));
     setBusy(true);
     try {
@@ -152,7 +153,30 @@ export default function UserDetails() {
     return (
       <>
         <TopBar title={t('userDetail.title')} back />
-        <PageLoader />
+        <div className="page-staff pt-3.5">
+          <Card className="p-5 flex flex-col items-center gap-3">
+            <div className="w-[104px] h-[104px] rounded-[24px] bg-surface-2 animate-pulse" />
+            <div className="h-[18px] w-48 rounded-md bg-surface-2 animate-pulse" />
+            <div className="h-[13px] w-64 rounded-md bg-surface-2 animate-pulse" />
+            <div className="flex gap-2 mt-1">
+              <div className="h-[24px] w-[90px] rounded-full bg-surface-2 animate-pulse" />
+              <div className="h-[24px] w-[70px] rounded-full bg-surface-2 animate-pulse" />
+            </div>
+          </Card>
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 mt-3.5">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-[64px] bg-surface border border-border rounded-[18px] shadow-card p-3">
+                <div className="h-[13px] w-3/4 rounded-md bg-surface-2 animate-pulse" />
+                <div className="h-[17px] w-1/2 rounded-md bg-surface-2 animate-pulse mt-2.5" />
+              </div>
+            ))}
+          </div>
+          <div className="h-[48px] bg-surface-2 rounded-[14px] animate-pulse mt-3.5" />
+          <div className="h-[220px] bg-surface border border-border rounded-[18px] shadow-card mt-3.5 p-4">
+            <div className="h-[14px] w-1/3 rounded-md bg-surface-2 animate-pulse mb-3" />
+            {[1, 2, 3].map((i) => <div key={i} className="h-[52px] rounded-[14px] bg-surface-2 animate-pulse mb-2.5" />)}
+          </div>
+        </div>
       </>
     );
   }
@@ -196,7 +220,7 @@ export default function UserDetails() {
         title={t('userDetail.title')}
         back
         right={
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className="flex gap-1.5">
             {canPay && (
               <button className="btn ghost sm" onClick={openPay} title={t('userDetail.addPayment')}>
                 <Plus size={17} className="icon-hover" style={{ color: 'var(--success)' }} />
@@ -215,7 +239,7 @@ export default function UserDetails() {
           </div>
         }
       />
-      <div className="page-staff" style={{ paddingTop: 14 }}>
+      <div className="page-staff pt-3.5">
         {/* ===== PROFIL KARTASI ===== */}
         <Card style={{ padding: 20, textAlign: 'center', marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -226,7 +250,7 @@ export default function UserDetails() {
           </div>
           <div style={{ color: 'var(--muted)', fontSize: 13.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <Phone size={13} /> {data.phone}
+              <Phone size={13} /> {fmtPhone(data.phone)}
             </span>
             {data.username && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -439,11 +463,11 @@ export default function UserDetails() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
               <Card style={{ padding: 12 }}>
                 <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 700 }}>{t('payments.totalPaid')}</div>
-                <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--success)' }}>{fmtNum(paidSum)} so'm</div>
+                <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--success)' }} className="tabular-nums">{fmtMoney(paidSum)} so'm</div>
               </Card>
               <Card style={{ padding: 12 }}>
                 <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 700 }}>{t('payments.totalUnpaid')}</div>
-                <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--danger)' }}>{fmtNum(unpaidSum)} so'm</div>
+                <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--danger)' }} className="tabular-nums">{fmtMoney(unpaidSum)} so'm</div>
               </Card>
             </div>
 
@@ -458,8 +482,8 @@ export default function UserDetails() {
                     </div>
                     <div className="grow">
                       <div className="title" style={{ fontSize: 13.5 }}>{monthLabel(p.month)} — {p.groupName}</div>
-                      <div className="sub">
-                        {fmtNum(p.amount)} so'm
+                      <div className="sub tabular-nums">
+                        {fmtMoney(p.amount)} so'm
                         {p.paidAt ? ` • ${t('payments.paidAt')}: ${fmtDate(p.paidAt)}` : ''}
                       </div>
                     </div>
@@ -550,7 +574,7 @@ export default function UserDetails() {
           <Input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••" />
         </Field>
         <Field label={t('payments.discount')} hint={t('payments.discountHint')}>
-          <Input type="number" min={0} max={100} value={form.discount} onChange={(e) => setForm({ ...form, discount: Math.min(100, Math.max(0, parseInt(e.target.value || '0'))) })} />
+          <NumberInput value={form.discount} min={0} max={100} onChange={(v) => setForm({ ...form, discount: v })} />
         </Field>
         <Field label={t('usersP.assignGroups')}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -585,7 +609,7 @@ export default function UserDetails() {
           </Select>
         </Field>
         <Field label={t('cashP.amount')}>
-          <Input type="number" min={0} value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} placeholder="200000" inputMode="numeric" />
+          <NumberInput value={payForm.amount || 0} min={0} onChange={(v) => setPayForm({ ...payForm, amount: v })} placeholder="200000" />
         </Field>
         <Field label={t('cashP.selectMonth')}>
           <Input type="month" value={payForm.month} onChange={(e) => setPayForm({ ...payForm, month: e.target.value })} />

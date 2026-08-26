@@ -5,9 +5,11 @@ import { UserCog, Plus, Pencil, Trash2, Power } from 'lucide-react';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Card, Button, Input, Field, PageLoader, EmptyState, Select, Sheet, ConfirmDialog, Badge } from '../../components/ui.jsx';
-import { TopBar } from '../../layouts/Layouts.jsx';
-import { fmtDate } from '../../utils/format.js';
+import {
+  Card, Button, Input, Field, EmptyState, Select, Sheet, ConfirmDialog,
+  Badge, PageHeader, IconButton, PhoneInput, SkeletonRow,
+} from '../../components/ui.jsx';
+import { fmtDate, fmtPhone } from '../../utils/format.js';
 
 const ROLE_LABEL = { ADMIN: 'staff.roleAdmin', TEACHER: 'staff.roleTeacher', CASHIER: 'staff.roleCashier' };
 const ROLE_COLOR = { ADMIN: 'danger', TEACHER: 'info', CASHIER: 'warn' };
@@ -15,6 +17,7 @@ const ROLE_COLOR = { ADMIN: 'danger', TEACHER: 'info', CASHIER: 'warn' };
 export default function AdminStaff() {
   const { t } = useTranslation();
   const toast = useToast();
+  const invalidate = useInvalidate();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ full_name: '', phone: '', password: '', role: 'TEACHER' });
@@ -22,7 +25,7 @@ export default function AdminStaff() {
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   // SWR cache bilan
-  const { data: staff } = useGet('/staff/staff');
+  const { data: staff, isLoading } = useGet('/staff/staff');
 
   const openCreate = () => {
     setEditing(null);
@@ -84,52 +87,68 @@ export default function AdminStaff() {
   };
 
   return (
-    <>
-      <TopBar
+    <div className="page-staff pt-3.5">
+      <PageHeader
+        icon={UserCog}
         title={t('staffP.title')}
-        right={<Button className="sm primary" onClick={openCreate}><Plus size={15} /> {t('staffP.createStaff')}</Button>}
+        count={staff?.length}
+        actions={
+          <Button size="sm" onClick={openCreate} disabled={busy}>
+            <Plus size={16} /> {t('staffP.createStaff')}
+          </Button>
+        }
       />
-      <div className="page-staff" style={{ paddingTop: 14 }}>
-        {!staff ? (
-          <PageLoader />
-        ) : staff.length === 0 ? (
-          <Card><EmptyState icon={UserCog} title={t('staffP.noStaff')} action={<Button onClick={openCreate}><Plus size={16} /> {t('staffP.createStaff')}</Button>} /></Card>
-        ) : (
-          <Card style={{ padding: '4px 14px' }}>
-            {staff.map((s) => (
-              <div key={s.id} className="row-item">
-                <div style={{ width: 42, height: 42, borderRadius: 14, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 800, fontSize: 15, flexShrink: 0 }}>
-                  {s.full_name.slice(0, 1)}
-                </div>
-                <div className="grow">
-                  <div className="title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {s.full_name}
-                    {!s.active && <Badge color="danger">{t('common.inactive')}</Badge>}
-                  </div>
-                  <div className="sub">
-                    {s.phone} • {t(`staffP.role${s.role === 'ADMIN' ? 'Admin' : s.role === 'CASHIER' ? 'Cashier' : 'Teacher'}`)}
-                    {s.role === 'TEACHER' ? ` • ${t('staffP.groupsCount')}: ${s.groupsCount}` : ''}
-                  </div>
-                </div>
-                <button className="btn ghost sm" onClick={() => toggleActive(s)} title={s.active ? t('staffP.deactivate') : t('staffP.activate')}>
-                  <Power size={16} color={s.active ? 'var(--success)' : 'var(--muted)'} />
-                </button>
-                <button className="btn ghost sm" onClick={() => openEdit(s)}><Pencil size={15} /></button>
-                <button className="btn ghost sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteTarget(s)}><Trash2 size={15} /></button>
+
+      {isLoading && !staff ? (
+        <Card className="p-0 -my-1.5">
+          {[1, 2, 3].map((i) => <SkeletonRow key={i} />)}
+        </Card>
+      ) : staff?.length === 0 ? (
+        <Card>
+          <EmptyState icon={UserCog} title={t('staffP.noStaff')} action={<Button onClick={openCreate}><Plus size={16} /> {t('staffP.createStaff')}</Button>} />
+        </Card>
+      ) : (
+        <Card className="p-0 -my-1.5">
+          {staff.map((s) => (
+            <div key={s.id} className="flex items-center gap-3.5 px-4 py-3.5 border-b border-border last:border-b-0">
+              <div className="w-[42px] h-[42px] rounded-[14px] bg-primary-soft text-primary flex items-center justify-center font-extrabold text-[15px] shrink-0">
+                {s.full_name.slice(0, 1)}
               </div>
-            ))}
-          </Card>
-        )}
-      </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-[14.5px] flex items-center gap-2 flex-wrap">
+                  <span className="truncate">{s.full_name}</span>
+                  <Badge color={ROLE_COLOR[s.role] || 'neutral'}>{t(ROLE_LABEL[s.role] || 'staff.roleTeacher')}</Badge>
+                  {!s.active && <Badge color="danger">{t('common.inactive')}</Badge>}
+                </div>
+                <div className="text-[12.5px] text-muted mt-0.5">
+                  <span className="tabular-nums">{fmtPhone(s.phone)}</span>
+                  {s.role === 'TEACHER' && ` • ${t('staffP.groupsCount')}: ${s.groupsCount}`}
+                  {` • ${fmtDate(s.createdAt)}`}
+                </div>
+              </div>
+              <div className="flex items-center shrink-0">
+                <IconButton
+                  icon={Power}
+                  label={s.active ? t('staffP.deactivate') : t('staffP.activate')}
+                  onClick={() => toggleActive(s)}
+                  className={s.active ? '!text-success' : ''}
+                />
+                <IconButton icon={Pencil} label={t('common.edit')} onClick={() => openEdit(s)} disabled={busy} />
+                <IconButton icon={Trash2} label={t('common.delete')} danger onClick={() => setDeleteTarget(s)} disabled={busy} />
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
 
       <Sheet open={editorOpen} onClose={() => setEditorOpen(false)} title={editing ? t('staffP.editStaff') : t('staffP.createStaff')}>
         <Field label={t('staffP.fullName')}>
           <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
         </Field>
         <Field label={t('staffP.phone')}>
-          <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+998901234567" disabled={!!editing} inputMode="tel" />
+          <PhoneInput value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} disabled={!!editing || busy} />
         </Field>
-        <Field label={t('staffP.password')}>
+        <Field label={t('staffP.password')} hint={editing ? t('usersP.loginInfo') : undefined}>
           <Input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editing ? '••••' : ''} />
         </Field>
         <Field label={t('staffP.role')}>
@@ -139,7 +158,7 @@ export default function AdminStaff() {
             <option value="ADMIN">{t('staffP.roleAdmin')}</option>
           </Select>
         </Field>
-        <Button className="full" loading={busy} onClick={save}>{t('common.save')}</Button>
+        <Button className="w-full" loading={busy} onClick={save}>{t('common.save')}</Button>
       </Sheet>
 
       <ConfirmDialog
@@ -151,6 +170,6 @@ export default function AdminStaff() {
         onConfirm={remove}
         loading={busy}
       />
-    </>
+    </div>
   );
 }

@@ -6,8 +6,31 @@ import { z } from 'zod';
 import { ok, ApiError, asyncH } from '../utils/response.js';
 import { requireAuth } from '../middleware/auth.js';
 import { prisma } from '../prisma/client.js';
+import { getMathLobbyRooms } from '../socket/mathGame.js';
+import { getTicTacToeLobbyRooms } from '../socket/tictactoe.js';
+import { getChessLobbyRooms } from '../socket/chessGame.js';
+import { getTypingLobbyRooms } from '../socket/typingRace.js';
+import { getCodeLobbyRooms } from '../socket/codeBattle.js';
 
 const router = Router();
+
+// =====================================================================
+// GAME LOBBY - ochiq (public) kutishdagi o'yinlar ro'yxati
+// =====================================================================
+router.get(
+  '/games/lobby',
+  requireAuth('user'),
+  asyncH(async (req, res) => {
+    const rooms = [
+      ...getMathLobbyRooms(),
+      ...getTicTacToeLobbyRooms(),
+      ...getChessLobbyRooms(),
+      ...getTypingLobbyRooms(),
+      ...getCodeLobbyRooms(),
+    ].sort((a, b) => b.createdAt - a.createdAt);
+    return ok(res, rooms);
+  })
+);
 
 // =====================================================================
 // TYPE RACING - TEACHER MATNLARI CRUD

@@ -24,26 +24,26 @@ export default function StaffHome() {
   ].filter((s) => s.roles.includes(role));
 
   return (
-    <div className="page-staff" style={{ paddingTop: 14 }}>
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 21, fontWeight: 900 }}>{t('staff.welcome')}, {user?.full_name?.split(' ')[0]}!</div>
-        <div style={{ color: 'var(--muted)', fontSize: 13.5 }}>
+    <div className="page-staff pt-3.5">
+      <div className="mb-4">
+        <div className="text-[21px] font-extrabold tracking-tight">{t('staff.welcome')}, {user?.full_name?.split(' ')[0]}!</div>
+        <div className="text-[13.5px] text-muted font-semibold mt-0.5">
           {t('staff.staffPanel')} — {t(`staff.role${role === 'ADMIN' ? 'Admin' : role === 'CASHIER' ? 'Cashier' : 'Teacher'}`)}
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="flex flex-col gap-3">
         {sections.map((s) => (
-          <Link key={s.to} to={s.to} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Card tap style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16 }}>
-              <div style={{ width: 52, height: 52, borderRadius: 16, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Link key={s.to} to={s.to} className="block">
+            <Card tap className="p-4 flex items-center gap-3.5">
+              <div className="w-[52px] h-[52px] rounded-[16px] flex items-center justify-center shrink-0" style={{ background: s.bg }}>
                 <s.icon size={24} color={s.color} className="icon-hover" />
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 800, fontSize: 15 }}>{s.title}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{s.desc}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-extrabold text-[15px]">{s.title}</div>
+                <div className="text-[12.5px] text-muted mt-0.5">{s.desc}</div>
               </div>
-              <ChevronRight size={19} color="var(--muted)" />
+              <ChevronRight size={19} className="text-muted shrink-0" />
             </Card>
           </Link>
         ))}

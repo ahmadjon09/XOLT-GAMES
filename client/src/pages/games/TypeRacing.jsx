@@ -9,7 +9,7 @@ import { errorMessage, Fetch } from '../../api/fetcher.js';
 import { useGet } from '../../api/hooks.js';
 import {
   Button, Card, Input, Field, PageLoader, EmptyState, Avatar, AnimatedName,
-  QRCode, QRScanner, CopyButton, Spinner, CoinBadge, Segmented,
+  QRCode, QRScanner, CopyButton, Spinner, CoinBadge, Segmented, GameVisibilityToggle,
 } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { sounds, initAudio } from '../../utils/sound.js';
@@ -167,7 +167,7 @@ function SoloMode() {
       {leaderboard.top.length === 0 ? (
         <Card><EmptyState icon={Trophy} title={t('typing.noRecords')} /></Card>
       ) : (
-        <Card className="p-0 divide-y divide-slate-100">
+        <Card className="p-0 divide-y divide-border">
           {leaderboard.my && (
             <div className="p-3 bg-primary-soft/20 flex items-center gap-2">
               <span className="text-xs font-bold text-primary bg-primary-soft px-3 py-1 rounded-full">
@@ -211,6 +211,7 @@ export default function TypeRacing() {
 
   const [phase, setPhase] = useState(PHASE.ENTER);
   const [lang, setLangState] = useState(getLang());
+  const [isPublic, setIsPublic] = useState(true);
   const [code, setCode] = useState('');
   const [scanOpen, setScanOpen] = useState(false);
   const [session, setSession] = useState(null);
@@ -348,7 +349,7 @@ export default function TypeRacing() {
 
   const host = () => {
     setBusy(true);
-    socket.emit('typing:host', { lang });
+    socket.emit('typing:host', { lang, isPublic });
     setBusy(false);
   };
 
@@ -454,7 +455,7 @@ export default function TypeRacing() {
             </div>
           )}
         </div>
-        <Card className="p-0 divide-y divide-slate-100">
+        <Card className="p-0 divide-y divide-border">
           {final.map((p, i) => (
             <div key={p.userId} className={`flex items-center gap-4 p-4 ${p.userId === myId ? 'bg-primary-soft/20' : ''}`}>
               <span className={`w-6 text-center font-bold ${i < 3 ? 'text-amber-500' : 'text-muted'}`}>{p.rank}</span>
@@ -645,6 +646,9 @@ export default function TypeRacing() {
                 { value: 'en', label: 'English' },
               ]}
             />
+          </Field>
+          <Field label={t('game.visibility')}>
+            <GameVisibilityToggle value={isPublic} onChange={setIsPublic} />
           </Field>
           <Button className="w-full" loading={busy} onClick={host}>
             <Play size={16} className="mr-1.5" /> {t('typing.create')}

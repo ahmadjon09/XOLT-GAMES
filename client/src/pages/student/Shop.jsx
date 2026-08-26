@@ -5,7 +5,7 @@ import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Card, Button, PageLoader, EmptyState, CoinBadge, CoinIcon, Avatar, AnimatedName, Segmented, ConfirmDialog } from '../../components/ui.jsx';
+import { Card, Button, EmptyState, CoinBadge, CoinIcon, Avatar, AnimatedName, Segmented, ConfirmDialog, SkeletonGrid } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { sounds } from '../../utils/sound.js';
 
@@ -29,7 +29,15 @@ export default function Shop() {
 
   const { data } = useGet('/user/shop');
 
-  if (!data) return <><TopBar title={t('shop.title')} right={<CoinBadge value={user?.coin} />} /><PageLoader /></>;
+  if (!data) return (
+    <>
+      <TopBar title={t('shop.title')} right={<CoinBadge value={user?.coin} />} />
+      <div className="page pt-3.5">
+        <div className="h-[48px] bg-surface-2 rounded-[14px] animate-pulse mb-3.5" />
+        <SkeletonGrid cols={2} count={4} h={220} />
+      </div>
+    </>
+  );
 
   const isFrame = tab === 'frames';
   const items = isFrame ? data.frames : data.effects;

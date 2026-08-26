@@ -19,8 +19,12 @@ export function AuthProvider({ children }) {
       const profile = await Fetch.get('/auth/me');
       setUser(profile);
     } catch (e) {
-      clearToken();
-      setUser(null);
+      // Faqat 401 (token noto'g'ri/muddati tugagan) da chiqarish;
+      // 404/500/tarmoq xatosi foydalanuvchini chiqarmaslik kerak
+      if (e?.status === 401 || e?.code === 'UNAUTHORIZED') {
+        clearToken();
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }

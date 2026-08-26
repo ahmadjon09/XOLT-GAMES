@@ -9,7 +9,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { Avatar, AnimatedName, Button, Input, Field, CoinBadge, Sheet, Toggle, LangSwitcher, ConfirmDialog } from '../../components/ui.jsx';
 import ImageCropper from '../../components/ImageCropper.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
-import { fmtNum, fmtDate } from '../../utils/format.js';
+import { fmtNum, fmtDate, fmtPhone } from '../../utils/format.js';
 import { isSoundEnabled, setSoundEnabled } from '../../utils/sound.js';
 import { fileToDataUrl, validateImageFile } from '../../utils/cropImage.js';
 
@@ -160,8 +160,8 @@ export default function Profile() {
           <div className="mt-3 text-[20px] font-black">
             <AnimatedName config={profile.currentEffect?.config}>{profile.full_name}</AnimatedName>
           </div>
-          <div className="text-muted text-[13px]">
-            {profile.phone} {profile.username ? `@${profile.username}` : ''}
+          <div className="text-muted text-[13px] tabular-nums">
+            {fmtPhone(profile.phone)} {profile.username ? `@${profile.username}` : ''}
           </div>
           <div className="flex justify-center gap-2 mt-3 flex-wrap">
             <CoinBadge value={profile.coin} />

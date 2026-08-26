@@ -1,6 +1,7 @@
 // Toast bildirishnomalari
 import { createContext, useContext, useState, useCallback } from 'react';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { initAudio, sounds } from '../utils/sound.js';
 
 const ToastData = createContext(null);
 
@@ -15,6 +16,10 @@ export function ToastProvider({ children }) {
 
   const push = useCallback((type, message, timeout = 3000) => {
     const id = ++idCounter;
+    initAudio();
+    if (type === 'success') sounds.save();
+    else if (type === 'error') sounds.error();
+    else sounds.notify();
     setToasts((t) => [...t, { id, type, message }]);
     setTimeout(() => remove(id), timeout);
   }, [remove]);

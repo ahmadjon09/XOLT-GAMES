@@ -7,7 +7,7 @@ import { useSocket } from '../../context/SocketContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { errorMessage } from '../../api/fetcher.js';
-import { Button, Card, Input, Field, Stepper, Segmented, Ring, QRCode, QRScanner, CopyButton, CoinBadge, Spinner, PlayerCard, Confetti } from '../../components/ui.jsx';
+import { Button, Card, Input, Field, Stepper, Segmented, Ring, QRCode, QRScanner, CopyButton, CoinBadge, Spinner, PlayerCard, Confetti, NumberInput, GameVisibilityToggle } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import Latex from '../../components/Latex.jsx';
 import { sounds } from '../../utils/sound.js';
@@ -25,6 +25,7 @@ export default function MathGame() {
   const [rounds, setRounds] = useState(5);
   const [difficulty, setDifficulty] = useState('easy');
   const [bet, setBet] = useState(0);
+  const [isPublic, setIsPublic] = useState(true);
   const [joinCode, setJoinCode] = useState('');
   const [scanOpen, setScanOpen] = useState(false);
 
@@ -203,7 +204,7 @@ export default function MathGame() {
   
   const createGame = () => {
     setBusy(true);
-    socket.emit('mathgame:create', { rounds, bet, difficulty });
+    socket.emit('mathgame:create', { rounds, bet, difficulty, isPublic });
     setBusy(false);
   };
 
@@ -454,8 +455,11 @@ export default function MathGame() {
               </Field>
               <Field label={t('math.bet')}>
                 <div style={{ position: 'relative' }}>
-                  <Input type="number" min={0} value={bet} onChange={(e) => setBet(Math.max(0, parseInt(e.target.value || '0')))} inputMode="numeric" />
+                  <NumberInput value={bet} min={0} onChange={setBet} />
                 </div>
+              </Field>
+              <Field label={t('game.visibility')}>
+                <GameVisibilityToggle value={isPublic} onChange={setIsPublic} />
               </Field>
               <Button className="full" disabled={bet > (user?.coin ?? 0)} onClick={createGame}>
                 {t('math.create')}

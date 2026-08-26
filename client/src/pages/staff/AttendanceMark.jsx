@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { CheckCircle2, XCircle, Clock3, Save, Users } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock3, Save, Users, CalendarCheck2 } from 'lucide-react';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Card, Button, Select, Input, PageLoader, EmptyState, Avatar, AnimatedName, Segmented, Spinner } from '../../components/ui.jsx';
-import { TopBar } from '../../layouts/Layouts.jsx';
+import { Card, Button, Select, Input, Field, PageLoader, EmptyState, Avatar, AnimatedName, Segmented, Spinner, PageHeader } from '../../components/ui.jsx';
 import { todayKey, currentMonth, monthLabel } from '../../utils/format.js';
 
 const STATUS = ['present', 'late', 'absent'];
 const STATUS_META = {
   present: { label: 'present', icon: CheckCircle2, color: 'text-success', bg: 'bg-success-soft', border: 'border-success' },
-  late: { label: 'late', icon: Clock3, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-400' },
+  late: { label: 'late', icon: Clock3, color: 'text-[#9a6d00]', bg: 'bg-accent-soft', border: 'border-accent' },
   absent: { label: 'absent', icon: XCircle, color: 'text-danger', bg: 'bg-danger-soft', border: 'border-danger' },
 };
 
@@ -90,41 +89,37 @@ export default function AttendanceMark() {
   if (!groups || groupsLoading) {
     return (
       <>
-        <TopBar title={t('attMark.title')} back />
-        <div className="page pt-4">
-          <PageLoader />
-        </div>
+        <div className="page-staff pt-3.5">
+        <PageHeader icon={CalendarCheck2} title={t('attMark.title')} />
+        <PageLoader />
+      </div>
       </>
     );
   }
 
   return (
     <>
-      <TopBar title={t('attMark.title')} back />
-      <div className="page pt-4 space-y-4">
+      <div className="page-staff pt-3.5 space-y-3.5">
+        <PageHeader
+          icon={CalendarCheck2}
+          title={t('attMark.title')}
+          sub={groups.find((g) => g.id === groupId)?.name}
+        />
         {/* Group & date/month selectors */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-semibold text-slate-600 block mb-1.5">{t('attMark.group')}</label>
-            <Select
-              value={groupId}
-              onChange={(e) => setGroupId(e.target.value)}
-              className="w-full"
-            >
+        <Card className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label={t('attMark.group')} className="mb-0">
+            <Select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
               {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </Select>
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-slate-600 block mb-1.5">
-              {tab === 'mark' ? t('attMark.date') : t('attMark.month')}
-            </label>
+          </Field>
+          <Field label={tab === 'mark' ? t('attMark.date') : t('attMark.month')} className="mb-0">
             {tab === 'mark' ? (
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full" />
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             ) : (
-              <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-full" />
+              <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
             )}
-          </div>
-        </div>
+          </Field>
+        </Card>
 
         {/* Segmented control */}
         <div>
@@ -172,17 +167,17 @@ export default function AttendanceMark() {
                 </Button>
               </div>
 
-              <Card className="p-0 divide-y divide-slate-100">
+              <Card className="p-0 p-0 -my-1.5">
                 {(draft || []).map((r) => {
                   const currentStatus = r.status;
                   return (
-                    <div key={r.userId} className="flex items-center gap-4 p-4 hover:bg-slate-50/50 transition-colors">
+                    <div key={r.userId} className="flex items-center gap-4 px-4 py-3.5 border-b border-border last:border-b-0 hover:bg-surface-2/40 transition-colors">
                       <Avatar w={48} avatar={r.avatar} frame={r.currentFrame} />
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-slate-800 truncate">
+                        <div className="font-bold text-[14.5px] truncate">
                           <AnimatedName config={r.currentEffect?.config}>{r.full_name}</AnimatedName>
                         </div>
-                        {r.username && <div className="text-sm text-slate-500 truncate">@{r.username}</div>}
+                        {r.username && <div className="text-[12.5px] text-muted truncate">@{r.username}</div>}
                       </div>
                       <div className="flex gap-2">
                         {STATUS.map((s) => {
@@ -197,7 +192,7 @@ export default function AttendanceMark() {
                                 w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200
                                 ${isActive
                                   ? `${meta.bg} ${meta.color} border-2 ${meta.border} shadow-sm`
-                                  : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600 border-2 border-transparent'
+                                  : 'bg-surface-2 text-muted hover:bg-surface-3 hover:text-ink border-2 border-transparent'
                                 }
                               `}
                               title={t(`attMark.${s}`)}
@@ -228,18 +223,18 @@ export default function AttendanceMark() {
           summaryLoading ? (
             <PageLoader />
           ) : (
-            <Card className="p-0 divide-y divide-slate-100">
-              <div className="p-4 bg-slate-50/60 rounded-t-2xl flex flex-wrap items-center justify-between gap-2">
-                <span className="font-bold text-slate-700">{monthLabel(month)}</span>
-                <span className="text-sm text-slate-500">
+            <Card className="p-0 p-0 -my-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-surface-2/70 rounded-t-[18px]">
+                <span className="font-bold text-[13.5px]">{monthLabel(month)}</span>
+                <span className="text-[12.5px] text-muted font-semibold">
                   {summary.dates.length} {t('attendance.totalDays')}
                 </span>
               </div>
               {summary.rows.map((r) => (
-                <div key={r.userId} className="flex items-center gap-4 p-4 hover:bg-slate-50/50 transition-colors">
+                <div key={r.userId} className="flex items-center gap-4 px-4 py-3.5 border-b border-border last:border-b-0 hover:bg-surface-2/40 transition-colors">
                   <Avatar w={48} avatar={r.avatar} frame={r.currentFrame} />
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-slate-800 truncate">
+                    <div className="font-bold text-[14.5px] truncate">
                       <AnimatedName config={r.currentEffect?.config}>{r.full_name}</AnimatedName>
                     </div>
                   </div>
@@ -247,7 +242,7 @@ export default function AttendanceMark() {
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-success-soft text-success">
                       <CheckCircle2 size={14} /> {r.present}
                     </span>
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-accent-soft text-[#9a6d00]">
                       <Clock3 size={14} /> {r.late}
                     </span>
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-danger-soft text-danger">
@@ -257,7 +252,7 @@ export default function AttendanceMark() {
                 </div>
               ))}
               {summary.rows.length === 0 && (
-                <div className="p-8 text-center text-slate-500">{t('attMark.noRecords')}</div>
+                <div className="p-8 text-center text-muted">{t('attMark.noRecords')}</div>
               )}
             </Card>
           )
