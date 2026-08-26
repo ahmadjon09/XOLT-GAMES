@@ -210,12 +210,14 @@ export function NumberInput({ value, onChange, min, max, placeholder, disabled, 
 
 // Telefon input — react-phone-number-input asosida, +998 formatda
 // value har doim E.164 formatda saqlanadi (+998901234567) — serverga shu yuboriladi
-export function PhoneInput({ value, onChange, defaultCountry = 'UZ', dark, className, error, disabled, inputProps, ...rest }) {
+// staticCountry: mamlakat tanlash o'chiriladi (faqat flag ko'rinadi) — boshqa inputlar kabi bir xil
+export function PhoneInput({ value, onChange, defaultCountry = 'UZ', dark, staticCountry, className, error, disabled, inputProps, ...rest }) {
   return (
     <PhoneInputLib
       value={value || ''}
       onChange={(v) => onChange(v || '')}
       defaultCountry={defaultCountry}
+      disableCountrySelect={!!staticCountry}
       inputProps={{ autoComplete: 'tel', placeholder: '+998 __ ___ __ __', ...inputProps }}
       className={cx('phone-input-wrap', dark && 'dark', error && 'error', className)}
       disabled={disabled}

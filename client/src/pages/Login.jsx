@@ -146,6 +146,7 @@ export default function Login() {
               value={phone}
               onChange={setPhone}
               dark
+              staticCountry
               inputProps={{ autoComplete: 'tel', placeholder: '+998 __ ___ __ __' }}
             />
 

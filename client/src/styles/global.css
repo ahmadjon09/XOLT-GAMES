@@ -256,9 +256,19 @@
 .phone-input-wrap .PhoneInputInput[disabled] { color: var(--color-muted); }
 .phone-input-wrap .PhoneInputCountrySelect[disabled] { cursor: not-allowed; opacity: .6; }
 
-/* Dark variant (login sahifasi uchun) */
+/* Dark variant (login sahifasi uchun) — boshqa maydonlar (h-14, bg-white/20, rounded-2xl) bilan bir xil */
 .phone-input-wrap.dark .PhoneInput {
-  background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.28);
+  background: rgba(255,255,255,.2);
+  border-color: rgba(255,255,255,.3);
+  backdrop-filter: blur(4px);
+  height: 56px;
+  border-radius: 16px;
+  padding: 0 16px 0 14px;
+  border-width: 1px;
+}
+.phone-input-wrap.dark .PhoneInput:focus-within {
+  border-color: #facc15;
+  box-shadow: 0 0 0 4px rgba(250,204,21,.15);
 }
 .phone-input-wrap.dark .PhoneInput:focus-within {
   border-color: #fdc700; box-shadow: 0 0 0 4px rgba(253,199,0,.18);
