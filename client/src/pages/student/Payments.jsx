@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Wallet, CheckCircle2, XCircle, Clock3 } from 'lucide-react';
 import { useGet } from '../../api/hooks.js';
-import { PageLoader, EmptyState, Badge } from '../../components/ui.jsx';
+import { EmptyState, Badge } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { fmtMoney, fmtDate, monthLabel } from '../../utils/format.js';
 
@@ -29,7 +29,18 @@ export default function Payments() {
         </div>
 
         {isLoading && !data?.length ? (
-          <PageLoader />
+          <div className="space-y-2.5">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-surface border border-border rounded-[18px] shadow-card p-4 flex items-center gap-3">
+                <div className="w-[40px] h-[40px] rounded-[13px] bg-surface-2 animate-pulse shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-[13px] w-2/3 rounded-md bg-surface-2 animate-pulse" />
+                  <div className="h-[11px] w-1/2 rounded-md bg-surface-2 animate-pulse" />
+                </div>
+                <div className="h-[24px] w-[70px] rounded-full bg-surface-2 animate-pulse shrink-0" />
+              </div>
+            ))}
+          </div>
         ) : data.length === 0 ? (
           <div className="bg-surface border border-border rounded-[18px] p-4 shadow-card">
             <EmptyState icon={Wallet} title={t('payments.noPayments')} />

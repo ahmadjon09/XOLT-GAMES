@@ -7,8 +7,8 @@ import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGetMeta, useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import {
-  Card, Button, Input, Field, PageLoader, EmptyState, Avatar, AnimatedName,
-  Sheet, ConfirmDialog, Badge, PageHeader, IconButton, SearchInput, NumberInput, PhoneInput, Pagination,
+  Card, Button, Input, Field, EmptyState, Avatar, AnimatedName,
+  Sheet, ConfirmDialog, Badge, PageHeader, IconButton, SearchInput, NumberInput, PhoneInput, Pagination, SkeletonRow,
 } from '../../components/ui.jsx';
 import { fmtNum, fmtPhone } from '../../utils/format.js';
 
@@ -130,7 +130,9 @@ export default function AdminUsers() {
 
       {/* Content */}
       {isLoading && !users ? (
-        <PageLoader />
+        <Card className="p-0 -my-1.5">
+          {[1, 2, 3, 4].map((i) => <SkeletonRow key={i} />)}
+        </Card>
       ) : error ? (
         <Card className="p-8 text-center text-danger">
           <p>{t('common.serverError')}</p>

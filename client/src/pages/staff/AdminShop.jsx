@@ -5,9 +5,9 @@ import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import {
-  Card, Button, Input, Field, PageLoader, EmptyState, Select, Sheet, ConfirmDialog,
+  Card, Button, Input, Field, EmptyState, Select, Sheet, ConfirmDialog,
   Segmented, Avatar, AnimatedName, CoinIcon, Textarea,
-  PageHeader, IconButton, NumberInput, PageError,
+  PageHeader, IconButton, NumberInput, PageError, SkeletonGrid,
 } from '../../components/ui.jsx';
 import { fmtNum } from '../../utils/format.js';
 
@@ -171,7 +171,7 @@ export default function AdminShop() {
 
       {/* Content */}
       {isLoading && !items?.length ? (
-        <PageLoader />
+        <SkeletonGrid count={6} />
       ) : error ? (
         <PageError onRetry={refresh} />
       ) : items?.length === 0 ? (

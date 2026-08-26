@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaTrophy, FaCalendarWeek, FaCalendarAlt, FaInfinity, FaChevronLeft, FaChevronRight, FaUsers, FaCrown, FaMedal, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
+import { FaTrophy, FaCalendarWeek, FaCalendarAlt, FaInfinity, FaChevronLeft, FaChevronRight, FaUsers, FaCrown, FaMedal, FaExclamationTriangle } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useGet } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -46,8 +46,36 @@ export default function Leaderboard() {
 
   if (isLoading && !data) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <FaSpinner className="text-4xl text-primary animate-spin" />
+      <div className="mx-auto space-y-5 p-4 pt-6 max-w-[1060px]">
+        <div className="h-[88px] rounded-2xl bg-surface border border-border shadow-card p-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-surface-2 animate-pulse" />
+            <div className="space-y-2 flex-1">
+              <div className="h-[16px] w-1/3 rounded-md bg-surface-2 animate-pulse" />
+              <div className="h-[12px] w-1/2 rounded-md bg-surface-2 animate-pulse" />
+            </div>
+          </div>
+        </div>
+        <div className="relative overflow-hidden rounded-3xl p-6 bg-surface border border-border shadow-card">
+          <div className="grid grid-cols-3 items-end max-w-3xl mx-auto pt-14 gap-3">
+            <div className="h-[180px] rounded-2xl bg-surface-2 animate-pulse" />
+            <div className="h-[220px] rounded-2xl bg-surface-2 animate-pulse" />
+            <div className="h-[150px] rounded-2xl bg-surface-2 animate-pulse" />
+          </div>
+        </div>
+        <div className="bg-surface rounded-2xl border border-border shadow-card overflow-hidden divide-y divide-border">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-4 p-4">
+              <div className="w-10 h-10 rounded-full bg-surface-2 animate-pulse shrink-0" />
+              <div className="w-12 h-12 rounded-full bg-surface-2 animate-pulse shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-[13px] w-1/3 rounded-md bg-surface-2 animate-pulse" />
+                <div className="h-[11px] w-1/2 rounded-md bg-surface-2 animate-pulse" />
+              </div>
+              <div className="h-[16px] w-12 rounded-md bg-surface-2 animate-pulse" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

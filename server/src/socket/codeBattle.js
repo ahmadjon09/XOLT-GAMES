@@ -200,6 +200,26 @@ async function finishBattle(io, session) {
   io.to(session.code).emit('code:ended', { code: session.code });
 }
 
+// Lobi uchun: ochiq kutish xonalari
+export function getCodeLobbyRooms() {
+  const rooms = [];
+  for (const session of sessions.values()) {
+    if (session.status === 'waiting' && session.public) {
+      rooms.push({
+        gameId: session.code,
+        type: 'codebattle',
+        host: session.hostInfo || { id: session.hostId, full_name: 'Host', avatar: null, currentFrame: null, currentEffect: null },
+        category: session.category,
+        questionsCount: session.questions.length,
+        players: session.players.size,
+        maxPlayers: 10,
+        createdAt: session.createdAt,
+      });
+    }
+  }
+  return rooms;
+}
+
 export function setupCodeBattle(io) {
   setInterval(() => {
     const now = Date.now();
@@ -240,6 +260,7 @@ export function setupCodeBattle(io) {
         const session = {
           code,
           category,
+          public: !!payload?.isPublic,
           questions: picked.map((q) => ({
             id: q.id,
             title: q.title,
@@ -253,12 +274,23 @@ export function setupCodeBattle(io) {
           hostId: userId,
           hostSocketId: socket.id,
           hostConnected: true,
+          hostInfo: null,
           players: new Map(),
           status: 'waiting',
           currentIndex: -1,
           createdAt: Date.now(),
           lastActivity: Date.now(),
         };
+        const hostUser = await fetchFullUser(userId);
+        if (hostUser) {
+          session.hostInfo = {
+            id: hostUser.id,
+            full_name: hostUser.full_name,
+            avatar: hostUser.avatar,
+            currentFrame: hostUser.currentFrame,
+            currentEffect: hostUser.currentEffect,
+          };
+        }
         sessions.set(code, session);
         socket.join(code);
         socket.data.codeHost = code;

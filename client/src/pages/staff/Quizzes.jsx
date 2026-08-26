@@ -6,7 +6,7 @@ import { ListChecks, Plus, Trash2, Pencil, Play, RefreshCw } from 'lucide-react'
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Card, Button, PageLoader, EmptyState, ConfirmDialog, PageHeader, IconButton, PageError } from '../../components/ui.jsx';
+import { Card, Button, EmptyState, ConfirmDialog, PageHeader, IconButton, PageError, SkeletonRow } from '../../components/ui.jsx';
 import { fmtDate } from '../../utils/format.js';
 
 export default function QuizzesList() {
@@ -56,7 +56,9 @@ export default function QuizzesList() {
 
       {/* Content */}
       {isLoading && !quizzes ? (
-        <PageLoader />
+        <Card className="p-0 -my-1.5">
+          {[1, 2, 3].map((i) => <SkeletonRow key={i} />)}
+        </Card>
       ) : error ? (
         <PageError onRetry={refresh} />
       ) : quizzes?.length === 0 ? (

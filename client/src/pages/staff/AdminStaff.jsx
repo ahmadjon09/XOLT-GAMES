@@ -6,8 +6,8 @@ import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import {
-  Card, Button, Input, Field, PageLoader, EmptyState, Select, Sheet, ConfirmDialog,
-  Badge, PageHeader, IconButton, PhoneInput,
+  Card, Button, Input, Field, EmptyState, Select, Sheet, ConfirmDialog,
+  Badge, PageHeader, IconButton, PhoneInput, SkeletonRow,
 } from '../../components/ui.jsx';
 import { fmtDate, fmtPhone } from '../../utils/format.js';
 
@@ -100,7 +100,9 @@ export default function AdminStaff() {
       />
 
       {isLoading && !staff ? (
-        <PageLoader />
+        <Card className="p-0 -my-1.5">
+          {[1, 2, 3].map((i) => <SkeletonRow key={i} />)}
+        </Card>
       ) : staff?.length === 0 ? (
         <Card>
           <EmptyState icon={UserCog} title={t('staffP.noStaff')} action={<Button onClick={openCreate}><Plus size={16} /> {t('staffP.createStaff')}</Button>} />

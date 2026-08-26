@@ -40,6 +40,7 @@ function sanitizeGame(game) {
     host: sanitizePlayer(game.host),
     guest: sanitizePlayer(game.guest),
     status: game.status,
+    public: game.public,
     bet: game.bet,
     rounds: game.rounds,
     roundScore: game.roundScore,
@@ -259,6 +260,30 @@ function handleDisconnect(io, socket) {
   }, RECONNECT_TIMEOUT_MS);
 }
 
+// Lobi uchun: ochiq kutish xonalari
+export function getTicTacToeLobbyRooms() {
+  const rooms = [];
+  for (const game of games.values()) {
+    if (game.status === 'waiting' && game.public) {
+      rooms.push({
+        gameId: game.gameId,
+        type: 'tictactoe',
+        host: {
+          id: game.host.id,
+          full_name: game.host.full_name,
+          avatar: game.host.avatar,
+          currentFrame: game.host.currentFrame,
+          currentEffect: game.host.currentEffect,
+        },
+        bet: game.bet,
+        rounds: game.rounds,
+        createdAt: game.createdAt,
+      });
+    }
+  }
+  return rooms;
+}
+
 export function setupTicTacToe(io) {
   setInterval(() => {
     const now = Date.now();
@@ -304,7 +329,7 @@ export function setupTicTacToe(io) {
     // Yaratish (rounds: 1-9, har round alohida board)
     socket.on('ttt:create', async (payload) => {
       try {
-        const { bet, rounds } = payload || {};
+        const { bet, rounds, isPublic } = payload || {};
         if (typeof bet !== 'number' || !Number.isInteger(bet) || bet < 0) {
           return emitError(socket, 'INVALID_BET', 'Bet musbat butun son bo\'lishi kerak');
         }
@@ -326,6 +351,7 @@ export function setupTicTacToe(io) {
           host: buildPlayerData(user, socket.id),
           guest: null,
           status: 'waiting',
+          public: !!isPublic,
           bet,
           rounds: r,
           roundScore: { host: 0, guest: 0 },

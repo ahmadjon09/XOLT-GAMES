@@ -13,11 +13,13 @@ import Leaderboard from './pages/student/Leaderboard.jsx';
 import Profile from './pages/student/Profile.jsx';
 import Attendance from './pages/student/Attendance.jsx';
 import Payments from './pages/student/Payments.jsx';
+import Lobby from './pages/student/Lobby.jsx';
 import MathGame from './pages/games/MathGame.jsx';
 import TicTacToe from './pages/games/TicTacToe.jsx';
 import QuizPlay from './pages/games/QuizPlay.jsx';
 import TypeRacing from './pages/games/TypeRacing.jsx';
 import CodeBattle from './pages/games/CodeBattle.jsx';
+import Chess from './pages/games/Chess.jsx';
 import { TypingTexts, CodeQuestions } from './pages/staff/GameContent.jsx';
 
 import StaffHome from './pages/staff/StaffHome.jsx';
@@ -69,6 +71,7 @@ export default function App() {
           }
         >
           <Route path="/" element={<Home />} />
+          <Route path="/lobby" element={<Lobby />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/profile" element={<Profile />} />
@@ -115,6 +118,14 @@ export default function App() {
           element={
             <Guard kind="user">
               <CodeBattle />
+            </Guard>
+          }
+        />
+        <Route
+          path="/game/chess"
+          element={
+            <Guard kind="user">
+              <Chess />
             </Guard>
           }
         />

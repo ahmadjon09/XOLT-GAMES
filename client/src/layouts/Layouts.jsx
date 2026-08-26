@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useTranslation } from 'react-i18next';
 import {
   Home, Store, Trophy, User, LayoutDashboard, Users, CalendarCheck2, ListChecks,
-  Wallet, LogOut, Wifi, WifiOff, Zap, Keyboard, Code2, ChevronLeft,
+  Wallet, LogOut, Wifi, WifiOff, Zap, Keyboard, Code2, ChevronLeft, Swords,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSocket } from '../context/SocketContext.jsx';
@@ -87,11 +87,11 @@ function Sidebar({ items, title, sub, footer }) {
   const { connected } = useSocket();
   return (
     <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 z-40 flex-col">
-      <div className="flex h-full w-full flex-col" style={{ background: 'linear-gradient(180deg,#641ca8 0%,#472692 60%,#3b2180 100%)' }}>
+      <div className="flex h-full w-full flex-col" style={{ background: 'var(--grad-sidebar)' }}>
         <div className="flex items-center gap-3 px-6 pt-7 pb-5">
           <div className="relative">
             <Logo size={40} />
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#fdc700] text-[9px] font-black text-[#472692]">
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black text-white" style={{ background: 'var(--grad-gold)', boxShadow: 'var(--glow-gold)' }}>
               <Zap size={9} strokeWidth={3} />
             </span>
           </div>
@@ -107,17 +107,20 @@ function Sidebar({ items, title, sub, footer }) {
               {({ isActive }) => (
                 <span
                   className={cx(
-                    'group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all',
+                    'group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all relative',
                     isActive ? 'bg-white/15 text-white shadow-inner' : 'text-white/65 hover:bg-white/10 hover:text-white'
                   )}
                 >
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full" style={{ background: 'var(--grad-gold)' }} />
+                  )}
                   <it.icon
                     size={19}
                     strokeWidth={isActive ? 2.5 : 2}
-                    className={isActive ? 'text-[#fdc700]' : 'text-white/60 group-hover:text-[#fdc700] transition-colors'}
+                    className={isActive ? 'text-[#fbbf24]' : 'text-white/60 group-hover:text-[#fbbf24] transition-colors'}
                   />
                   {it.label}
-                  {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#fdc700]" />}
+                  {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ background: 'var(--grad-gold)' }} />}
                 </span>
               )}
             </NavLink>
@@ -151,6 +154,7 @@ export function StudentLayout() {
 
   const navItems = [
     { to: '/', end: true, icon: Home, label: t('nav.home') },
+    { to: '/lobby', icon: Swords, label: t('nav.lobby') },
     { to: '/shop', icon: Store, label: t('nav.shop') },
     { to: '/leaderboard', icon: Trophy, label: t('nav.leaderboard') },
     { to: '/profile', icon: User, label: t('nav.profile') },

@@ -1,30 +1,30 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #5b1ea6;
-  --color-primary-600: #4a1889;
-  --color-primary-700: #3b2180;
-  --color-primary-soft: #efe7fb;
-  --color-accent: #fdc700;
-  --color-accent-600: #e5b200;
-  --color-accent-soft: #fff6d8;
+  --color-primary: #5b21b6;
+  --color-primary-600: #4c1d95;
+  --color-primary-700: #3b1185;
+  --color-primary-soft: #f0eafd;
+  --color-accent: #f59e0b;
+  --color-accent-600: #d97706;
+  --color-accent-soft: #fdf3d7;
   --color-surface: #ffffff;
-  --color-surface-2: #f1eef9;
-  --color-surface-3: #e7e2f2;
-  --color-border: #e6e0f0;
-  --color-ink: #211530;
-  --color-muted: #6e6682;
+  --color-surface-2: #f4f1fb;
+  --color-surface-3: #eae4f6;
+  --color-border: #e8e2f4;
+  --color-ink: #1f1533;
+  --color-muted: #716a85;
   --color-success: #16a34a;
   --color-success-soft: #e6f7ec;
   --color-danger: #ef4444;
   --color-danger-soft: #fdeaea;
-  --color-info: #0ea5e9;
+  --color-info: #0284c7;
   --color-info-soft: #e4f4fd;
-  --color-gold: #fdc700;
+  --color-gold: #f59e0b;
   --color-silver: #94a3b8;
   --color-bronze: #c46a4a;
-  --shadow-card: 0 4px 24px rgba(66, 36, 133, 0.07);
-  --shadow-card-lg: 0 12px 40px rgba(66, 36, 133, 0.14);
+  --shadow-card: 0 2px 16px rgba(58, 26, 120, 0.06);
+  --shadow-card-lg: 0 14px 44px rgba(58, 26, 120, 0.16);
   --animate-float: floaty 2.4s ease-in-out infinite;
   --animate-shake: shakeX 0.4s ease;
   --animate-spin: spin 0.7s linear infinite;
@@ -78,11 +78,25 @@
   }
 }
 
+:root {
+  --grad-primary: linear-gradient(135deg, #7c3aed 0%, #5b21b6 55%, #4c1d95 100%);
+  --grad-primary-soft: linear-gradient(135deg, rgba(124, 58, 237, 0.14), rgba(76, 29, 149, 0.1));
+  --grad-gold: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  --grad-sidebar: linear-gradient(180deg, #2a0a63 0%, #4c1d95 52%, #5b21b6 100%);
+  --grad-hero: linear-gradient(135deg, #4c1d95 0%, #6d28d9 55%, #7c3aed 100%);
+  --glow-primary: 0 6px 22px rgba(76, 29, 149, 0.35);
+  --glow-gold: 0 6px 22px rgba(245, 158, 11, 0.4);
+}
+
 @layer base {
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body {
-    background: #f6f4fb;
+    background:
+      radial-gradient(1100px 480px at 88% -8%, rgba(124, 58, 237, 0.09), transparent 60%),
+      radial-gradient(900px 420px at -8% 20%, rgba(245, 158, 11, 0.07), transparent 55%),
+      #f4f1fb;
+    background-attachment: fixed;
     color: var(--color-ink);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     min-height: 100vh;
@@ -113,14 +127,16 @@
   .btn.full { @apply w-full; }
   .btn.sm { @apply px-3.5 py-2 text-[14px] rounded-[12px]; }
   .btn.lg { @apply px-6 py-[15px] text-base rounded-[16px]; }
-  .btn.primary { @apply bg-primary text-white shadow-[0_6px_18px_rgba(91,30,166,0.32)] hover:bg-primary-600; }
-  .btn.soft { @apply bg-primary-soft text-primary hover:bg-[#dedeff]; }
-  .btn.outline { @apply bg-transparent border-border text-ink hover:bg-surface-2; }
-  .btn.danger { @apply bg-danger text-white; }
-  .btn.danger-soft { @apply bg-danger-soft text-danger; }
-  .btn.success { @apply bg-success text-white; }
-  .btn.success-soft { @apply bg-success-soft text-success; }
-  .btn.accent { @apply bg-accent text-white shadow-[0_6px_18px_rgba(253,199,0,0.45)]; }
+  .btn.primary { background: var(--grad-primary); color: #fff; box-shadow: var(--glow-primary); }
+  .btn.primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 28px rgba(76, 29, 149, 0.45); }
+  .btn.soft { @apply bg-primary-soft text-primary hover:bg-[#e3d9fb]; }
+  .btn.outline { @apply bg-white border-border text-ink hover:bg-surface-2 shadow-card; }
+  .btn.danger { @apply bg-danger text-white hover:bg-red-600; }
+  .btn.danger-soft { @apply bg-danger-soft text-danger hover:bg-[#fbdcdc]; }
+  .btn.success { @apply bg-success text-white hover:bg-green-700; }
+  .btn.success-soft { @apply bg-success-soft text-success hover:bg-[#d5f0e0]; }
+  .btn.accent { background: var(--grad-gold); color: #fff; box-shadow: var(--glow-gold); }
+  .btn.accent:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 28px rgba(245, 158, 11, 0.5); }
   .btn.ghost { @apply bg-transparent text-muted hover:bg-surface-2 hover:text-ink; }
   .field { @apply mb-3.5; }
   .field label { @apply block text-[13.5px] font-semibold text-muted mb-1.5; }
@@ -161,12 +177,12 @@
   .skeleton { @apply rounded-[10px] bg-surface-2 animate-pulse; }
   .brand { @apply font-extrabold text-[17px] tracking-tight; }
   .brand-logo { @apply rounded-[11px] flex items-center justify-center text-white; background: linear-gradient(135deg,#641ca8,#472692); box-shadow: 0 4px 12px rgba(91,30,166,.4); }
-  .nav-ico { @apply w-[40px] h-[26px] rounded-[12px] flex items-center justify-center transition-transform duration-150; }
+  .nav-ico { @apply w-[42px] h-[26px] rounded-[12px] flex items-center justify-center transition-all duration-150; }
   .nav-dot { @apply absolute bottom-[3px] w-1 h-1 rounded-full bg-accent opacity-0 scale-0 transition-all duration-200; }
   .bottomnav button { @apply relative flex-1 min-w-0 flex flex-col items-center justify-center gap-[3px] pt-[7px] pb-1.5 rounded-[16px] text-muted text-[10.5px] font-bold transition-colors duration-200; -webkit-tap-highlight-color: transparent; }
-  .bottomnav button.active { @apply text-primary bg-primary-soft; }
+  .bottomnav button.active { @apply text-primary; }
   .bottomnav button:active .nav-ico { transform: scale(0.9); }
-  .bottomnav button.active .nav-ico { transform: translateY(-1px); }
+  .bottomnav button.active .nav-ico { background: var(--grad-primary); color: #fff; box-shadow: var(--glow-primary); transform: translateY(-1px); }
   .bottomnav button.active .nav-dot { @apply opacity-100 scale-100; }
   .icon-hover { @apply transition-transform duration-200 hover:scale-110 hover:-rotate-3; }
   .btn .icon-hover:hover { transform: scale(1.12); }
@@ -261,8 +277,8 @@
   .bottomnav { display: none; }
   body {
     background:
-      radial-gradient(1200px 500px at 85% -10%, rgba(91, 30, 166, 0.05), transparent 60%),
-      radial-gradient(900px 400px at -10% 20%, rgba(253, 199, 0, 0.06), transparent 55%),
-      #f6f4fb;
+      radial-gradient(1300px 560px at 85% -10%, rgba(124, 58, 237, 0.1), transparent 60%),
+      radial-gradient(1000px 460px at -10% 20%, rgba(245, 158, 11, 0.08), transparent 55%),
+      #f4f1fb;
   }
 }

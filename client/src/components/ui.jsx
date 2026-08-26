@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X, Globe, Search, RefreshCw, AlertTriangle, ChevronLeft, ChevronRight, Phone } from 'lucide-react';
+import { Loader2, X, Globe, Search, RefreshCw, AlertTriangle, ChevronLeft, ChevronRight, Phone, Users, Lock } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5Qrcode } from 'html5-qrcode';
 import PhoneInputLib from 'react-phone-number-input';
@@ -10,29 +10,34 @@ import { cx, digitsOnly, formatDigits } from '../utils/format.js';
 import { initAudio, sounds } from '../utils/sound.js';
 
 const b = {
-  primary: 'bg-primary text-white shadow-[0_6px_18px_rgba(91,30,166,0.32)] hover:bg-primary-600',
-  soft: 'bg-primary-soft text-primary hover:bg-[#dedeff]',
-  outline: 'bg-transparent border-border text-ink hover:bg-surface-2',
-  danger: 'bg-danger text-white',
-  'danger-soft': 'bg-danger-soft text-danger',
-  success: 'bg-success text-white',
-  'success-soft': 'bg-success-soft text-success',
-  accent: 'bg-accent text-white shadow-[0_6px_18px_rgba(253,199,0,0.45)]',
+  primary: 'text-white',
+  soft: 'bg-primary-soft text-primary hover:bg-[#e3d9fb]',
+  outline: 'bg-white border-border text-ink hover:bg-surface-2 shadow-card',
+  danger: 'bg-danger text-white hover:bg-red-600',
+  'danger-soft': 'bg-danger-soft text-danger hover:bg-[#fbdcdc]',
+  success: 'bg-success text-white hover:bg-green-700',
+  'success-soft': 'bg-success-soft text-success hover:bg-[#d5f0e0]',
+  accent: 'text-white',
   ghost: 'bg-transparent text-muted hover:bg-surface-2 hover:text-ink',
 };
 
-export function Button({ children, variant = 'primary', size, loading, className, ...rest }) {
+const bStyle = {
+  primary: { background: 'var(--grad-primary)', boxShadow: 'var(--glow-primary)' },
+  accent: { background: 'var(--grad-gold)', boxShadow: 'var(--glow-gold)' },
+};
+
+export function Button({ children, variant = 'primary', size, loading, className, style, ...rest }) {
   return (
     <button
       className={cx(
-        'inline-flex items-center justify-center gap-2 font-semibold text-[15px] px-5 py-3 rounded-[14px] border transition-all duration-150 select-none whitespace-nowrap active:scale-[0.97] disabled:opacity-55 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 font-semibold text-[15px] px-5 py-3 rounded-[14px] border border-transparent transition-all duration-150 select-none whitespace-nowrap active:scale-[0.97] disabled:opacity-55 disabled:cursor-not-allowed',
+        variant === 'primary' && 'hover:-translate-y-px disabled:hover:translate-y-0',
         b[variant],
         size === 'sm' && 'px-3.5 py-2 text-[14px] rounded-[12px]',
         size === 'lg' && 'px-6 py-[15px] text-base rounded-[16px]',
-        size !== 'sm' && size !== 'lg' && !className?.includes('w-full') && '',
-        className,
-        className?.includes('full') ? '' : className?.includes('w-full') ? '' : ''
+        className
       )}
+      style={{ ...bStyle[variant], ...style }}
       disabled={loading || rest.disabled}
       {...rest}
     >
@@ -125,8 +130,11 @@ export function PageHeader({ icon: Icon, title, count, sub, actions, back, onBac
         </button>
       )}
       {Icon && (
-        <div className="w-[44px] h-[44px] rounded-[15px] bg-primary-soft text-primary flex items-center justify-center shrink-0">
-          <Icon size={22} strokeWidth={2.2} />
+        <div
+          className="w-[46px] h-[46px] rounded-[16px] text-white flex items-center justify-center shrink-0"
+          style={{ background: 'var(--grad-primary)', boxShadow: 'var(--glow-primary)' }}
+        >
+          <Icon size={23} strokeWidth={2.2} />
         </div>
       )}
       <div className="flex-1 min-w-0">
@@ -335,12 +343,15 @@ export function PageLoader() {
 
 export function EmptyState({ icon: Icon, title, sub, action }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2.5 px-5 py-12 text-center text-muted">
-      <div className="w-[72px] h-[72px] rounded-[24px] bg-surface-2 flex items-center justify-center text-primary">
-        {Icon && <Icon size={30} strokeWidth={1.8} />}
+    <div className="flex flex-col items-center justify-center gap-3 px-5 py-12 text-center text-muted">
+      <div
+        className="w-[76px] h-[76px] rounded-[26px] flex items-center justify-center text-white"
+        style={{ background: 'var(--grad-primary-soft)', border: '1px solid rgba(124,58,237,.14)' }}
+      >
+        {Icon && <Icon size={32} strokeWidth={1.8} className="text-primary" />}
       </div>
       <div className="font-bold text-[15px] text-ink">{title}</div>
-      {sub && <div className="text-[13px]">{sub}</div>}
+      {sub && <div className="text-[13px] max-w-[280px]">{sub}</div>}
       {action}
     </div>
   );
@@ -348,6 +359,35 @@ export function EmptyState({ icon: Icon, title, sub, action }) {
 
 export function Skeleton({ w = '100%', h = 16, style }) {
   return <div className="rounded-[10px] bg-surface-2 animate-pulse" style={{ width: w, height: h, ...style }} />;
+}
+
+// Ro'yxat satr skeletoni (avatar + 2 qator)
+export function SkeletonRow() {
+  return (
+    <div className="flex items-center gap-3.5 px-4 py-3.5 border-b border-border last:border-b-0">
+      <div className="w-[46px] h-[46px] rounded-[14px] bg-surface-2 animate-pulse shrink-0" />
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="h-[13px] w-2/5 rounded-md bg-surface-2 animate-pulse" />
+        <div className="h-[11px] w-3/5 rounded-md bg-surface-2 animate-pulse" />
+      </div>
+      <div className="w-[60px] h-[22px] rounded-full bg-surface-2 animate-pulse shrink-0" />
+    </div>
+  );
+}
+
+// Kartalar grid skeletoni
+export function SkeletonGrid({ cols = 2, count = 4, h = 180 }) {
+  return (
+    <div className={cx('grid gap-3', cols === 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3')}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="bg-surface border border-border rounded-[18px] shadow-card p-4 flex flex-col gap-3">
+          <div className="rounded-[14px] bg-surface-2 animate-pulse" style={{ height: h - 90 }} />
+          <div className="h-[13px] w-3/4 rounded-md bg-surface-2 animate-pulse" />
+          <div className="h-[11px] w-1/2 rounded-md bg-surface-2 animate-pulse" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function Segmented({ options, value, onChange, scroll, className }) {
@@ -931,6 +971,33 @@ export function CopyButton({ text, label }) {
     >
       {copied ? t('common.copied') : label || t('common.copy')}
     </button>
+  );
+}
+
+// O'yin ko'rinishi: Ochiq (public) / Xususiy (private)
+export function GameVisibilityToggle({ value, onChange, disabled }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex bg-surface-2 rounded-[14px] p-1 gap-1">
+      {[
+        { v: true, label: t('game.public'), icon: Users },
+        { v: false, label: t('game.private'), icon: Lock },
+      ].map((o) => (
+        <button
+          key={String(o.v)}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(o.v)}
+          className={cx(
+            'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-[11px] text-[13px] font-bold transition-all disabled:opacity-50',
+            value === o.v ? 'bg-surface text-primary shadow-[0_2px_8px_rgba(21,27,46,0.08)]' : 'text-muted'
+          )}
+        >
+          <o.icon size={14} />
+          {o.label}
+        </button>
+      ))}
+    </div>
   );
 }
 

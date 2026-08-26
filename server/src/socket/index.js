@@ -6,6 +6,7 @@ import { setupQuizGame } from './quizGame.js';
 import { setupTicTacToe } from './tictactoe.js';
 import { setupTypingRace } from './typingRace.js';
 import { setupCodeBattle } from './codeBattle.js';
+import { setupChessGame } from './chessGame.js';
 
 export function setupSocket(httpServer, corsOrigins) {
   const io = new Server(httpServer, {
@@ -39,6 +40,7 @@ export function setupSocket(httpServer, corsOrigins) {
   setupTicTacToe(io);
   setupTypingRace(io);
   setupCodeBattle(io);
+  setupChessGame(io);
 
   return io;
 }

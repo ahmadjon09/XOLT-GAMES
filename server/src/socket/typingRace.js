@@ -176,6 +176,28 @@ async function finishRace(io, session) {
   io.to(session.code).emit('typing:ended', { code: session.code });
 }
 
+// Lobi uchun: ochiq kutish xonalari
+export function getTypingLobbyRooms() {
+  const rooms = [];
+  for (const session of sessions.values()) {
+    if (session.status === 'waiting' && session.public) {
+      const host = session.players.get(session.hostId);
+      rooms.push({
+        gameId: session.code,
+        type: 'typerace',
+        host: host
+          ? { id: host.userId, full_name: host.full_name, avatar: host.avatar, currentFrame: host.currentFrame, currentEffect: host.currentEffect }
+          : { id: session.hostId, full_name: 'Host', avatar: null, currentFrame: null, currentEffect: null },
+        lang: session.lang,
+        players: session.players.size,
+        maxPlayers: 10,
+        createdAt: session.createdAt,
+      });
+    }
+  }
+  return rooms;
+}
+
 export function setupTypingRace(io) {
   // Tozalash
   setInterval(() => {
@@ -209,6 +231,7 @@ export function setupTypingRace(io) {
           hostId: userId,
           hostSocketId: socket.id,
           hostConnected: true,
+          public: !!payload?.isPublic,
           lang,
           texts,
           players: new Map(),

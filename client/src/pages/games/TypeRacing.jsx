@@ -9,7 +9,7 @@ import { errorMessage, Fetch } from '../../api/fetcher.js';
 import { useGet } from '../../api/hooks.js';
 import {
   Button, Card, Input, Field, PageLoader, EmptyState, Avatar, AnimatedName,
-  QRCode, QRScanner, CopyButton, Spinner, CoinBadge, Segmented,
+  QRCode, QRScanner, CopyButton, Spinner, CoinBadge, Segmented, GameVisibilityToggle,
 } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { sounds, initAudio } from '../../utils/sound.js';
@@ -211,6 +211,7 @@ export default function TypeRacing() {
 
   const [phase, setPhase] = useState(PHASE.ENTER);
   const [lang, setLangState] = useState(getLang());
+  const [isPublic, setIsPublic] = useState(true);
   const [code, setCode] = useState('');
   const [scanOpen, setScanOpen] = useState(false);
   const [session, setSession] = useState(null);
@@ -348,7 +349,7 @@ export default function TypeRacing() {
 
   const host = () => {
     setBusy(true);
-    socket.emit('typing:host', { lang });
+    socket.emit('typing:host', { lang, isPublic });
     setBusy(false);
   };
 
@@ -645,6 +646,9 @@ export default function TypeRacing() {
                 { value: 'en', label: 'English' },
               ]}
             />
+          </Field>
+          <Field label={t('game.visibility')}>
+            <GameVisibilityToggle value={isPublic} onChange={setIsPublic} />
           </Field>
           <Button className="w-full" loading={busy} onClick={host}>
             <Play size={16} className="mr-1.5" /> {t('typing.create')}

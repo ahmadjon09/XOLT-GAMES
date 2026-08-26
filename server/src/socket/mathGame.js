@@ -156,6 +156,8 @@ function sanitizeGame(game) {
     host: sanitizePlayer(game.host),
     guest: sanitizePlayer(game.guest),
     status: game.status,
+    public: game.public,
+    bet: game.bet,
     difficulty: game.difficulty,
     rounds: game.rounds,
     currentRound: game.currentRound,
@@ -428,6 +430,31 @@ function handleDisconnect(io, socket) {
   }, RECONNECT_TIMEOUT_MS);
 }
 
+// Lobi uchun: ochiq kutish xonalari
+export function getMathLobbyRooms() {
+  const rooms = [];
+  for (const game of games.values()) {
+    if (game.status === 'waiting' && game.public) {
+      rooms.push({
+        gameId: game.gameId,
+        type: 'math',
+        host: {
+          id: game.host.id,
+          full_name: game.host.full_name,
+          avatar: game.host.avatar,
+          currentFrame: game.host.currentFrame,
+          currentEffect: game.host.currentEffect,
+        },
+        bet: game.bet,
+        difficulty: game.difficulty,
+        rounds: game.rounds,
+        createdAt: game.createdAt,
+      });
+    }
+  }
+  return rooms;
+}
+
 export function setupMathGame(io) {
   // Tozalash soati - har daqiqada ishlaydi
   setInterval(() => {
@@ -479,7 +506,7 @@ export function setupMathGame(io) {
     // --- O'yin yaratish ---
     socket.on('mathgame:create', async (payload) => {
       try {
-        const { rounds, bet, difficulty } = payload || {};
+        const { rounds, bet, difficulty, isPublic } = payload || {};
 
         if (!Number.isInteger(rounds) || rounds < MIN_ROUNDS || rounds > MAX_ROUNDS) {
           return emitError(socket, 'INVALID_ROUNDS', `Rounds ${MIN_ROUNDS}-${MAX_ROUNDS} oralig'ida bo'lishi kerak`);
@@ -510,6 +537,8 @@ export function setupMathGame(io) {
           host: buildPlayerData(user, socket.id),
           guest: null,
           status: 'waiting',
+          public: !!isPublic,
+          bet,
           difficulty,
           rounds,
           currentRound: 1,

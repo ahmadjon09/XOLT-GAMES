@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CalendarCheck2, CheckCircle2, XCircle, Clock3, Loader2 } from 'lucide-react';
 import { useGet } from '../../api/hooks.js';
-import { PageLoader, EmptyState, Badge, Select } from '../../components/ui.jsx';
+import { EmptyState, Badge, Select } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 
 const statusMeta = {
@@ -46,7 +46,14 @@ export default function Attendance() {
         )}
 
         {!data && isLoading ? (
-          <PageLoader />
+          <div className="space-y-3.5">
+            <div className="grid grid-cols-3 gap-2.5">
+              {[1, 2, 3].map((i) => <div key={i} className="h-[74px] bg-surface border border-border rounded-[18px] shadow-card p-3"><div className="h-[15px] w-1/2 mx-auto rounded-md bg-surface-2 animate-pulse" /><div className="h-[11px] w-1/3 mx-auto rounded-md bg-surface-2 animate-pulse mt-2" /></div>)}
+            </div>
+            <div className="h-[120px] bg-surface border border-border rounded-[18px] shadow-card p-3.5">
+              <div className="grid grid-cols-10 gap-2">{Array.from({ length: 20 }).map((_, i) => <div key={i} className="aspect-square max-w-[26px] rounded-[8px] bg-surface-2 animate-pulse" />)}</div>
+            </div>
+          </div>
         ) : (
           <div className="relative">
             {/* Loading overlay when refetching but data already exists */}

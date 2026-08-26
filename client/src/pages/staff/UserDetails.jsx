@@ -13,7 +13,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import {
-  Card, Avatar, AnimatedName, Badge, Button, Input, Field, PageLoader, EmptyState,
+  Card, Avatar, AnimatedName, Badge, Button, Input, Field, EmptyState,
   Sheet, ConfirmDialog, CoinBadge, StatCard, Select, Segmented,
   PageHeader, NumberInput,
 } from '../../components/ui.jsx';
@@ -153,7 +153,30 @@ export default function UserDetails() {
     return (
       <>
         <TopBar title={t('userDetail.title')} back />
-        <PageLoader />
+        <div className="page-staff pt-3.5">
+          <Card className="p-5 flex flex-col items-center gap-3">
+            <div className="w-[104px] h-[104px] rounded-[24px] bg-surface-2 animate-pulse" />
+            <div className="h-[18px] w-48 rounded-md bg-surface-2 animate-pulse" />
+            <div className="h-[13px] w-64 rounded-md bg-surface-2 animate-pulse" />
+            <div className="flex gap-2 mt-1">
+              <div className="h-[24px] w-[90px] rounded-full bg-surface-2 animate-pulse" />
+              <div className="h-[24px] w-[70px] rounded-full bg-surface-2 animate-pulse" />
+            </div>
+          </Card>
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 mt-3.5">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-[64px] bg-surface border border-border rounded-[18px] shadow-card p-3">
+                <div className="h-[13px] w-3/4 rounded-md bg-surface-2 animate-pulse" />
+                <div className="h-[17px] w-1/2 rounded-md bg-surface-2 animate-pulse mt-2.5" />
+              </div>
+            ))}
+          </div>
+          <div className="h-[48px] bg-surface-2 rounded-[14px] animate-pulse mt-3.5" />
+          <div className="h-[220px] bg-surface border border-border rounded-[18px] shadow-card mt-3.5 p-4">
+            <div className="h-[14px] w-1/3 rounded-md bg-surface-2 animate-pulse mb-3" />
+            {[1, 2, 3].map((i) => <div key={i} className="h-[52px] rounded-[14px] bg-surface-2 animate-pulse mb-2.5" />)}
+          </div>
+        </div>
       </>
     );
   }

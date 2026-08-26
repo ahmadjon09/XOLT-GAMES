@@ -7,8 +7,8 @@ import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import {
-  Card, Button, Select, Input, Field, PageLoader, EmptyState, Avatar, AnimatedName,
-  Badge, Sheet, ConfirmDialog, PageHeader, IconButton, NumberInput, MiniStat, PageError,
+  Card, Button, Select, Input, Field, EmptyState, Avatar, AnimatedName,
+  Badge, Sheet, ConfirmDialog, PageHeader, IconButton, NumberInput, MiniStat, PageError, SkeletonRow,
 } from '../../components/ui.jsx';
 import { currentMonth, monthLabel, fmtMoney, fmtDate } from '../../utils/format.js';
 
@@ -148,7 +148,9 @@ export default function CashierPayments() {
 
       {/* Content */}
       {isLoading && !rows?.length ? (
-        <PageLoader />
+        <Card className="p-0 -my-1.5">
+          {[1, 2, 3, 4].map((i) => <SkeletonRow key={i} />)}
+        </Card>
       ) : hasError ? (
         <PageError onRetry={refresh} />
       ) : rows.length === 0 ? (

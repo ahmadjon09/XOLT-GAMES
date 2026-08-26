@@ -8,7 +8,7 @@ import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { useGet } from '../../api/hooks.js';
-import { Card, StatCard, PageLoader, Segmented, PageHeader, MiniStat } from '../../components/ui.jsx';
+import { Card, StatCard, Segmented, PageHeader, MiniStat } from '../../components/ui.jsx';
 
 import { fmtNum } from '../../utils/format.js';
 
@@ -22,7 +22,28 @@ export default function AdminDashboard() {
   const { data: overview } = useGet('/staff/stats/overview');
   const { data: charts } = useGet(`/staff/stats/charts?days=${days}`);
 
-  if (!overview) return <div className="page-staff pt-3.5"><PageHeader icon={Activity} title={t('statsP.title')} /><PageLoader /></div>;
+  if (!overview) return (
+    <div className="page-staff pt-3.5">
+      <PageHeader icon={Activity} title={t('statsP.title')} />
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 mb-3.5">
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          <div key={i} className="bg-surface border border-border rounded-[18px] p-3.5 shadow-card flex items-center gap-3">
+            <div className="w-[42px] h-[42px] rounded-[14px] bg-surface-2 animate-pulse shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-[11px] w-3/4 rounded-md bg-surface-2 animate-pulse" />
+              <div className="h-[16px] w-1/2 rounded-md bg-surface-2 animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <Card className="mb-3.5 p-4">
+        <div className="h-[150px] rounded-[14px] bg-surface-2 animate-pulse" />
+      </Card>
+      <Card className="p-4">
+        <div className="h-[150px] rounded-[14px] bg-surface-2 animate-pulse" />
+      </Card>
+    </div>
+  );
 
   const roleLabels = { ADMIN: t('staff.roleAdmin'), TEACHER: t('staff.roleTeacher'), CASHIER: t('staff.roleCashier') };
 

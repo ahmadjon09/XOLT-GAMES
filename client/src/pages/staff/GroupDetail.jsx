@@ -7,8 +7,8 @@ import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import {
-  Card, Button, Input, Field, PageLoader, EmptyState, Avatar, AnimatedName, Badge, Sheet, ConfirmDialog,
-  PageHeader, SearchInput, PhoneInput, MiniStat,
+  Card, Button, Input, Field, EmptyState, Avatar, AnimatedName, Badge, Sheet, ConfirmDialog,
+  PageHeader, SearchInput, PhoneInput, MiniStat, SkeletonRow,
 } from '../../components/ui.jsx';
 import { fmtPhone } from '../../utils/format.js';
 
@@ -86,7 +86,9 @@ export default function GroupDetail() {
       />
 
       {!members ? (
-        <PageLoader />
+        <Card className="p-0 -my-1.5">
+          {[1, 2, 3].map((i) => <SkeletonRow key={i} />)}
+        </Card>
       ) : (
         <>
           {/* Tezkor statistika */}

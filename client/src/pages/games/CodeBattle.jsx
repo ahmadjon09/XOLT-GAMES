@@ -12,7 +12,7 @@ import { errorMessage, Fetch } from '../../api/fetcher.js';
 import { useGet } from '../../api/hooks.js';
 import {
   Button, Card, Input, Field, PageLoader, EmptyState, Avatar, AnimatedName,
-  QRCode, QRScanner, CopyButton, Spinner, CoinBadge, Segmented, Ring,
+  QRCode, QRScanner, CopyButton, Spinner, CoinBadge, Segmented, Ring, GameVisibilityToggle,
 } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { sounds, initAudio } from '../../utils/sound.js';
@@ -185,6 +185,7 @@ export default function CodeBattle() {
   const [phase, setPhase] = useState(PHASE.ENTER);
   const [category, setCategory] = useState('js');
   const [count, setCount] = useState(5);
+  const [isPublic, setIsPublic] = useState(true);
   const [code, setCode] = useState('');
   const [scanOpen, setScanOpen] = useState(false);
   const [session, setSession] = useState(null);
@@ -328,7 +329,7 @@ export default function CodeBattle() {
 
   const host = () => {
     setBusy(true);
-    socket.emit('code:host', { category, count });
+    socket.emit('code:host', { category, count, isPublic });
     setBusy(false);
   };
 
@@ -566,6 +567,9 @@ export default function CodeBattle() {
                 </button>
               ))}
             </div>
+          </Field>
+          <Field label={t('game.visibility')}>
+            <GameVisibilityToggle value={isPublic} onChange={setIsPublic} />
           </Field>
           <Button className="full" loading={busy} onClick={host}>
             <Play size={16} /> {t('code.create')}
