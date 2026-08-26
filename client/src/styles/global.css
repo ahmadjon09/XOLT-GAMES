@@ -267,11 +267,7 @@
   border-width: 1px;
 }
 .phone-input-wrap.dark .PhoneInput:focus-within {
-  border-color: #facc15;
-  box-shadow: 0 0 0 4px rgba(250,204,21,.15);
-}
-.phone-input-wrap.dark .PhoneInput:focus-within {
-  border-color: #fdc700; box-shadow: 0 0 0 4px rgba(253,199,0,.18);
+  border-color: #facc15; box-shadow: 0 0 0 4px rgba(250,204,21,.25);
 }
 .phone-input-wrap.dark .PhoneInputInput { color: #fff; }
 .phone-input-wrap.dark .PhoneInputInput::placeholder { color: rgba(255,255,255,.5); }
