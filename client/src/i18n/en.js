@@ -414,6 +414,7 @@ export const en = {
     createGroup: 'Create group',
     groupName: 'Group name',
     rank: 'Rank',
+    rankHint: 'Between 0 and 100',
     members: 'students',
     addStudent: 'Add student',
     studentPhone: 'Student phone',

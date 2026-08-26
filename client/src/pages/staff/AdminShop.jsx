@@ -4,7 +4,11 @@ import { Store, Plus, Pencil, Trash2, Upload, RefreshCw } from 'lucide-react';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Card, Button, Input, Field, PageLoader, EmptyState, Select, Sheet, ConfirmDialog, Segmented, Avatar, AnimatedName, CoinIcon, Textarea } from '../../components/ui.jsx';
+import {
+  Card, Button, Input, Field, PageLoader, EmptyState, Select, Sheet, ConfirmDialog,
+  Segmented, Avatar, AnimatedName, CoinIcon, Textarea,
+  PageHeader, IconButton, NumberInput, PageError,
+} from '../../components/ui.jsx';
 import { fmtNum } from '../../utils/format.js';
 
 const EMPTY_FRAME = { id: '', name: '', price: 0, rarity: 'common', image: '', animation: '' };
@@ -138,28 +142,27 @@ export default function AdminShop() {
   };
 
   return (
-    <div className="page pt-4 space-y-4">
+    <div className="page-staff pt-3.5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">{t('shopA.title')}</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={refresh}
-            className="p-2 rounded-full hover:bg-slate-100 transition-colors"
-            aria-label={t('common.refresh')}
-          >
-            <RefreshCw size={20} className="text-slate-600" />
-          </button>
-          <Button className="primary" onClick={openCreate}>
-            <Plus size={16} className="mr-1.5" /> {tab === 'frames' ? t('shopA.addFrame') : t('shopA.addEffect')}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={Store}
+        title={t('shopA.title')}
+        count={items?.length}
+        actions={
+          <>
+            <IconButton icon={RefreshCw} label={t('common.refresh')} onClick={refresh} />
+            <Button size="sm" onClick={openCreate} disabled={busy}>
+              <Plus size={16} /> {tab === 'frames' ? t('shopA.addFrame') : t('shopA.addEffect')}
+            </Button>
+          </>
+        }
+      />
 
       {/* Segmented control */}
       <Segmented
         value={tab}
         onChange={setTab}
+        className="mb-3.5"
         options={[
           { value: 'frames', label: `${t('shopA.tabsFrames')} (${data?.frames.length || 0})` },
           { value: 'effects', label: `${t('shopA.tabsEffects')} (${data?.effects.length || 0})` },
@@ -170,12 +173,7 @@ export default function AdminShop() {
       {isLoading && !items?.length ? (
         <PageLoader />
       ) : error ? (
-        <Card className="p-8 text-center text-danger">
-          <p>{t('common.serverError')}</p>
-          <Button variant="soft" className="mt-4" onClick={refresh}>
-            <RefreshCw size={16} className="mr-2" /> {t('common.retry')}
-          </Button>
-        </Card>
+        <PageError onRetry={refresh} />
       ) : items?.length === 0 ? (
         <Card>
           <EmptyState
@@ -185,7 +183,7 @@ export default function AdminShop() {
           />
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {items.map((item) => (
             <Card key={item.id} className="p-4 flex flex-col">
               <div className="flex items-center justify-center min-h-[80px] mb-3">
@@ -197,21 +195,21 @@ export default function AdminShop() {
                   </AnimatedName>
                 )}
               </div>
-              <div className="text-center font-extrabold text-base">{item.name}</div>
-              <div className="text-sm text-muted text-center mb-3 flex items-center justify-center gap-2 flex-wrap">
-                <span><CoinIcon size={14} className="inline mr-1" /> {fmtNum(item.price)}</span>
-                <span className="w-1 h-1 bg-slate-300 rounded-full" />
+              <div className="text-center font-extrabold text-[15px]">{item.name}</div>
+              <div className="text-[12.5px] text-muted text-center mb-3 flex items-center justify-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 tabular-nums"><CoinIcon size={14} /> {fmtNum(item.price)}</span>
+                <span className="w-1 h-1 bg-surface-3 rounded-full" />
                 <span>{t('shopA.usersCount')}: {fmtNum(item.usersCount || 0)}</span>
                 {!item.active && (
                   <>
-                    <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                    <span className="text-danger text-xs font-bold">{t('common.inactive')}</span>
+                    <span className="w-1 h-1 bg-surface-3 rounded-full" />
+                    <span className="text-danger text-[11.5px] font-bold">{t('common.inactive')}</span>
                   </>
                 )}
               </div>
               <div className="flex gap-2 mt-auto">
                 <Button variant="outline" className="flex-1" size="sm" onClick={() => openEdit(item)}>
-                  <Pencil size={14} className="mr-1" /> {t('common.edit')}
+                  <Pencil size={14} /> {t('common.edit')}
                 </Button>
                 <Button
                   variant={item.active ? 'soft' : 'success-soft'}
@@ -221,10 +219,11 @@ export default function AdminShop() {
                   {item.active ? t('common.inactive') : t('common.active')}
                 </Button>
                 <button
-                  className="btn ghost sm text-danger"
+                  className="w-[38px] h-[38px] rounded-[13px] flex items-center justify-center text-danger hover:bg-danger-soft transition-all shrink-0"
                   onClick={() => setDeleteTarget(item)}
+                  title={t('common.delete')}
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={15} />
                 </button>
               </div>
             </Card>
@@ -241,7 +240,7 @@ export default function AdminShop() {
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </Field>
         <Field label={t('shopA.price')}>
-          <Input type="number" min={0} value={form.price} onChange={(e) => setForm({ ...form, price: parseInt(e.target.value || '0') })} />
+          <NumberInput value={form.price} min={0} onChange={(v) => setForm({ ...form, price: v })} />
         </Field>
 
         {tab === 'frames' ? (
@@ -252,10 +251,10 @@ export default function AdminShop() {
               </Select>
             </Field>
             <Field label={t('shopA.frameImage')}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div className="flex gap-2 items-center">
                 <Input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="/uploads/frames/..." />
-                <label style={{ cursor: 'pointer' }} title={t('shopA.uploadImage')}>
-                  <span className="btn outline sm"><Upload size={14} /></span>
+                <label className="cursor-pointer" title={t('shopA.uploadImage')}>
+                  <span className="btn outline sm flex"><Upload size={14} /></span>
                   <input type="file" accept="image/*" hidden onChange={(e) => e.target.files[0] && uploadImage(e.target.files[0])} />
                 </label>
               </div>
@@ -275,7 +274,7 @@ export default function AdminShop() {
           </>
         )}
 
-        <Button className="full" loading={busy} onClick={save}>{t('shopA.saveItem')}</Button>
+        <Button className="w-full" loading={busy} onClick={save}>{t('shopA.saveItem')}</Button>
       </Sheet>
 
       <ConfirmDialog

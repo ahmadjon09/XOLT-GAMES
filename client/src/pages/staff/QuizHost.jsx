@@ -120,7 +120,7 @@ export default function QuizHost() {
   // ---- FINAL ----
   if (final) {
     return (
-      <div className="page pt-4 space-y-4">
+      <div className="page-staff pt-3.5 space-y-3.5">
         <Confetti />
         <div className="text-center">
           <h2 className="text-2xl font-black">{t('hostP.podium')}</h2>
@@ -129,10 +129,10 @@ export default function QuizHost() {
         <Card className="p-4">
           <Podium players={final.final} coinMap={Object.fromEntries(final.final.map((p) => [p.userId, p.coinsWon]))} />
         </Card>
-        <Card className="p-0 divide-y divide-slate-100">
+        <Card className="p-0 p-0 -my-1.5">
           {final.final.map((p, i) => (
-            <div key={p.userId} className="flex items-center gap-4 p-4">
-              <span className={`w-6 text-center font-bold ${i < 3 ? 'text-amber-600' : 'text-muted'}`}>{i + 1}</span>
+            <div key={p.userId} className="flex items-center gap-4 px-4 py-3.5 border-b border-border last:border-b-0">
+              <span className={`w-6 text-center font-bold ${i < 3 ? 'text-[#9a6d00]' : 'text-muted'}`}>{i + 1}</span>
               <Avatar w={40} avatar={p.avatar} frame={p.currentFrame} />
               <div className="flex-1 min-w-0">
                 <div className="font-bold"><AnimatedName config={p.currentEffect?.config}>{p.full_name}</AnimatedName></div>
@@ -159,7 +159,7 @@ export default function QuizHost() {
   if (question && session?.status === 'playing') {
     const answered = session.players.filter((p) => p.answered).length;
     return (
-      <div className="page pt-4 space-y-4">
+      <div className="page-staff pt-3.5 space-y-3.5">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">{session.quizName} — {t('hostP.question')} {question.index + 1}</h2>
           <Button variant="outline" size="sm" onClick={endSession} disabled={busy}>
@@ -217,7 +217,7 @@ export default function QuizHost() {
   if (session) {
     const players = session.players || [];
     return (
-      <div className="page pt-4 space-y-4">
+      <div className="page-staff pt-3.5 space-y-3.5">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">{session.quizName}</h2>
           <Button variant="outline" size="sm" onClick={resetAll} disabled={busy}>
@@ -279,7 +279,7 @@ export default function QuizHost() {
 
   // ---- SELECT QUIZ ----
   return (
-    <div className="page pt-4 space-y-4">
+    <div className="page-staff pt-3.5 space-y-3.5">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">{t('hostP.selectQuiz')}</h2>
         <Button variant="outline" size="sm" onClick={() => navigate('/staff/quizzes')}>

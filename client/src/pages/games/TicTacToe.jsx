@@ -7,7 +7,7 @@ import { useSocket } from '../../context/SocketContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { errorMessage } from '../../api/fetcher.js';
-import { Button, Card, Input, Field, QRCode, QRScanner, CopyButton, Spinner, PlayerCard, Confetti } from '../../components/ui.jsx';
+import { Button, Card, Input, Field, QRCode, QRScanner, CopyButton, Spinner, PlayerCard, Confetti, NumberInput } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { sounds } from '../../utils/sound.js';
 
@@ -292,7 +292,7 @@ export default function TicTacToe() {
                 <Grid3x3 size={19} color="var(--primary)" /> {t('ttt.createGame')}
               </div>
               <Field label={t('ttt.bet')}>
-                <Input type="number" min={0} value={bet} onChange={(e) => setBet(Math.max(0, parseInt(e.target.value || '0')))} inputMode="numeric" />
+                <NumberInput value={bet} min={0} onChange={setBet} />
               </Field>
               <Field label={t('ttt.rounds')}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

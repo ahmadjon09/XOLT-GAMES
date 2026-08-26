@@ -47,7 +47,7 @@ export default function Leaderboard() {
   if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <FaSpinner className="text-4xl text-indigo-500 animate-spin" />
+        <FaSpinner className="text-4xl text-primary animate-spin" />
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function Leaderboard() {
           {item?.username && (
             <p className="text-gray-400 text-xs text-center truncate max-w-[160px] mt-1">@{item.username}</p>
           )}
-          {item?.group && <p className="text-xs text-indigo-500 mt-1 font-medium">{item.group.name}</p>}
+          {item?.group && <p className="text-xs text-primary mt-1 font-medium">{item.group.name}</p>}
           <div className="mt-3 bg-gradient-to-r from-yellow-50 to-amber-50 px-4 py-2 rounded-full border border-yellow-200">
             <p className="text-sm text-gray-800 font-bold flex items-center gap-1.5">
               <FaTrophy className="text-yellow-500" size={14} />
@@ -116,15 +116,15 @@ export default function Leaderboard() {
 
   return (
     <div className="mx-auto space-y-5 p-4 pt-6">
-      <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg px-6 py-5">
+      <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-border shadow-card px-6 py-5">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 text-yellow-400 flex items-center justify-center">
               <Trophy />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">{t('lb.title')}</h1>
-              <p className="text-sm text-slate-500">{t('lb.top')}</p>
+              <h1 className="text-2xl font-bold text-ink">{t('lb.title')}</h1>
+              <p className="text-sm text-muted">{t('lb.top')}</p>
             </div>
           </div>
           <div className="flex gap-2 bg-white/60 backdrop-blur-sm rounded-xl p-1.5 shadow-sm">
@@ -135,7 +135,7 @@ export default function Leaderboard() {
                   setPeriod(key);
                   setPage(1);
                 }}
-                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${period === key ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md scale-105' : 'text-gray-600 hover:bg-white/60 hover:shadow-sm'
+                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${period === key ? 'bg-primary text-white shadow-md scale-105' : 'text-muted hover:bg-white/60 hover:shadow-sm'
                   }`}
                 aria-label={t(labelKey)}
               >
@@ -160,7 +160,7 @@ export default function Leaderboard() {
       )}
 
       {currentUser && (
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 backdrop-blur-sm rounded-2xl shadow-md border-2 border-indigo-200 p-5">
+        <div className="bg-gradient-to-r from-primary-soft to-surface-2 rounded-2xl shadow-card border-2 border-primary-soft p-5">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="relative">
               <Avatar w={60} frame={currentUser.currentFrame} avatar={currentUser.avatar} />
@@ -177,7 +177,7 @@ export default function Leaderboard() {
             <div className="ml-auto flex items-center gap-8">
               <div className="text-center">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">{t('lb.myRank')}</p>
-                <p className="text-2xl font-bold text-indigo-600">#{currentUser.rank}</p>
+                <p className="text-2xl font-bold text-primary">#{currentUser.rank}</p>
               </div>
               <div className="text-center">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">{t('lb.points')}</p>
@@ -195,7 +195,7 @@ export default function Leaderboard() {
             <p className="text-gray-500 text-lg">{t('lb.noData')}</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200/50">
+          <div className="divide-y divide-border">
             {rest.map((student) => (
               <div
                 key={student.id}
@@ -216,7 +216,7 @@ export default function Leaderboard() {
                     {student.group && (
                       <>
                         <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                        <span className="text-indigo-600 font-medium truncate">{student.group.name}</span>
+                        <span className="text-primary font-medium truncate">{student.group.name}</span>
                       </>
                     )}
                   </div>

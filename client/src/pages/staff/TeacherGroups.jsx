@@ -6,9 +6,11 @@ import { Users, Plus, Trash2 } from 'lucide-react';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Card, Button, Input, Field, PageLoader, EmptyState, Sheet, ConfirmDialog } from '../../components/ui.jsx';
-import { TopBar } from '../../layouts/Layouts.jsx';
-import { fmtNum } from '../../utils/format.js';
+import {
+  Card, Button, Input, Field, PageLoader, EmptyState, Sheet, ConfirmDialog,
+  PageHeader, NumberInput,
+} from '../../components/ui.jsx';
+import { fmtMoney } from '../../utils/format.js';
 
 export default function TeacherGroups() {
   const { t } = useTranslation();
@@ -32,6 +34,7 @@ export default function TeacherGroups() {
       toast.success(t('groupsP.created'));
       setCreateOpen(false);
       setName('');
+      setRank(0);
       setMonthlyFee(0);
       invalidate('/staff/groups');
     } catch (e) {
@@ -56,52 +59,64 @@ export default function TeacherGroups() {
   };
 
   return (
-    <>
-      <TopBar
+    <div className="page-staff pt-3.5">
+      <PageHeader
+        icon={Users}
         title={t('groupsP.title')}
-        right={<Button className="sm primary" onClick={() => setCreateOpen(true)}><Plus size={15} /> {t('groupsP.createGroup')}</Button>}
+        count={groups?.length}
+        actions={
+          <Button size="sm" onClick={() => setCreateOpen(true)} disabled={busy}>
+            <Plus size={16} /> {t('groupsP.createGroup')}
+          </Button>
+        }
       />
-      <div className="page-staff" style={{ paddingTop: 14 }}>
-        {isLoading && !groups.length ? (
-          <PageLoader />
-        ) : groups.length === 0 ? (
-          <Card><EmptyState icon={Users} title={t('groupsP.noGroups')} action={<Button onClick={() => setCreateOpen(true)}><Plus size={16} /> {t('groupsP.createGroup')}</Button>} /></Card>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {groups.map((g) => (
-              <Card key={g.id} style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Link to={`/staff/groups/${g.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, color: 'inherit' }}>
-                  <div style={{ width: 46, height: 46, borderRadius: 15, background: 'var(--primary-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 17, color: 'var(--primary)', flexShrink: 0 }}>
-                    {g.name.slice(0, 1)}
+
+      {isLoading && !groups.length ? (
+        <PageLoader />
+      ) : groups.length === 0 ? (
+        <Card>
+          <EmptyState icon={Users} title={t('groupsP.noGroups')} action={<Button onClick={() => setCreateOpen(true)}><Plus size={16} /> {t('groupsP.createGroup')}</Button>} />
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {groups.map((g) => (
+            <Card key={g.id} tap className="p-3.5 flex items-center gap-3">
+              <Link to={`/staff/groups/${g.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-[46px] h-[46px] rounded-[15px] bg-primary-soft text-primary flex items-center justify-center font-extrabold text-[17px] shrink-0">
+                  {g.name.slice(0, 1)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold text-[14.5px] truncate">{g.name}</div>
+                  <div className="text-[12px] text-muted mt-0.5 flex items-center gap-1 flex-wrap">
+                    <span className="inline-flex items-center gap-1"><Users size={12} /> {g.membersCount} {t('groupsP.members')}</span>
+                    {g.monthlyFee > 0 && <span className="tabular-nums">• {fmtMoney(g.monthlyFee)} so'm/oy</span>}
+                    {g.rank > 0 && <span>• {t('groupsP.rank')}: {g.rank}</span>}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                      <Users size={12} style={{ verticalAlign: -2 }} /> {g.membersCount} {t('groupsP.members')}
-                      {g.monthlyFee > 0 && ` • ${fmtNum(g.monthlyFee)} so'm/oy`}
-                    </div>
-                  </div>
-                </Link>
-                <button className="btn ghost sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteTarget(g)}>
-                  <Trash2 size={16} />
-                </button>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+                </div>
+              </Link>
+              <button
+                className="w-[38px] h-[38px] rounded-[13px] flex items-center justify-center text-danger hover:bg-danger-soft transition-all shrink-0"
+                onClick={() => setDeleteTarget(g)}
+                title={t('common.delete')}
+              >
+                <Trash2 size={16} />
+              </button>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Sheet open={createOpen} onClose={() => setCreateOpen(false)} title={t('groupsP.createGroup')}>
         <Field label={t('groupsP.groupName')}>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Matematika 6-A" />
         </Field>
-        <Field label={t('groupsP.rank')}>
-          <Input type="number" min={0} max={100} value={rank} onChange={(e) => setRank(parseInt(e.target.value || '0'))} />
+        <Field label={t('groupsP.rank')} hint={t('groupsP.rankHint')}>
+          <NumberInput value={rank} min={0} max={100} onChange={setRank} />
         </Field>
         <Field label={t('payments.monthlyFee')} hint={t('payments.monthlyFeeHint')}>
-          <Input type="number" min={0} value={monthlyFee} onChange={(e) => setMonthlyFee(parseInt(e.target.value || '0'))} placeholder="200000" />
+          <NumberInput value={monthlyFee} min={0} onChange={setMonthlyFee} placeholder="200000" />
         </Field>
-        <Button className="full" loading={busy} onClick={create}>{t('common.create')}</Button>
+        <Button className="w-full" loading={busy} onClick={create}>{t('common.create')}</Button>
       </Sheet>
 
       <ConfirmDialog
@@ -113,6 +128,6 @@ export default function TeacherGroups() {
         onConfirm={remove}
         loading={busy}
       />
-    </>
+    </div>
   );
 }

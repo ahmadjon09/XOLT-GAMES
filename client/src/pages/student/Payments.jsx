@@ -3,7 +3,7 @@ import { Wallet, CheckCircle2, XCircle, Clock3 } from 'lucide-react';
 import { useGet } from '../../api/hooks.js';
 import { PageLoader, EmptyState, Badge } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
-import { fmtNum, fmtDate, monthLabel } from '../../utils/format.js';
+import { fmtMoney, fmtDate, monthLabel } from '../../utils/format.js';
 
 export default function Payments() {
   const { t } = useTranslation();
@@ -20,11 +20,11 @@ export default function Payments() {
         <div className="grid grid-cols-2 gap-2.5 mb-3.5">
           <div className="bg-surface border border-border rounded-[18px] p-3.5 shadow-card">
             <div className="text-[11.5px] text-muted font-bold">{t('payments.totalPaid')}</div>
-            <div className="text-[19px] font-black text-success">{fmtNum(paidTotal)} so'm</div>
+            <div className="text-[19px] font-black text-success">{fmtMoney(paidTotal)} so'm</div>
           </div>
           <div className="bg-surface border border-border rounded-[18px] p-3.5 shadow-card">
             <div className="text-[11.5px] text-muted font-bold">{t('payments.totalUnpaid')}</div>
-            <div className="text-[19px] font-black text-danger">{fmtNum(unpaidTotal)} so'm</div>
+            <div className="text-[19px] font-black text-danger">{fmtMoney(unpaidTotal)} so'm</div>
           </div>
         </div>
 
@@ -54,12 +54,12 @@ export default function Payments() {
                     <div className="text-[12.5px] text-muted">
                       {p.discount > 0 ? (
                         <>
-                          <span style={{ textDecoration: 'line-through', opacity: 0.6 }}>{fmtNum(p.monthlyFee)}</span>{' '}
-                          <b style={{ color: 'var(--success)' }}>{fmtNum(p.effectiveFee)}</b> so'm
+                          <span style={{ textDecoration: 'line-through', opacity: 0.6 }}>{fmtMoney(p.monthlyFee)}</span>{' '}
+                          <b style={{ color: 'var(--success)' }}>{fmtMoney(p.effectiveFee)}</b> so'm
                           <span className="badge warn" style={{ marginLeft: 6 }}>{t('payments.discount')}: {p.discount}%</span>
                         </>
                       ) : (
-                        p.monthlyFee > 0 && `${fmtNum(p.monthlyFee)} so'm`
+                        p.monthlyFee > 0 && `${fmtMoney(p.monthlyFee)} so'm`
                       )}
                     </div>
                     {p.status === 'paid' && p.discount > 0 && (
@@ -67,12 +67,12 @@ export default function Payments() {
                     )}
                     {p.status === 'partial' && (
                       <div className="text-[11.5px] font-semibold mt-0.5" style={{ color: '#9a6d00' }}>
-                        {t('payments.paidPartial', { percent: p.paidPercent })} • {t('payments.remaining')}: {fmtNum(p.remaining)} so'm
+                        {t('payments.paidPartial', { percent: p.paidPercent })} • {t('payments.remaining')}: {fmtMoney(p.remaining)} so'm
                       </div>
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-bold text-[14px]">{fmtNum(p.amount)} so'm</div>
+                    <div className="font-bold text-[14px] tabular-nums">{fmtMoney(p.amount)} so'm</div>
                     {p.paidAt && <div className="text-[10.5px] text-muted">{fmtDate(p.paidAt)}</div>}
                   </div>
                   <Badge color={p.status === 'paid' ? 'success' : p.status === 'partial' ? 'warn' : 'danger'}>

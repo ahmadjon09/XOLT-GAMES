@@ -7,6 +7,7 @@ import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { Card, Button, Input, Field, PageLoader, EmptyState, Select, Textarea, Sheet, ConfirmDialog, Segmented } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
+import { fmtInt } from '../../utils/format.js';
 
 const CATEGORIES = ['js', 'python', 'csharp', 'java', 'php', 'sql'];
 const LANGS = ['uz', 'ru', 'en'];
@@ -78,7 +79,7 @@ export function TypingTexts() {
         back
         right={<Button className="sm primary" onClick={openCreate}><Plus size={15} /> {t('typing.addText')}</Button>}
       />
-      <div className="page-staff" style={{ paddingTop: 14 }}>
+      <div className="page-staff pt-3.5">
         <div style={{ marginBottom: 12 }}>
           <Segmented
             value={langFilter}
@@ -220,7 +221,7 @@ export function CodeQuestions() {
         back
         right={<Button className="sm primary" onClick={openCreate}><Plus size={15} /> {t('code.addQuestion')}</Button>}
       />
-      <div className="page-staff" style={{ paddingTop: 14 }}>
+      <div className="page-staff pt-3.5">
         <div style={{ marginBottom: 12 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <button
@@ -295,7 +296,7 @@ export function CodeQuestions() {
           </Field>
           <Field label={t('quizzesP.points')}>
             <Select value={form.points} onChange={(e) => setForm({ ...form, points: Number(e.target.value) })}>
-              {[500, 1000, 1500, 2000].map((p) => <option key={p} value={p}>{p}</option>)}
+              {[500, 1000, 1500, 2000].map((p) => <option key={p} value={p}>{fmtInt(p)}</option>)}
             </Select>
           </Field>
         </div>

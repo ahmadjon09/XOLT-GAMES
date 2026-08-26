@@ -2,13 +2,15 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { UserPlus, Trash2, CalendarCheck2, Wallet, CheckCircle2, XCircle, Clock3 } from 'lucide-react';
+import { UserPlus, Trash2, CalendarCheck2, Wallet, CheckCircle2, XCircle, Clock3, Users } from 'lucide-react';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Card, Button, Input, Field, PageLoader, EmptyState, Avatar, AnimatedName, Badge, Sheet, ConfirmDialog } from '../../components/ui.jsx';
-import { TopBar } from '../../layouts/Layouts.jsx';
-import { fmtNum } from '../../utils/format.js';
+import {
+  Card, Button, Input, Field, PageLoader, EmptyState, Avatar, AnimatedName, Badge, Sheet, ConfirmDialog,
+  PageHeader, SearchInput, PhoneInput, MiniStat,
+} from '../../components/ui.jsx';
+import { fmtPhone } from '../../utils/format.js';
 
 export default function GroupDetail() {
   const { t } = useTranslation();
@@ -62,93 +64,105 @@ export default function GroupDetail() {
   const filtered = (members || []).filter((m) =>
     !search ||
     m.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    (m.phone || '').includes(search)
+    (m.phone || '').includes(search.replace(/\s/g, ''))
   );
 
+  const presentTotal = (members || []).reduce((s, m) => s + m.attendance.present, 0);
+  const absentTotal = (members || []).reduce((s, m) => s + m.attendance.absent, 0);
+
   return (
-    <>
-      <TopBar title={group?.name || t('groupsP.title')} back />
-      <div className="page-staff" style={{ paddingTop: 14 }}>
-        {!members ? (
-          <PageLoader />
-        ) : (
-          <>
-            {/* Tezkor statistika */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
-              <Card style={{ padding: '10px', textAlign: 'center' }}>
-                <UsersIcon /><div style={{ fontSize: 17, fontWeight: 900 }}>{members.length}</div>
-                <div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{t('groupsP.members')}</div>
-              </Card>
-              <Card style={{ padding: '10px', textAlign: 'center' }}>
-                <CheckCircle2 size={18} color="var(--success)" style={{ margin: '0 auto 2px' }} />
-                <div style={{ fontSize: 17, fontWeight: 900 }}>{members.reduce((s, m) => s + m.attendance.present, 0)}</div>
-                <div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{t('attMark.present')}</div>
-              </Card>
-              <Card style={{ padding: '10px', textAlign: 'center' }}>
-                <XCircle size={18} color="var(--danger)" style={{ margin: '0 auto 2px' }} />
-                <div style={{ fontSize: 17, fontWeight: 900 }}>{members.reduce((s, m) => s + m.attendance.absent, 0)}</div>
-                <div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{t('attMark.absent')}</div>
-              </Card>
-            </div>
+    <div className="page-staff pt-3.5">
+      <PageHeader
+        icon={Users}
+        title={group?.name || t('groupsP.title')}
+        sub={group?.teacher?.full_name || undefined}
+        back
+        onBack={() => navigate('/staff/groups')}
+        actions={
+          <Button size="sm" onClick={() => setAddOpen(true)} disabled={busy}>
+            <UserPlus size={16} /> {t('groupsP.addStudent')}
+          </Button>
+        }
+      />
 
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-              <Link to={`/staff/attendance?groupId=${id}`} style={{ flex: 1, textDecoration: 'none' }}>
-                <Button variant="soft" className="full"><CalendarCheck2 size={15} /> {t('staff.attendance')}</Button>
-              </Link>
-              <Link to={`/staff/payments?groupId=${id}`} style={{ flex: 1, textDecoration: 'none' }}>
-                <Button variant="soft" className="full"><Wallet size={15} /> {t('staff.payments')}</Button>
-              </Link>
-            </div>
+      {!members ? (
+        <PageLoader />
+      ) : (
+        <>
+          {/* Tezkor statistika */}
+          <div className="grid grid-cols-3 gap-2.5 mb-3.5">
+            <MiniStat icon={Users} value={members.length} label={t('groupsP.members')} color="var(--color-primary)" bg="var(--color-primary-soft)" />
+            <MiniStat icon={CheckCircle2} value={presentTotal} label={t('attMark.present')} color="var(--color-success)" bg="var(--color-success-soft)" />
+            <MiniStat icon={XCircle} value={absentTotal} label={t('attMark.absent')} color="var(--color-danger)" bg="var(--color-danger-soft)" />
+          </div>
 
-            {/* Qidiruv + qo'shish */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              <Input placeholder={t('groupsP.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
-              <Button variant="primary" onClick={() => setAddOpen(true)}><UserPlus size={17} /> {t('groupsP.addStudent')}</Button>
-            </div>
+          <div className="grid grid-cols-2 gap-2.5 mb-3.5">
+            <Link to={`/staff/attendance?groupId=${id}`} className="block">
+              <Button variant="soft" className="w-full"><CalendarCheck2 size={16} /> {t('staff.attendance')}</Button>
+            </Link>
+            <Link to={`/staff/payments?groupId=${id}`} className="block">
+              <Button variant="soft" className="w-full"><Wallet size={16} /> {t('staff.payments')}</Button>
+            </Link>
+          </div>
 
-            {filtered.length === 0 ? (
-              <Card><EmptyState icon={UserPlus} title={t('groupsP.notFound')} /></Card>
-            ) : (
-              <Card style={{ padding: '4px 14px' }}>
-                {filtered.map((m) => (
-                  <div key={m.id} className="row-item" onClick={() => navigate(`/staff/users/${m.id}`)} style={{ cursor: 'pointer' }}>
-                    <Avatar w={44} avatar={m.avatar} frame={m.currentFrame} />
-                    <div className="grow">
-                      <div className="title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <AnimatedName config={m.currentEffect?.config}>{m.full_name}</AnimatedName>
-                        {m.discount > 0 && (
-                          <span className="badge warn">{t('payments.discount')}: {m.discount}%</span>
-                        )}
-                      </div>
-                      <div className="sub">
-                        <Clock3 size={11} style={{ verticalAlign: -1 }} /> {fmtNum(m.attendance.present)}/{fmtNum(m.attendance.present + m.attendance.absent + m.attendance.late)}
-                        {m.payments[0] && (
-                          <Badge color={m.payments[0].status === 'paid' ? 'success' : 'danger'} style={{ marginLeft: 6, fontSize: 10 }}>
-                            {m.payments[0].status === 'paid' ? t('payments.paid') : t('payments.unpaid')}
-                          </Badge>
-                        )}
-                      </div>
+          {/* Qidiruv */}
+          <SearchInput
+            placeholder={t('groupsP.searchPlaceholder')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="mb-3"
+          />
+
+          {filtered.length === 0 ? (
+            <Card>
+              <EmptyState icon={UserPlus} title={t('groupsP.notFound')} />
+            </Card>
+          ) : (
+            <Card className="p-0 -my-1.5">
+              {filtered.map((m) => (
+                <div
+                  key={m.id}
+                  onClick={() => navigate(`/staff/users/${m.id}`)}
+                  className="flex items-center gap-3.5 px-4 py-3.5 border-b border-border last:border-b-0 hover:bg-surface-2/60 transition-colors cursor-pointer"
+                >
+                  <Avatar w={44} avatar={m.avatar} frame={m.currentFrame} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-[14.5px] flex items-center gap-2 flex-wrap">
+                      <AnimatedName config={m.currentEffect?.config}>{m.full_name}</AnimatedName>
+                      {m.discount > 0 && (
+                        <Badge color="warn">{t('payments.discount')}: {m.discount}%</Badge>
+                      )}
                     </div>
-                    <button
-                      className="btn ghost sm"
-                      style={{ color: 'var(--danger)' }}
-                      onClick={(e) => { e.stopPropagation(); setRemoveTarget(m); }}
-                      title={t('groupsP.removeMember')}
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <div className="text-[12.5px] text-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
+                      <span className="tabular-nums">{fmtPhone(m.phone)}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock3 size={11} /> {m.attendance.present}/{m.attendance.present + m.attendance.absent + m.attendance.late}
+                      </span>
+                      {m.payments[0] && (
+                        <Badge color={m.payments[0].status === 'paid' ? 'success' : 'danger'}>
+                          {m.payments[0].status === 'paid' ? t('payments.paid') : t('payments.unpaid')}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                ))}
-              </Card>
-            )}
-          </>
-        )}
-      </div>
+                  <button
+                    className="w-[38px] h-[38px] rounded-[13px] flex items-center justify-center text-danger hover:bg-danger-soft transition-all shrink-0"
+                    onClick={(e) => { e.stopPropagation(); setRemoveTarget(m); }}
+                    title={t('groupsP.removeMember')}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </Card>
+          )}
+        </>
+      )}
 
       {/* Qo'shish */}
       <Sheet open={addOpen} onClose={() => setAddOpen(false)} title={t('groupsP.addStudent')}>
         <Field label={t('groupsP.studentPhone')}>
-          <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+998 90 123 45 67" inputMode="tel" />
+          <PhoneInput value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
         </Field>
         <Field label={t('groupsP.studentName')} hint={t('groupsP.newStudentHint')}>
           <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Ali Valiyev" />
@@ -156,7 +170,7 @@ export default function GroupDetail() {
         <Field label={t('groupsP.studentPassword')}>
           <Input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="1234" />
         </Field>
-        <Button className="full" loading={busy} onClick={addStudent}>{t('common.add')}</Button>
+        <Button className="w-full" loading={busy} onClick={addStudent}>{t('common.add')}</Button>
       </Sheet>
 
       <ConfirmDialog
@@ -168,10 +182,6 @@ export default function GroupDetail() {
         onConfirm={removeMember}
         loading={busy}
       />
-    </>
+    </div>
   );
-}
-
-function UsersIcon() {
-  return <UserPlus size={18} color="var(--primary)" style={{ margin: '0 auto 2px' }} />;
 }

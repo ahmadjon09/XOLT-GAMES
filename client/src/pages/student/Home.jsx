@@ -2,11 +2,11 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Calculator, ListChecks, Grid3x3, Keyboard, Code2, Trophy,
-  CalendarCheck2, Wallet, ChevronRight, QrCode, KeyRound
+  CalendarCheck2, Wallet, ChevronRight, QrCode, KeyRound, User
 } from 'lucide-react';
 import { useGet } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { Card, CoinBadge } from '../../components/ui.jsx';
+import { Card, CoinBadge, EmptyState } from '../../components/ui.jsx';
 import { fmtNum } from '../../utils/format.js';
 
 const gameMeta = {
@@ -31,146 +31,128 @@ export default function Home() {
   ];
 
   return (
-    <div className="mx-auto space-y-5 p-4 pt-6">
-      {/* Welcome & hero */}
-      <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg px-6 py-5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <div className="text-2xl font-bold text-slate-800">
+    <div className="page pt-3.5 space-y-4">
+      {/* Welcome */}
+      <Card className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[19px] font-extrabold tracking-tight truncate">
               {t('auth.welcome')}, {user?.full_name?.split(' ')[0]}!
             </div>
-            <div className="text-sm text-slate-500">{t('home.heroSub')}</div>
+            <div className="text-[13px] text-muted font-semibold mt-0.5">{t('home.heroSub')}</div>
           </div>
-          {/* Optional quick stats could go here */}
+          <CoinBadge value={user?.coin ?? 0} size={16} />
         </div>
+      </Card>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2.5">
+        {[
+          { label: t('home.myCoins'), value: fmtNum(user?.coin ?? 0), color: '#9a6d00', bg: 'var(--color-accent-soft)' },
+          { label: t('home.myScore'), value: fmtNum(user?.score ?? 0), color: 'var(--color-primary)', bg: 'var(--color-primary-soft)' },
+          { label: t('home.groupsCount'), value: groups ? groups.length : '…', color: 'var(--color-ink)', bg: 'var(--color-surface-2)' },
+        ].map((s) => (
+          <div key={s.label} className="bg-surface border border-border rounded-[16px] p-3 shadow-card text-center">
+            <div className="text-[19px] font-extrabold tabular-nums truncate" style={{ color: s.color }}>{s.value}</div>
+            <div className="text-[10.5px] text-muted font-bold uppercase tracking-wide truncate">{s.label}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Stats cards (coins, score, groups) */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg p-4 text-center">
-          <div className="text-2xl font-black text-amber-600">{fmtNum(user?.coin ?? 0)}</div>
-          <div className="text-xs text-slate-500 font-semibold uppercase tracking-wide">{t('home.myCoins')}</div>
-        </div>
-        <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg p-4 text-center">
-          <div className="text-2xl font-black text-indigo-600">{fmtNum(user?.score ?? 0)}</div>
-          <div className="text-xs text-slate-500 font-semibold uppercase tracking-wide">{t('home.myScore')}</div>
-        </div>
-        <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg p-4 text-center">
-          <div className="text-2xl font-black text-slate-800">{groups ? groups.length : '…'}</div>
-          <div className="text-xs text-slate-500 font-semibold uppercase tracking-wide">{t('home.groupsCount')}</div>
-        </div>
-      </div>
-
-      {/* Games section */}
+      {/* Games */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-extrabold text-slate-800">{t('home.gamesTitle')}</h2>
-        </div>
-        <div className="flex flex-col gap-3">
+        <div className="text-[15px] font-extrabold mb-2.5">{t('home.gamesTitle')}</div>
+        <div className="flex flex-col gap-2.5">
           {games.map((g) => {
             const meta = gameMeta[g.key];
             return (
               <Link key={g.key} to={g.to} className="block">
-                <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg p-4 flex items-center gap-4 transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98]">
-                  <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{ background: meta.bg }}
-                  >
-                    <g.icon size={28} color={meta.color} strokeWidth={2} />
+                <Card tap className="p-4 flex items-center gap-3.5">
+                  <div className="w-[52px] h-[52px] rounded-[16px] flex items-center justify-center shrink-0" style={{ background: meta.bg }}>
+                    <g.icon size={26} color={meta.color} strokeWidth={2.2} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-extrabold text-slate-800 text-base">{g.title}</span>
-                      <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700">
-                        {g.tag}
-                      </span>
+                      <span className="font-extrabold text-[15px]">{g.title}</span>
+                      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-primary-soft text-primary">{g.tag}</span>
                     </div>
-                    <div className="text-sm text-slate-500">{g.desc}</div>
+                    <div className="text-[12.5px] text-muted mt-0.5">{g.desc}</div>
                   </div>
-                  <ChevronRight size={20} className="text-slate-400 shrink-0" />
-                </div>
+                  <ChevronRight size={19} className="text-muted shrink-0" />
+                </Card>
               </Link>
             );
           })}
         </div>
       </div>
 
-      {/* Quick actions: QR & code */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link to="/quiz/join">
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg p-4 flex items-center gap-3 transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98]">
-            <QrCode size={22} className="text-indigo-500" />
-            <span className="font-bold text-slate-800 text-sm">{t('home.scanQr')}</span>
-          </div>
+      {/* Quick actions */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <Link to="/quiz/join" className="block">
+          <Card tap className="p-4 flex items-center gap-3">
+            <QrCode size={22} className="text-primary shrink-0" />
+            <span className="font-bold text-[13.5px] truncate">{t('home.scanQr')}</span>
+          </Card>
         </Link>
-        <Link to="/game/math">
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg p-4 flex items-center gap-3 transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98]">
-            <KeyRound size={22} className="text-indigo-500" />
-            <span className="font-bold text-slate-800 text-sm">{t('home.joinWithCode')}</span>
-          </div>
+        <Link to="/game/math" className="block">
+          <Card tap className="p-4 flex items-center gap-3">
+            <KeyRound size={22} className="text-primary shrink-0" />
+            <span className="font-bold text-[13.5px] truncate">{t('home.joinWithCode')}</span>
+          </Card>
+        </Link>
+        <Link to="/attendance" className="block">
+          <Card tap className="p-4 flex items-center gap-3">
+            <CalendarCheck2 size={22} className="text-success shrink-0" />
+            <span className="font-bold text-[13.5px] truncate">{t('home.attendanceShort')}</span>
+          </Card>
+        </Link>
+        <Link to="/payments" className="block">
+          <Card tap className="p-4 flex items-center gap-3">
+            <Wallet size={22} className="text-[#9a6d00] shrink-0" />
+            <span className="font-bold text-[13.5px] truncate">{t('home.paymentsShort')}</span>
+          </Card>
         </Link>
       </div>
 
-      {/* Groups preview */}
+      {/* Groups */}
       {groups !== null && (
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-extrabold text-slate-800">{t('profile.myGroups')}</h2>
-          </div>
+          <div className="text-[15px] font-extrabold mb-2.5">{t('profile.myGroups')}</div>
           {groups.length === 0 ? (
-            <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg p-8 text-center">
-              <div className="flex flex-col items-center gap-3 text-slate-500">
-                <CalendarCheck2 size={36} className="text-indigo-300" strokeWidth={1.5} />
-                <div className="font-semibold">{t('profile.noGroups')}</div>
-              </div>
-            </div>
+            <Card>
+              <EmptyState icon={User} title={t('profile.noGroups')} />
+            </Card>
           ) : (
-            <div className="flex flex-col gap-3">
+            <Card className="p-0 -my-1.5">
               {groups.slice(0, 3).map((g) => (
                 <Link key={g.id} to="/attendance" className="block">
-                  <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg p-4 flex items-center gap-4 transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98]">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-extrabold text-lg shrink-0">
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-surface-2/60 transition-colors">
+                    <div className="w-[44px] h-[44px] rounded-[14px] bg-primary-soft text-primary flex items-center justify-center font-extrabold text-[16px] shrink-0">
                       {g.name.slice(0, 1)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-slate-800 truncate">{g.name}</div>
-                      <div className="text-sm text-slate-500">
-                        {t('attendance.present')}: {g.attendance.present} / {t('attendance.absent')}: {g.attendance.absent}
+                      <div className="font-bold text-[14.5px] truncate">{g.name}</div>
+                      <div className="text-[12px] text-muted">
+                        {t('attendance.present')}: {g.attendance.present} • {t('attendance.absent')}: {g.attendance.absent}
                       </div>
                     </div>
-                    <CalendarCheck2 size={18} className="text-slate-400 shrink-0" />
+                    <CalendarCheck2 size={18} className="text-muted shrink-0" />
                   </div>
                 </Link>
               ))}
-            </div>
+            </Card>
           )}
         </div>
       )}
 
-      {/* Additional shortcuts: Attendance & Payments */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link to="/attendance">
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg p-4 flex items-center gap-3 transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98]">
-            <CalendarCheck2 size={22} className="text-emerald-500" />
-            <span className="font-bold text-slate-800 text-sm">{t('home.attendanceShort')}</span>
-          </div>
-        </Link>
-        <Link to="/payments">
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-lg p-4 flex items-center gap-3 transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98]">
-            <Wallet size={22} className="text-amber-500" />
-            <span className="font-bold text-slate-800 text-sm">{t('home.paymentsShort')}</span>
-          </div>
-        </Link>
-      </div>
-
       {/* Leaderboard teaser */}
-      <div className="text-center pt-2">
+      <div className="text-center pt-1">
         <Link
           to="/leaderboard"
-          className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+          className="inline-flex items-center gap-2 text-[13.5px] font-bold text-primary hover:underline underline-offset-2 transition-colors"
         >
-          <Trophy size={18} />
-          {t('home.myRank')} →
+          <Trophy size={17} />
+          {t('home.myRank')}
         </Link>
       </div>
     </div>

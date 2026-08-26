@@ -208,6 +208,50 @@
   .qr-corner { position: absolute; width: 34px; height: 34px; box-shadow: 0 0 12px rgba(253,199,0,.4); }
 }
 
+/* ============ PhoneInput (react-phone-number-input) — kutubxona CSS'idan keyin qo'llanadi ============ */
+.phone-input-wrap { display: block; width: 100%; }
+.phone-input-wrap .PhoneInput {
+  display: flex; align-items: center; gap: 2px;
+  width: 100%; height: 51px;
+  padding: 0 14px 0 10px;
+  border: 1.5px solid var(--color-border); border-radius: 14px;
+  background: var(--color-surface);
+  transition: border-color .15s, box-shadow .15s;
+}
+.phone-input-wrap .PhoneInput:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(91,30,166,.12);
+}
+.phone-input-wrap.error .PhoneInput { border-color: var(--color-danger); }
+.phone-input-wrap .PhoneInputInput {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  color: var(--color-ink); font-size: 15px; font-weight: 600;
+  padding: 0; height: 100%; line-height: normal;
+}
+.phone-input-wrap .PhoneInputInput::placeholder { color: #a3adc4; }
+.phone-input-wrap .PhoneInputCountry { display: flex; align-items: center; height: 100%; background: transparent; border: none; padding: 0; }
+.phone-input-wrap .PhoneInputCountrySelect {
+  padding: 0 2px; background: transparent; border: none; outline: none;
+  color: var(--color-ink); font-weight: 700; font-size: 14px;
+  cursor: pointer;
+}
+.phone-input-wrap .PhoneInputCountryIcon { display: flex; align-items: center; }
+.phone-input-wrap .PhoneInputFlag { display: inline-block; border-radius: 4px; }
+.phone-input-wrap .PhoneInputInput[disabled] { color: var(--color-muted); }
+.phone-input-wrap .PhoneInputCountrySelect[disabled] { cursor: not-allowed; opacity: .6; }
+
+/* Dark variant (login sahifasi uchun) */
+.phone-input-wrap.dark .PhoneInput {
+  background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.28);
+}
+.phone-input-wrap.dark .PhoneInput:focus-within {
+  border-color: #fdc700; box-shadow: 0 0 0 4px rgba(253,199,0,.18);
+}
+.phone-input-wrap.dark .PhoneInputInput { color: #fff; }
+.phone-input-wrap.dark .PhoneInputInput::placeholder { color: rgba(255,255,255,.5); }
+.phone-input-wrap.dark .PhoneInputCountrySelect { color: #fff; }
+.phone-input-wrap.dark .PhoneInputCountry { background: transparent; }
+
 @media (min-width: 1024px) {
   .page { max-width: 1060px; padding: 24px 36px 56px; }
   .page-no-nav { max-width: 1060px; padding: 24px 36px 56px; }

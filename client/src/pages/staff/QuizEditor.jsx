@@ -2,13 +2,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, ImagePlus, X, Save, RefreshCw, Loader2 } from 'lucide-react';
+import { Plus, Trash2, ImagePlus, X, Save, ListChecks } from 'lucide-react';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Card, Button, Input, Field, Textarea, PageLoader, Select } from '../../components/ui.jsx';
+import { Card, Button, Input, Field, Textarea, PageLoader, Select, PageHeader } from '../../components/ui.jsx';
 import ImageCropper from '../../components/ImageCropper.jsx';
 import { fileToDataUrl, validateImageFile } from '../../utils/cropImage.js';
+import { fmtInt } from '../../utils/format.js';
 
 const EMPTY_QUESTION = () => ({
   text: '',
@@ -132,14 +133,19 @@ export default function QuizEditor() {
   if (loading || quizLoading) return <PageLoader />;
 
   return (
-    <div className="page pt-4 space-y-4">
+    <div className="page-staff pt-3.5 space-y-3.5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">{id ? t('quizzesP.edit') : t('quizzesP.newQuiz')}</h2>
-        <Button variant="outline" size="sm" onClick={() => navigate('/staff/quizzes')}>
-          <X size={16} className="mr-1" /> {t('common.cancel')}
-        </Button>
-      </div>
+      <PageHeader
+        icon={ListChecks}
+        title={id ? t('quizzesP.edit') : t('quizzesP.newQuiz')}
+        back
+        onBack={() => navigate('/staff/quizzes')}
+        actions={
+          <Button variant="outline" size="sm" onClick={() => navigate('/staff/quizzes')}>
+            <X size={15} /> {t('common.cancel')}
+          </Button>
+        }
+      />
 
       {/* Basic info */}
       <Card className="p-4 space-y-3">
@@ -200,7 +206,7 @@ export default function QuizEditor() {
             {q.variants.map((v, vi) => (
               <div key={vi} className="flex gap-2 mb-2">
                 <button
-                  className={`w-10 h-10 rounded-xl font-bold flex-shrink-0 ${q.answerIndex === vi ? 'bg-success-soft text-success border-2 border-success' : 'bg-slate-100 text-muted border-2 border-transparent'}`}
+                  className={`w-10 h-10 rounded-xl font-bold flex-shrink-0 ${q.answerIndex === vi ? 'bg-success-soft text-success border-2 border-success' : 'bg-surface-2 text-muted border-2 border-transparent'}`}
                   onClick={() => updateQ(qi, { answerIndex: vi })}
                   disabled={busy}
                 >
@@ -235,7 +241,7 @@ export default function QuizEditor() {
             </Field>
             <Field label={t('quizzesP.points')}>
               <Select value={q.points} onChange={(e) => updateQ(qi, { points: parseInt(e.target.value) })} disabled={busy}>
-                {[500, 1000, 1500, 2000, 3000, 5000].map((p) => <option key={p} value={p}>{p}</option>)}
+                {[500, 1000, 1500, 2000, 3000, 5000].map((p) => <option key={p} value={p}>{fmtInt(p)}</option>)}
               </Select>
             </Field>
           </div>

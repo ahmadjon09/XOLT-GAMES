@@ -5,7 +5,7 @@ import { FaUserPlus, FaSignInAlt, FaEye, FaEyeSlash, FaLock, FaUser, FaAt } from
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { errorMessage } from '../api/fetcher.js';
-import { LangSwitcher } from '../components/ui.jsx';
+import { LangSwitcher, PhoneInput } from '../components/ui.jsx';
 import { initAudio, sounds } from '../utils/sound.js';
 
 export default function Login() {
@@ -81,6 +81,20 @@ export default function Login() {
     setUsername('');
   };
 
+  const DEMO = [
+    { key: 'auth.demoStudent', phone: '+998900000001', password: '1234' },
+    { key: 'auth.demoTeacher', phone: '+998901234569', password: 'teacher123' },
+    { key: 'auth.demoCashier', phone: '+998901234568', password: 'cashier123' },
+    { key: 'auth.demoAdmin', phone: '+998901234567', password: 'admin123' },
+  ];
+
+  const fillDemo = (d) => {
+    setMode('login');
+    setPhone(d.phone);
+    setPassword(d.password);
+    doLogin(d.phone, d.password);
+  };
+
   const inputCls =
     'w-full h-14 pl-12 pr-4 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-indigo-200 outline-none focus:border-yellow-400 transition-all duration-300 focus:ring-2 focus:ring-yellow-400/50';
 
@@ -128,17 +142,12 @@ export default function Login() {
               </>
             )}
 
-            <div className="relative">
-              <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300" />
-              <input
-                type="tel"
-                placeholder="+998 90 123 45 55"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className={inputCls}
-                inputMode="tel"
-              />
-            </div>
+            <PhoneInput
+              value={phone}
+              onChange={setPhone}
+              dark
+              inputProps={{ autoComplete: 'tel', placeholder: '+998 __ ___ __ __' }}
+            />
 
             <div className="relative">
               <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300" />
@@ -191,6 +200,27 @@ export default function Login() {
             >
               {mode === 'login' ? t('auth.no_acc') : t('auth.has_acc')}
             </button>
+          </div>
+
+          {/* Demo hisoblar */}
+          <div className="mt-6 pt-5 border-t border-white/15">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-300/80 text-center mb-2.5">
+              {t('auth.demoAccounts')}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {DEMO.map((d) => (
+                <button
+                  key={d.key}
+                  type="button"
+                  onClick={() => fillDemo(d)}
+                  disabled={loading}
+                  className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-[13px] font-bold transition-all duration-200 active:scale-[0.97] disabled:opacity-50"
+                >
+                  {t(d.key)}
+                </button>
+              ))}
+            </div>
+            <div className="text-[11px] text-indigo-200/70 text-center mt-2.5">{t('auth.demoHint')}</div>
           </div>
         </div>
       </div>

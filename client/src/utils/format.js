@@ -10,6 +10,36 @@ export const fmtNum = (n) => {
   return num.toLocaleString('ru-RU');
 };
 
+// To'liq raqam - minglik ajratgich bilan: 1000 -> "1 000", 1250000 -> "1 250 000"
+export const fmtInt = (n) => {
+  if (n === null || n === undefined) return '0';
+  const num = Number(n);
+  if (Number.isNaN(num)) return '0';
+  return num.toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+};
+
+// Pul summalari uchun: "1 000 000" (so'm birligi bilan chaqiruvchi tomon qo'shadi)
+export const fmtMoney = fmtInt;
+
+// Faqat raqamlarni qaytaradi: "1 000" -> "1000"
+export const digitsOnly = (v) => String(v ?? '').replace(/\D/g, '');
+
+// Raqamni kiruvchi formatda: "1000" -> "1 000" (bo'sh bo'lsa '')
+export const formatDigits = (v) => {
+  const d = digitsOnly(v);
+  return d ? Number(d).toLocaleString('ru-RU') : '';
+};
+
+// Telefon raqamni chiroyli ko'rinishda: +998901234567 -> +998 90 123 45 67
+export const fmtPhone = (phone) => {
+  if (!phone) return '';
+  const s = String(phone).replace(/\D/g, '');
+  if (s.length === 12 && s.startsWith('998')) {
+    return `+998 ${s.slice(3, 5)} ${s.slice(5, 8)} ${s.slice(8, 10)} ${s.slice(10)}`;
+  }
+  return String(phone);
+};
+
 
 export const fmtDate = (d) => {
   if (!d) return '—';

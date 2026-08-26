@@ -414,6 +414,7 @@ export const uz = {
     createGroup: 'Guruh yaratish',
     groupName: 'Guruh nomi',
     rank: 'Daraja',
+    rankHint: "0 dan 100 gacha",
     members: 'o\'quvchi',
     addStudent: 'O\'quvchi qo\'shish',
     studentPhone: 'O\'quvchi telefoni',

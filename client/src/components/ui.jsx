@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X, Globe } from 'lucide-react';
+import { Loader2, X, Globe, Search, RefreshCw, AlertTriangle, ChevronLeft, ChevronRight, Phone } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5Qrcode } from 'html5-qrcode';
+import PhoneInputLib from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 import { setLang } from '../i18n/index.js';
-import { cx } from '../utils/format.js';
+import { cx, digitsOnly, formatDigits } from '../utils/format.js';
 import { initAudio, sounds } from '../utils/sound.js';
 
 const b = {
@@ -55,9 +57,9 @@ export function Card({ children, className, tap, ...rest }) {
   );
 }
 
-export function Field({ label, error, children, hint }) {
+export function Field({ label, error, children, hint, className }) {
   return (
-    <div className="mb-3.5">
+    <div className={cx('mb-3.5', className)}>
       {label && <label className="block text-[13.5px] font-semibold text-muted mb-1.5">{label}</label>}
       {children}
       {error && <div className="text-danger text-[12.5px] mt-1">{error}</div>}
@@ -83,6 +85,211 @@ export function Select({ error, className, children, ...rest }) {
 
 export function Textarea({ error, className, ...rest }) {
   return <textarea className={cx(inputCls, error && 'border-danger', 'min-h-[80px] resize-y', className)} {...rest} />;
+}
+
+// ============ SAYHA BOSH QISMI (hamma sahifalarda bir xil) ============
+
+// Kichik ikonka tugmasi (refresh, edit, delete...)
+export function IconButton({ icon: Icon, label, onClick, danger, loading, disabled, className }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || loading}
+      title={label}
+      aria-label={label}
+      className={cx(
+        'w-[38px] h-[38px] rounded-[13px] flex items-center justify-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed',
+        danger ? 'text-danger hover:bg-danger-soft' : 'text-muted hover:bg-surface-2 hover:text-ink',
+        className
+      )}
+    >
+      {loading ? <Loader2 size={18} className="animate-spin" /> : Icon && <Icon size={18} />}
+    </button>
+  );
+}
+
+// Yagona sahifa sarlavhasi: ikonka + nom + son + tavsif + amallar
+export function PageHeader({ icon: Icon, title, count, sub, actions, back, onBack }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      {back && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-[38px] h-[38px] rounded-[13px] bg-surface border border-border flex items-center justify-center text-muted hover:text-ink hover:bg-surface-2 transition-all shrink-0"
+          aria-label={t('common.back')}
+        >
+          <ChevronLeft size={20} />
+        </button>
+      )}
+      {Icon && (
+        <div className="w-[44px] h-[44px] rounded-[15px] bg-primary-soft text-primary flex items-center justify-center shrink-0">
+          <Icon size={22} strokeWidth={2.2} />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <h1 className="text-[19px] font-extrabold tracking-tight truncate">{title}</h1>
+          {count !== undefined && count !== null && (
+            <span className="text-[12px] font-bold text-primary bg-primary-soft px-2 py-0.5 rounded-full whitespace-nowrap">{count}</span>
+          )}
+        </div>
+        {sub && <div className="text-[12.5px] text-muted font-semibold truncate mt-0.5">{sub}</div>}
+      </div>
+      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+    </div>
+  );
+}
+
+// Qidiruv input (ichida search ikonka bilan)
+export function SearchInput({ value, onChange, placeholder, className, ...rest }) {
+  return (
+    <div className={cx('relative', className)}>
+      <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+      <input
+        className={cx(inputCls, 'pl-10')}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        type="search"
+        {...rest}
+      />
+    </div>
+  );
+}
+
+// Raqam input — 1000 -> "1 000" formatda (minglik ajratgich bilan)
+export function NumberInput({ value, onChange, min, max, placeholder, disabled, error, className, ...rest }) {
+  const [draft, setDraft] = useState(() => (value === null || value === undefined || value === '' ? '' : formatDigits(value)));
+
+  // Tashqaridan value o'zgarsa (masalan form reset) — qayta formatla
+  useEffect(() => {
+    const clean = value === null || value === undefined ? '' : digitsOnly(value);
+    const cleanDraft = digitsOnly(draft);
+    if (clean !== cleanDraft) setDraft(clean ? formatDigits(clean) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const handleChange = (e) => {
+    let d = digitsOnly(e.target.value);
+    if (d && max !== undefined) {
+      const n = Number(d);
+      if (n > max) d = String(max);
+    }
+    setDraft(d ? formatDigits(d) : '');
+    if (min !== undefined && (!d || Number(d) < min)) {
+      onChange(min);
+    } else {
+      onChange(d ? Number(d) : 0);
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      className={cx(inputCls, 'tabular-nums', error && 'border-danger', className)}
+      value={draft}
+      onChange={handleChange}
+      placeholder={placeholder}
+      disabled={disabled}
+      {...rest}
+    />
+  );
+}
+
+// Telefon input — react-phone-number-input asosida, +998 formatda
+// value har doim E.164 formatda saqlanadi (+998901234567) — serverga shu yuboriladi
+export function PhoneInput({ value, onChange, defaultCountry = 'UZ', dark, className, error, disabled, inputProps, ...rest }) {
+  return (
+    <PhoneInputLib
+      value={value || ''}
+      onChange={(v) => onChange(v || '')}
+      defaultCountry={defaultCountry}
+      inputProps={{ autoComplete: 'tel', placeholder: '+998 __ ___ __ __', ...inputProps }}
+      className={cx('phone-input-wrap', dark && 'dark', error && 'error', className)}
+      disabled={disabled}
+      {...rest}
+    />
+  );
+}
+
+// Sahifa xato holati
+export function PageError({ onRetry, message }) {
+  const { t } = useTranslation();
+  return (
+    <div className="bg-surface border border-border rounded-[18px] p-8 text-center shadow-card">
+      <div className="w-[52px] h-[52px] rounded-full bg-danger-soft text-danger flex items-center justify-center mx-auto mb-3">
+        <AlertTriangle size={24} />
+      </div>
+      <div className="font-bold text-[15px] text-ink mb-1">{message || t('common.serverError')}</div>
+      {onRetry && (
+        <Button variant="soft" className="mt-3" onClick={onRetry}>
+          <RefreshCw size={15} /> {t('common.retry')}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+// Bo'lim sarlavhasi (ro'yxat ustida)
+export function SectionTitle({ children, right, className }) {
+  return (
+    <div className={cx('flex items-center justify-between mb-2.5 mt-4 first:mt-0', className)}>
+      <div className="text-[15px] font-extrabold">{children}</div>
+      {right}
+    </div>
+  );
+}
+
+// Mini statistika kartasi (katta raqam + tavsif)
+export function MiniStat({ icon: Icon, value, label, color = 'var(--color-ink)', bg = 'var(--color-surface-2)', sub }) {
+  return (
+    <div className="bg-surface border border-border rounded-[16px] p-3 shadow-card text-center">
+      {Icon && (
+        <div className="w-9 h-9 rounded-[12px] flex items-center justify-center mx-auto mb-1.5" style={{ background: bg, color }}>
+          <Icon size={18} />
+        </div>
+      )}
+      <div className="text-[18px] font-extrabold tabular-nums truncate" style={{ color }}>{value}</div>
+      <div className="text-[11px] text-muted font-semibold truncate">{label}</div>
+      {sub && <div className="text-[10.5px] text-muted truncate">{sub}</div>}
+    </div>
+  );
+}
+
+// Pagination
+export function Pagination({ page, total, pageSize = 20, onChange }) {
+  const { t } = useTranslation();
+  const pages = Math.max(1, Math.ceil((total || 0) / pageSize));
+  if (pages <= 1) return null;
+  return (
+    <div className="flex items-center justify-center gap-3 pt-1">
+      <button
+        type="button"
+        className="w-[38px] h-[38px] rounded-[13px] bg-surface border border-border flex items-center justify-center text-muted hover:text-ink hover:bg-surface-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        disabled={page <= 1}
+        onClick={() => onChange(page - 1)}
+        aria-label={t('common.previous')}
+      >
+        <ChevronLeft size={18} />
+      </button>
+      <span className="text-[13.5px] font-bold text-muted tabular-nums min-w-[52px] text-center">
+        {page} / {pages}
+      </span>
+      <button
+        type="button"
+        className="w-[38px] h-[38px] rounded-[13px] bg-surface border border-border flex items-center justify-center text-muted hover:text-ink hover:bg-surface-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        disabled={page >= pages}
+        onClick={() => onChange(page + 1)}
+        aria-label={t('common.next')}
+      >
+        <ChevronRight size={18} />
+      </button>
+    </div>
+  );
 }
 
 const badgeMap = {
@@ -143,9 +350,9 @@ export function Skeleton({ w = '100%', h = 16, style }) {
   return <div className="rounded-[10px] bg-surface-2 animate-pulse" style={{ width: w, height: h, ...style }} />;
 }
 
-export function Segmented({ options, value, onChange, scroll }) {
+export function Segmented({ options, value, onChange, scroll, className }) {
   return (
-    <div className={cx('flex bg-surface-2 rounded-[14px] p-1 gap-1 overflow-x-auto', scroll && 'justify-start')}>
+    <div className={cx('flex bg-surface-2 rounded-[14px] p-1 gap-1 overflow-x-auto', scroll && 'justify-start', className)}>
       {options.map((o) => (
         <button
           key={o.value}

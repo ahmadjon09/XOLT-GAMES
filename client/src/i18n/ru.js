@@ -414,6 +414,7 @@ export const ru = {
     createGroup: 'Создать группу',
     groupName: 'Название группы',
     rank: 'Ранг',
+    rankHint: 'В диапазоне 0–100',
     members: 'учеников',
     addStudent: 'Добавить ученика',
     studentPhone: 'Телефон ученика',
