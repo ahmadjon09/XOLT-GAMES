@@ -9,11 +9,11 @@ import { errorMessage, Fetch } from '../../api/fetcher.js';
 import { useGet } from '../../api/hooks.js';
 import {
   Button, Card, Input, Field, PageLoader, EmptyState, Avatar, AnimatedName,
-  QRCode, QRScanner, CopyButton, Spinner, CoinBadge, Segmented, GameVisibilityToggle,
+  QRCode, QRScanner, CopyButton, Segmented, GameVisibilityToggle,
 } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { sounds, initAudio } from '../../utils/sound.js';
-import { fmtNum } from '../../utils/format.js';
+// import { fmtNum } from '../../utils/format.js';
 import { getLang } from '../../i18n/index.js';
 
 // ---------- SOLO MODE ----------
@@ -27,6 +27,7 @@ function SoloMode() {
   const [finishAt, setFinishAt] = useState(null);
   const [results, setResults] = useState(null);
   const [busy, setBusy] = useState(false);
+  const textContainerRef = useRef(null);
 
   const { data: leaderboard } = useGet('/user/typing/leaderboard?limit=20', { fallbackData: { top: [], my: null } });
 
@@ -42,6 +43,26 @@ function SoloMode() {
   };
 
   useEffect(() => { loadText(); }, []);
+
+  // Gorizontal scrollni cursor joyiga markazlashtirish
+  useEffect(() => {
+    const container = textContainerRef.current;
+    if (!container || !text || results) return;
+    const cursorIndex = typed.length;
+    if (cursorIndex >= text.content.length) {
+      // Yozib boʻlingan – oxiriga surish
+      container.scrollLeft = container.scrollWidth;
+      return;
+    }
+    // Cursor elementi – data-index atributi boʻyicha topiladi
+    const cursorEl = container.querySelector(`[data-index="${cursorIndex}"]`);
+    if (cursorEl) {
+      const containerRect = container.getBoundingClientRect();
+      const cursorRect = cursorEl.getBoundingClientRect();
+      // Cursor markazda boʻlishi uchun scrollLeft ni hisoblaymiz
+      container.scrollLeft += cursorRect.left - containerRect.left - container.clientWidth / 2;
+    }
+  }, [typed, text, results]);
 
   const handleInput = (val) => {
     if (!text || results) return;
@@ -77,12 +98,12 @@ function SoloMode() {
       const ch = text.content[i];
       let color = 'text-muted';
       if (i < typed.length) {
-        color = typed[i] === ch ? 'text-success' : 'text-danger';
+        color = typed[i] === ch ? 'text-success bg-green-100' : 'text-danger bg-red-200';
       } else if (i === typed.length) {
-        color = 'text-primary bg-primary-soft';
+        color = 'text-blue-900 bg-blue-300 px-0.5'; // kursor aniqroq
       }
       parts.push(
-        <span key={i} className={`${color} rounded-sm transition-colors`}>
+        <span key={i} data-index={i} className={`${color} rounded-sm transition-colors`}>
           {ch === ' ' ? '\u00A0' : ch}
         </span>
       );
@@ -139,20 +160,37 @@ function SoloMode() {
                 {Math.round(progress)}%
               </span>
             </div>
-            <div className="font-mono text-base leading-relaxed max-h-48 overflow-y-auto p-2 bg-surface-2 rounded-xl">
-              {renderText()}
+
+            {/* Monkeytype‑style horizontal scroll */}
+            <div className="relative">
+              <div
+                ref={textContainerRef}
+                className="font-mono text-3xl leading-relaxed overflow-x-auto whitespace-nowrap p-2 bg-surface-2 rounded-xl select-none"
+                onContextMenu={(e) => e.preventDefault()}
+                style={{ scrollBehavior: 'smooth' }}
+              >
+                {renderText()}
+              </div>
+              <input
+                type="text"
+                value={typed}
+                onChange={(e) => handleInput(e.target.value)}
+                onPaste={(e) => e.preventDefault()}
+                onCopy={(e) => e.preventDefault()}
+                onContextMenu={(e) => e.preventDefault()}
+                className="absolute inset-0 opacity-0 cursor-default"
+                autoFocus
+                spellCheck="false"
+                autoCapitalize="off"
+                autoCorrect="off"
+              />
             </div>
+
             <div className="h-2 w-full bg-surface-3 rounded-full mt-3 overflow-hidden">
               <div className="h-full bg-primary transition-all duration-200" style={{ width: `${progress}%` }} />
             </div>
           </Card>
-          <Input
-            value={typed}
-            onChange={(e) => handleInput(e.target.value)}
-            placeholder={t('typing.startTyping')}
-            className="font-mono text-base font-semibold"
-            autoFocus
-          />
+
           <Button variant="ghost" className="w-full" onClick={loadText}>
             <RotateCcw size={14} className="mr-1.5" /> {t('typing.again')}
           </Button>
@@ -224,11 +262,29 @@ export default function TypeRacing() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef(null);
+  const textContainerRef = useRef(null);
   const myId = user?.id;
 
   const resume = useCallback(() => {
     if (socket) socket.emit('typing:get_active');
   }, [socket]);
+
+  // Gorizontal scroll – multiplayer
+  useEffect(() => {
+    const container = textContainerRef.current;
+    if (!container || !text || phase !== PHASE.PLAYING) return;
+    const cursorIndex = typed.length;
+    if (cursorIndex >= text.content.length) {
+      container.scrollLeft = container.scrollWidth;
+      return;
+    }
+    const cursorEl = container.querySelector(`[data-index="${cursorIndex}"]`);
+    if (cursorEl) {
+      const containerRect = container.getBoundingClientRect();
+      const cursorRect = cursorEl.getBoundingClientRect();
+      container.scrollLeft += cursorRect.left - containerRect.left - container.clientWidth / 2;
+    }
+  }, [typed, text, phase]);
 
   useEffect(() => {
     if (!socket) return;
@@ -428,10 +484,10 @@ export default function TypeRacing() {
       if (i < typed.length) {
         color = typed[i] === ch ? 'text-success' : 'text-danger';
       } else if (i === typed.length) {
-        color = 'text-primary bg-primary-soft';
+        color = 'text-white bg-primary-soft px-0.5';
       }
       parts.push(
-        <span key={i} className={`${color} rounded-sm transition-colors`}>
+        <span key={i} data-index={i} className={`${color} rounded-sm transition-colors`}>
           {ch === ' ' ? '\u00A0' : ch}
         </span>
       );
@@ -528,7 +584,7 @@ export default function TypeRacing() {
           </div>
         </Card>
 
-        {/* Text area */}
+        {/* Text area – monkeytype style horizontal scroll */}
         <Card className="p-4">
           <div className="flex justify-between items-center mb-3">
             <div className="font-bold text-sm">{text.title}</div>
@@ -536,23 +592,38 @@ export default function TypeRacing() {
               {Math.round(myProgress)}%
             </span>
           </div>
-          <div className="font-mono text-base leading-relaxed max-h-48 overflow-y-auto p-2 bg-surface-2 rounded-xl">
-            {renderTypedText()}
+
+          <div className="relative">
+            <div
+              ref={textContainerRef}
+              className="font-mono text-3xl leading-relaxed overflow-x-auto whitespace-nowrap p-2 bg-surface-2 rounded-xl select-none"
+              onContextMenu={(e) => e.preventDefault()}
+              style={{ scrollBehavior: 'smooth' }}
+            >
+              {renderTypedText()}
+            </div>
+            <input
+              ref={inputRef}
+              type="text"
+              value={typed}
+              onChange={(e) => handleTyping(e.target.value)}
+              onPaste={(e) => e.preventDefault()}
+              onCopy={(e) => e.preventDefault()}
+              onContextMenu={(e) => e.preventDefault()}
+              className="absolute inset-0 opacity-0 cursor-default"
+              autoFocus
+              spellCheck="false"
+              autoCapitalize="off"
+              autoCorrect="off"
+              disabled={myDone}
+            />
           </div>
+
           <div className="h-2 w-full bg-surface-3 rounded-full mt-3 overflow-hidden">
             <div className="h-full bg-primary transition-all duration-200" style={{ width: `${myProgress}%` }} />
           </div>
         </Card>
 
-        <Input
-          ref={inputRef}
-          value={typed}
-          onChange={(e) => handleTyping(e.target.value)}
-          placeholder={myDone ? t('typing.done') : t('typing.startTyping')}
-          className="font-mono text-base font-semibold"
-          disabled={myDone}
-          autoFocus
-        />
         {myDone && (
           <Button className="w-full" onClick={nextText}>
             <Zap size={16} className="mr-1.5" /> {t('typing.waiting')}

@@ -15,7 +15,7 @@ import {
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { initAudio, sounds } from '../../utils/sound.js';
 import { fmtInt } from '../../utils/format.js';
-import { getLegalMoves, squareToRC, rcToSquare } from '../../utils/chess.js';
+import { getLegalMoves, rcToSquare } from '../../utils/chess.js';
 
 // Unicode figuralar (ikala tomon ham to'liq glif, rang CSS orqali)
 const GLYPH = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
@@ -23,7 +23,7 @@ const glyphOf = (p) => GLYPH[p.toUpperCase()];
 const isWhitePiece = (p) => p === p.toUpperCase();
 
 const TIME_OPTIONS = [
-  { value: '0', label: '0∞' },
+  { value: '0', label: '∞' },
   { value: '60', label: '1d' },
   { value: '90', label: '90s' },
   { value: '120', label: '2d' },
@@ -69,12 +69,12 @@ export default function Chess() {
   // Yurish qonuniyligi (UI uchun nuqtalar)
   const legalTargets = selected && game?.status === 'active' && currentTurnIsMe
     ? getLegalMoves(game.board, {
-        turn: game.turn,
-        castling: game.castling,
-        enPassant: game.enPassant,
-        halfmove: game.halfmove,
-        fullmove: game.fullmove,
-      }, selected).map((m) => m)
+      turn: game.turn,
+      castling: game.castling,
+      enPassant: game.enPassant,
+      halfmove: game.halfmove,
+      fullmove: game.fullmove,
+    }, selected).map((m) => m)
     : [];
 
   const resume = useCallback(() => {
@@ -356,16 +356,14 @@ export default function Chess() {
             )}
           </div>
 
-          {/* Taxta */}
+          {/* Taxta – TUZATILGAN QISM */}
           <div
             className="rounded-[18px] overflow-hidden select-none touch-manipulation"
             style={{ boxShadow: '0 10px 40px rgba(58,26,120,.18)', border: '3px solid #4c1d95' }}
           >
             <div className="grid grid-cols-8 w-full aspect-square">
-              {rows.map(([r, f], dr) =>
-                [0, 1, 2, 3, 4, 5, 6, 7].map((df, di) => {
-                  const rr = rows[dr][di][0];
-                  const ff = rows[dr][di][1];
+              {rows.map((row, dr) =>
+                row.map(([rr, ff], di) => {
                   const dark = (rr + ff) % 2 === 1;
                   const piece = game.board[rr][ff];
                   const isSel = selected && selected[0] === rr && selected[1] === ff;
@@ -380,7 +378,7 @@ export default function Chess() {
                     <button
                       key={`${dr}-${di}`}
                       onClick={() => onCellTap(rr, ff)}
-                      className="relative flex items-center justify-center"
+                      className="relative flex items-center justify-center aspect-square"
                       style={{
                         background: dark ? '#7c5cbf' : '#efe8fb',
                         cursor: piece && isWhitePiece(piece) === (myColor === 'w') ? 'pointer' : 'default',
@@ -393,7 +391,7 @@ export default function Chess() {
                         <span
                           className="relative z-10 leading-none"
                           style={{
-                            fontSize: 'min(9.5vw, 33px)',
+                            fontSize: 'min(12vw, 42px)',
                             color: isWhitePiece(piece) ? '#ffffff' : '#241a3d',
                             textShadow: isWhitePiece(piece)
                               ? '0 2px 4px rgba(0,0,0,.45), 0 0 1px rgba(0,0,0,.6)'
@@ -403,15 +401,13 @@ export default function Chess() {
                           {glyphOf(piece)}
                         </span>
                       ) : target ? (
-                        piece ? null : (
-                          <span className="absolute w-[26%] h-[26%] rounded-full" style={{ background: 'rgba(76,29,149,.4)' }} />
-                        )
+                        <span className="absolute w-[26%] h-[26%] rounded-full" style={{ background: 'rgba(76,29,149,.4)' }} />
                       ) : null}
                       {target && piece && (
                         <span className="absolute inset-[6%] rounded-full z-[5]" style={{ border: '3px solid rgba(76,29,149,.55)' }} />
                       )}
                       {/* koordinatalar */}
-                      {df === 0 && (
+                      {di === 0 && (
                         <span className="absolute top-[3px] left-[4px] text-[8.5px] font-bold" style={{ color: dark ? 'rgba(255,255,255,.65)' : 'rgba(76,29,149,.55)' }}>
                           {8 - rr}
                         </span>
