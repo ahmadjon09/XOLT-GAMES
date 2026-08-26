@@ -853,9 +853,9 @@ export function LangSwitcher({ compact, dark }) {
 }
 
 const FLAG_DATA = {
-  uz: "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 30 20%22%3E%3Crect width=%2230%22 height=%2220%22 rx=%223%22 fill=%22%23e8e6f0%22/%3E%3Crect x=%223%22 y=%223%22 width=%2224%22 height=%2214%22 rx=%222%22 fill=%22%231eb53a%22/%3E%3Crect x=%223%22 y=%223%22 width=%2224%22 height=%224.5%22 fill=%22%230099b5%22/%3E%3Crect x=%223%22 y=%2212.5%22 width=%2224%22 height=%224.5%22 fill=%22%230099b5%22/%3E%3Ccircle cx=%228%22 cy=%2210%22 r=%223%22 fill=%22%23fff%22/%3E%3C/svg%3E",
-  ru: "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 30 20%22%3E%3Crect width=%2230%22 height=%2220%22 rx=%223%22 fill=%22%23e8e6f0%22/%3E%3Crect x=%223%22 y=%223%22 width=%2224%22 height=%224.7%22 fill=%22%23fff%22/%3E%3Crect x=%223%22 y=%227.7%22 width=%2224%22 height=%224.7%22 fill=%22%230039a6%22/%3E%3Crect x=%223%22 y=%2212.3%22 width=%2224%22 height=%224.7%22 fill=%22%23d52b1e%22/%3E%3C/svg%3E",
-  en: "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 30 20%22%3E%3Crect width=%2230%22 height=%2220%22 rx=%223%22 fill=%22%23e8e6f0%22/%3E%3Crect x=%223%22 y=%223%22 width=%2224%22 height=%2214%22 fill=%22%23fff%22/%3E%3Crect x=%223%22 y=%229.5%22 width=%2224%22 height=%221.5%22 fill=%22%23b22234%22/%3E%3Crect x=%2214.5%22 y=%223%22 width=%221.5%22 height=%2214%22 fill=%22%23b22234%22/%3E%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%226.5%22 fill=%22%233c3b6e%22/%3E%3C/svg%3E",
+  uz: "https://purecatamphetamine.github.io/country-flag-icons/3x2/UZ.svg",
+  ru: "https://purecatamphetamine.github.io/country-flag-icons/3x2/RU.svg",
+  en: "https://purecatamphetamine.github.io/country-flag-icons/3x2/GB.svg",
 };
 
 export function PlayerCard({ player, side, you, youLabel, turn, showCoins, disconnected, children }) {
