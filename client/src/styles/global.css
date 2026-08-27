@@ -407,7 +407,11 @@
     padding: 7px 13px;
     border-radius: 999px;
   }
-  .chip.active { @apply text-primary border-primary/30 bg-primary-soft; }
+  .chip.active {
+    @apply text-white border-transparent;
+    background: var(--grad-primary);
+    box-shadow: var(--glow-primary);
+  }
 
   /* Segmentlangan tanlagich */
   .segment {
@@ -423,7 +427,11 @@
     border-radius: var(--r-xs);
     font-size: 13.5px;
   }
-  .segment button.active { @apply bg-surface text-ink; box-shadow: 0 2px 8px rgba(30, 22, 51, 0.09); }
+  .segment button.active {
+    background: var(--grad-primary);
+    color: #fff;
+    box-shadow: var(--glow-primary);
+  }
   .segment.scroll { @apply justify-start; }
   .segment.scroll button { flex: none; }
 

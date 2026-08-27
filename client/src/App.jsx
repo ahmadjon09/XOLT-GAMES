@@ -35,6 +35,7 @@ import AdminUsers from './pages/staff/AdminUsers.jsx';
 import UserDetails from './pages/staff/UserDetails.jsx';
 import AdminStaff from './pages/staff/AdminStaff.jsx';
 import AdminShop from './pages/staff/AdminShop.jsx';
+import StaffProfile from './pages/staff/StaffProfile.jsx';
 
 // Sahifani himoya qiluvchi wrapper
 function Guard({ children, kind, roles }) {
@@ -139,6 +140,7 @@ export default function App() {
           }
         >
           <Route path="/staff" element={<StaffHome />} />
+          <Route path="/staff/profile" element={<StaffProfile />} />
           <Route path="/staff/groups" element={<Guard roles={['ADMIN', 'TEACHER']}><TeacherGroups /></Guard>} />
           <Route path="/staff/groups/:id" element={<Guard roles={['ADMIN', 'TEACHER']}><GroupDetail /></Guard>} />
           <Route path="/staff/attendance" element={<Guard roles={['ADMIN', 'TEACHER']}><AttendanceMark /></Guard>} />

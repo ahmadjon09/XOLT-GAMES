@@ -1,7 +1,7 @@
 // Xodim bosh sahifasi - rolga qarab bo'limlar
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Users, CalendarCheck2, ListChecks, Wallet, Store, Trophy, User as UserIcon, Keyboard, Code2, ChevronRight } from 'lucide-react';
+import { Users, CalendarCheck2, ListChecks, Wallet, Store, Trophy, User as UserIcon, UserRound, Keyboard, Code2, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { AutoGrid, Card } from '../../components/ui.jsx';
 
@@ -11,6 +11,7 @@ export default function StaffHome() {
   const role = user?.role;
 
   const sections = [
+    { to: '/staff/profile', icon: UserRound, color: '#0ea5e9', bg: '#e4f4fd', title: t('staff.myProfile'), desc: t('staffProfile.editProfileSub'), roles: ['ADMIN', 'TEACHER', 'CASHIER'] },
     { to: '/staff/groups', icon: Users, color: '#5b1ea6', bg: '#efe7fb', title: t('staff.groups'), desc: t('staff.teacherDesc'), roles: ['ADMIN', 'TEACHER'] },
     { to: '/staff/attendance', icon: CalendarCheck2, color: '#16a34a', bg: '#e6f7ec', title: t('staff.attendance'), desc: t('attMark.selectDate'), roles: ['ADMIN', 'TEACHER'] },
     { to: '/staff/quizzes', icon: ListChecks, color: '#e34c6b', bg: '#fdeef1', title: t('staff.quizzes'), desc: t('hostP.selectQuiz'), roles: ['ADMIN', 'TEACHER'] },

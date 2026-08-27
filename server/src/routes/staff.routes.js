@@ -20,6 +20,57 @@ const canAccessGroup = async (staff, groupId) => {
   return true;
 };
 
+// ============ O'Z PROFFILI (barcha xodimlar) ============
+
+// GET /api/staff/profile - o'z profilini ko'rish
+router.get(
+  '/profile',
+  asyncH(async (req, res) => {
+    const s = await prisma.staff.findUnique({ where: { id: req.user.id } });
+    if (!s) throw new ApiError(404, 'NOT_FOUND', 'Xodim topilmadi');
+    const [groupsCount, quizzesCount] = await Promise.all([
+      prisma.group.count({ where: { teacherId: s.id } }),
+      prisma.quiz.count({ where: { createdById: s.id } }),
+    ]);
+    return ok(res, {
+      id: s.id,
+      full_name: s.full_name,
+      phone: s.phone,
+      avatar: s.avatar,
+      role: s.role,
+      groupsCount,
+      quizzesCount,
+      createdAt: s.createdAt,
+    });
+  })
+);
+
+// PATCH /api/staff/profile - o'z profilini tahrirlash (ism / telefon)
+router.patch(
+  '/profile',
+  asyncH(async (req, res) => {
+    const schema = z.object({
+      full_name: z.string().min(3, 'Ism kamida 3 belgi').max(60).optional(),
+      phone: z.string().min(7, 'Telefon kiriting').optional(),
+    });
+    const data = schema.parse(req.body);
+
+    const update = {};
+    if (data.full_name !== undefined) update.full_name = data.full_name;
+    if (data.phone !== undefined) {
+      const phone = normalizePhone(data.phone);
+      if (!phone) throw new ApiError(400, 'INVALID_PHONE', 'Telefon noto\'g\'ri');
+      const exists = await prisma.staff.findUnique({ where: { phone } });
+      if (exists && exists.id !== req.user.id) throw new ApiError(409, 'PHONE_EXISTS', 'Bu telefon allaqachon band');
+      update.phone = phone;
+    }
+
+    if (Object.keys(update).length === 0) return ok(res, { message: 'Hech narsa o\'zgarmadi' });
+    const s = await prisma.staff.update({ where: { id: req.user.id }, data: update });
+    return ok(res, { id: s.id, full_name: s.full_name, phone: s.phone, avatar: s.avatar, role: s.role, createdAt: s.createdAt }, { message: 'Profil yangilandi' });
+  })
+);
+
 // ============ GURUHLAR ============
 
 // GET /api/staff/groups - teacher o'zini, admin/cashier hammasini ko'radi
@@ -324,6 +375,11 @@ router.get(
 
     const rows = members.map((mem) => {
       const mine = records.filter((r) => r.userId === mem.user.id);
+      // Har bir kun bo'yicha holat (sana bilan) — box'lar uchun
+      const statusByDate = {};
+      mine.forEach((r) => {
+        statusByDate[r.date.toISOString().slice(0, 10)] = r.status;
+      });
       return {
         userId: mem.user.id,
         full_name: mem.user.full_name,
@@ -333,6 +389,7 @@ router.get(
         absent: mine.filter((r) => r.status === 'absent').length,
         late: mine.filter((r) => r.status === 'late').length,
         marked: mine.length,
+        days: dates.map((d) => statusByDate[d] || null),
       };
     });
 

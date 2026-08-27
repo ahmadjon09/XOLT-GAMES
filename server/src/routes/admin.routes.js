@@ -334,7 +334,12 @@ router.patch(
     const staff = await prisma.staff.findUnique({ where: { id: req.params.id } });
     if (!staff) throw new ApiError(404, 'NOT_FOUND', 'Xodim topilmadi');
 
-    // O'zini o'zi o'chira olmaydi
+    // Boshqa adminni tahrirlash mumkin emas — admin faqat o'zini "Mening profilim"dan o'zgartiradi
+    if (staff.role === 'ADMIN' && staff.id !== req.user.id) {
+      throw new ApiError(403, 'ADMIN_LOCKED', 'Boshqa adminni tahrirlash mumkin emas');
+    }
+
+    // O'zini o'zi faolshtira olmaydi
     if (data.active === false && staff.id === req.user.id) {
       throw new ApiError(400, 'CANNOT_DISABLE_SELF', 'O\'zingizni faolshtira olmaysiz');
     }
@@ -356,6 +361,10 @@ router.delete(
   asyncH(async (req, res) => {
     if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
     if (req.params.id === req.user.id) throw new ApiError(400, 'CANNOT_DELETE_SELF', 'O\'zingizni o\'chira olmaysiz');
+    const target = await prisma.staff.findUnique({ where: { id: req.params.id } });
+    if (target && target.role === 'ADMIN') {
+      throw new ApiError(403, 'ADMIN_LOCKED', 'Adminni o\'chirish mumkin emas');
+    }
     await prisma.staff.delete({ where: { id: req.params.id } });
     return ok(res, { message: 'Xodim o\'chirildi' });
   })
