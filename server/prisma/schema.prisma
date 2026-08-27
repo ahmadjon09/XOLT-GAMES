@@ -27,7 +27,6 @@ model User {
   username        String?      @unique
   password        String
   coin            Int          @default(0)
-  discount        Int          @default(0) // chegirma foizi (0-100)
   week_score      Int          @default(0)
   month_score     Int          @default(0)
   score           Int          @default(0)
@@ -84,7 +83,6 @@ model Staff {
 model Group {
   id          String       @id @default(cuid())
   name        String
-  rank        Int          @default(0)
   monthlyFee  Float        @default(0) // oylik to'lov summasi (so'm)
   teacherId   String
   teacher     Staff        @relation(fields: [teacherId], references: [id])
@@ -219,6 +217,7 @@ model Payment {
   amount      Float
   month       String    // "2026-08" formatida
   status      String    @default("unpaid") // paid | unpaid
+  discount    Int       @default(0) // bir martalik chegirma foizi (0-100) — faqat shu to'lovga
   note        String?
   paidAt      DateTime?
   createdById String?

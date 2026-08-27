@@ -41,8 +41,8 @@ export default function UserDetails() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
-  const [payForm, setPayForm] = useState({ groupId: '', amount: '', month: currentMonth(), note: '', status: 'paid' });
-  const [form, setForm] = useState({ full_name: '', username: '', password: '', discount: 0, groupIds: [] });
+  const [payForm, setPayForm] = useState({ groupId: '', amount: '', month: currentMonth(), discount: 0, note: '', status: 'paid' });
+  const [form, setForm] = useState({ full_name: '', username: '', password: '', groupIds: [] });
   const [busy, setBusy] = useState(false);
 
   // SWR cache bilan
@@ -59,7 +59,6 @@ export default function UserDetails() {
       full_name: data.full_name,
       username: data.username || '',
       password: '',
-      discount: data.discount || 0,
       groupIds: data.groups.map((g) => g.id),
     });
     setEditOpen(true);
@@ -70,6 +69,7 @@ export default function UserDetails() {
       ...f,
       groupId: data.groups[0]?.id || '',
       amount: '',
+      discount: 0,
       note: '',
       status: 'paid',
       month: currentMonth(),
@@ -84,7 +84,6 @@ export default function UserDetails() {
         full_name: form.full_name,
         username: form.username || null,
         password: form.password || undefined,
-        discount: form.discount,
         groupIds: form.groupIds,
       });
       toast.success(t('userDetail.saved'));
@@ -111,6 +110,7 @@ export default function UserDetails() {
         month: payForm.month,
         amount,
         status: payForm.status,
+        discount: payForm.discount || 0,
         note: payForm.note || null,
       });
       toast.success(payForm.status === 'paid' ? t('cashP.paymentAdded') : t('cashP.paymentUpdated'));
@@ -262,7 +262,6 @@ export default function UserDetails() {
             <span className="badge primary">
               <Trophy size={12} /> {t('userDetail.rank')}: #{data.rank}
             </span>
-            {data.discount > 0 && <span className="badge warn">{t('payments.discount')}: {data.discount}%</span>}
             <CoinBadge value={data.coin} />
             <span className="badge neutral">{t('userDetail.memberSince')}: {fmtDate(data.createdAt)}</span>
           </div>
@@ -573,9 +572,6 @@ export default function UserDetails() {
         <Field label={t('usersP.password')} hint={t('usersP.loginInfo')}>
           <Input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••" />
         </Field>
-        <Field label={t('payments.discount')} hint={t('payments.discountHint')}>
-          <NumberInput value={form.discount} min={0} max={100} onChange={(v) => setForm({ ...form, discount: v })} />
-        </Field>
         <Field label={t('usersP.assignGroups')}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {groups.map((g) => (
@@ -608,9 +604,23 @@ export default function UserDetails() {
             {data.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </Select>
         </Field>
+        <Field label={t('payments.monthlyFee')}>
+          <div className="input flex items-center tabular-nums" style={{ background: 'var(--color-surface-2)' }}>
+            {fmtMoney(groups.find((g) => g.id === payForm.groupId)?.monthlyFee || 0)} so'm
+          </div>
+        </Field>
         <Field label={t('cashP.amount')}>
           <NumberInput value={payForm.amount || 0} min={0} onChange={(v) => setPayForm({ ...payForm, amount: v })} placeholder="200000" />
         </Field>
+        <Field label={t('payments.oneTimeDiscount')} hint={t('payments.oneTimeDiscountHint')}>
+          <NumberInput value={payForm.discount || 0} min={0} max={100} onChange={(v) => setPayForm({ ...payForm, discount: v })} placeholder="0" />
+        </Field>
+        {payForm.discount > 0 && (
+          <div className="bg-success-soft text-success rounded-[14px] p-3.5 mb-3.5 text-[13.5px] font-bold tabular-nums">
+            {t('payments.effectiveFee')}: {fmtMoney(Math.round((groups.find((g) => g.id === payForm.groupId)?.monthlyFee || 0) * (1 - (payForm.discount || 0) / 100)))} so'm
+            <span className="block font-semibold text-[11.5px] mt-0.5">{t('payments.oneTimeOnlyNote')}</span>
+          </div>
+        )}
         <Field label={t('cashP.selectMonth')}>
           <Input type="month" value={payForm.month} onChange={(e) => setPayForm({ ...payForm, month: e.target.value })} />
         </Field>

@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useTranslation } from 'react-i18next';
 import {
   Home, Store, Trophy, User, LayoutDashboard, Users, CalendarCheck2, ListChecks,
-  Wallet, LogOut, Wifi, WifiOff, Zap, Keyboard, Code2, ChevronLeft, Swords,
+  Wallet, LogOut, Wifi, WifiOff, Zap, Keyboard, Code2, ChevronLeft, Swords, UserRound,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSocket } from '../context/SocketContext.jsx';
@@ -246,6 +246,7 @@ export function StaffLayout() {
   const role = user?.role;
   const menu = [
     { to: '/staff', end: true, icon: LayoutDashboard, label: t('staff.dashboard'), roles: ['ADMIN', 'TEACHER', 'CASHIER'] },
+    { to: '/staff/profile', icon: UserRound, label: t('staff.myProfile'), roles: ['ADMIN', 'TEACHER', 'CASHIER'] },
     { to: '/staff/groups', icon: Users, label: t('staff.groups'), roles: ['ADMIN', 'TEACHER'] },
     { to: '/staff/attendance', icon: CalendarCheck2, label: t('staff.attendance'), roles: ['ADMIN', 'TEACHER'] },
     { to: '/staff/quizzes', icon: ListChecks, label: t('staff.quizzes'), roles: ['ADMIN', 'TEACHER'] },
@@ -273,6 +274,9 @@ export function StaffLayout() {
             <div className="font-extrabold text-[15px] truncate">{user?.full_name}</div>
             <div className="text-[11.5px] font-bold text-primary truncate">{roleLabel}</div>
           </div>
+          <button className="btn ico ghost" onClick={() => navigate('/staff/profile')} title={t('staff.myProfile')}>
+            <UserRound size={18} />
+          </button>
           <button className="btn ico ghost" onClick={() => setLogoutOpen(true)} title={t('nav.logout')}>
             <LogOut size={18} />
           </button>
@@ -301,15 +305,19 @@ export function StaffLayout() {
         items={menu}
         footer={
           <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fdc700] text-base font-black text-[#472692]">
-                {user?.full_name?.slice(0, 1) || 'X'}
+            <Link to="/staff/profile" className="flex items-center gap-3 group">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-[#fdc700] text-base font-black text-[#472692] overflow-hidden shrink-0">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  user?.full_name?.slice(0, 1) || 'X'
+                )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold text-white">{user?.full_name}</div>
+                <div className="truncate text-sm font-bold text-white group-hover:text-[#fbbf24] transition-colors">{user?.full_name}</div>
                 <div className="text-[11px] font-semibold text-white/55">{roleLabel}</div>
               </div>
-            </div>
+            </Link>
             <button
               onClick={() => setLogoutOpen(true)}
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2 text-xs font-bold text-white/80 transition hover:bg-white/20 hover:text-white"

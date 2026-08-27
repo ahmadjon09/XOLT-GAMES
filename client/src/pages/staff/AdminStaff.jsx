@@ -1,7 +1,7 @@
 // Admin: xodimlar boshqaruvi - teacher/cashier/admin yaratish
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { UserCog, Plus, Pencil, Trash2, Power } from 'lucide-react';
+import { UserCog, Plus, Pencil, Trash2, Power, Lock } from 'lucide-react';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -127,14 +127,26 @@ export default function AdminStaff() {
                 </div>
               </div>
               <div className="flex items-center shrink-0">
-                <IconButton
-                  icon={Power}
-                  label={s.active ? t('staffP.deactivate') : t('staffP.activate')}
-                  onClick={() => toggleActive(s)}
-                  className={s.active ? '!text-success' : ''}
-                />
-                <IconButton icon={Pencil} label={t('common.edit')} onClick={() => openEdit(s)} disabled={busy} />
-                <IconButton icon={Trash2} label={t('common.delete')} danger onClick={() => setDeleteTarget(s)} disabled={busy} />
+                {s.role === 'ADMIN' ? (
+                  // Boshqa adminlarni tahrirlash mumkin emas - faqat o'zi "Mening profilim"dan
+                  <span
+                    className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-muted bg-surface-2 px-2.5 py-1.5 rounded-full"
+                    title={t('staffP.adminSelfEditOnly')}
+                  >
+                    <Lock size={12} /> {t('staffP.selfOnly')}
+                  </span>
+                ) : (
+                  <>
+                    <IconButton
+                      icon={Power}
+                      label={s.active ? t('staffP.deactivate') : t('staffP.activate')}
+                      onClick={() => toggleActive(s)}
+                      className={s.active ? '!text-success' : ''}
+                    />
+                    <IconButton icon={Pencil} label={t('common.edit')} onClick={() => openEdit(s)} disabled={busy} />
+                    <IconButton icon={Trash2} label={t('common.delete')} danger onClick={() => setDeleteTarget(s)} disabled={busy} />
+                  </>
+                )}
               </div>
             </div>
           ))}

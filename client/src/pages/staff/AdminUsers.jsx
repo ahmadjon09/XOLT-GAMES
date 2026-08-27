@@ -8,7 +8,7 @@ import { useGetMeta, useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import {
   Card, Button, Input, Field, EmptyState, Avatar, AnimatedName,
-  Sheet, ConfirmDialog, Badge, PageHeader, IconButton, SearchInput, NumberInput, PhoneInput, Pagination, SkeletonRow,
+  Sheet, ConfirmDialog, Badge, PageHeader, IconButton, SearchInput, PhoneInput, Pagination, SkeletonRow,
 } from '../../components/ui.jsx';
 import { fmtNum, fmtPhone } from '../../utils/format.js';
 
@@ -21,7 +21,7 @@ export default function AdminUsers() {
   const [page, setPage] = useState(1);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ full_name: '', phone: '', password: '', username: '', discount: 0, groupIds: [] });
+  const [form, setForm] = useState({ full_name: '', phone: '', password: '', username: '', groupIds: [] });
   const [busy, setBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
@@ -40,13 +40,13 @@ export default function AdminUsers() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ full_name: '', phone: '', password: '', username: '', discount: 0, groupIds: [] });
+    setForm({ full_name: '', phone: '', password: '', username: '', groupIds: [] });
     setEditorOpen(true);
   };
 
   const openEdit = (u) => {
     setEditing(u);
-    setForm({ full_name: u.full_name, phone: u.phone, password: '', username: u.username || '', discount: u.discount || 0, groupIds: u.groups.map((g) => g.id) });
+    setForm({ full_name: u.full_name, phone: u.phone, password: '', username: u.username || '', groupIds: u.groups.map((g) => g.id) });
     setEditorOpen(true);
   };
 
@@ -58,7 +58,6 @@ export default function AdminUsers() {
           full_name: form.full_name,
           username: form.username || null,
           password: form.password || undefined,
-          discount: form.discount,
           groupIds: form.groupIds,
         });
         toast.success(t('usersP.userUpdated'));
@@ -171,9 +170,6 @@ export default function AdminUsers() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                {u.discount > 0 && (
-                  <Badge color="warn">{t('payments.discount')}: {u.discount}%</Badge>
-                )}
                 <Badge color="neutral">{fmtNum(u.coin)}</Badge>
                 <IconButton icon={Pencil} label={t('common.edit')} onClick={() => openEdit(u)} disabled={busy} />
                 <IconButton icon={Trash2} label={t('common.delete')} danger onClick={() => setDeleteTarget(u)} disabled={busy} />
@@ -220,15 +216,6 @@ export default function AdminUsers() {
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
             placeholder="@username"
-            disabled={busy}
-          />
-        </Field>
-        <Field label={t('payments.discount')} hint={t('payments.discountHint')}>
-          <NumberInput
-            value={form.discount}
-            min={0}
-            max={100}
-            onChange={(v) => setForm({ ...form, discount: v })}
             disabled={busy}
           />
         </Field>

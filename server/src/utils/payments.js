@@ -1,5 +1,6 @@
-// To'lov logikasi: guruh oylik to'lovi + o'quvchi chegirmasi
+// To'lov logikasi: guruh oylik to'lovi + BIR MARTALIK chegirma
 // effectiveFee = monthlyFee * (1 - discount/100)
+// Chegirma endi o'quvchiga emas, AYRAN TO'LOVGA bog'lanadi (Payment.discount)
 // Agar to'langan summa effectiveFee'ga yetsa -> paid (to'liq)
 // Agar 0 dan katta lekin yetmasa -> partial (chala)
 // Aks holda -> unpaid
@@ -21,9 +22,10 @@ export function normalizeStatus(amount, effective) {
 }
 
 // Frontendga yuboriladigan to'lov obyekti
-export function paymentView(p, group, user) {
+// discount — shu to'lovga qo'llangan BIR MARTALIK chegirma foizi
+export function paymentView(p, group) {
   const monthlyFee = Number(group?.monthlyFee) || 0;
-  const discount = Number(user?.discount) || 0;
+  const discount = Math.min(100, Math.max(0, Number(p?.discount) || 0));
   const effective = effectiveFee(monthlyFee, discount);
   const amount = Number(p?.amount) || 0;
   return {
@@ -33,11 +35,11 @@ export function paymentView(p, group, user) {
     month: p.month,
     amount,
     status: p.status,
+    discount,
     note: p.note,
     paidAt: p.paidAt,
     createdAt: p.createdAt,
     monthlyFee,
-    discount,
     effectiveFee: effective,
     remaining: p.status === 'paid' ? 0 : Math.max(0, effective - amount),
     paidPercent: effective > 0 ? Math.min(100, Math.round((amount / effective) * 100)) : 0,

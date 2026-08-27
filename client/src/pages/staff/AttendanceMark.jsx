@@ -14,6 +14,12 @@ const STATUS_META = {
   late: { label: 'late', icon: Clock3, color: 'text-[#9a6d00]', bg: 'bg-accent-soft', border: 'border-accent' },
   absent: { label: 'absent', icon: XCircle, color: 'text-danger', bg: 'bg-danger-soft', border: 'border-danger' },
 };
+// Xulosa tab'dagi kunlik box'lar ranglari
+const DAY_META = {
+  present: { bg: 'var(--color-success-soft)', color: 'var(--color-success)' },
+  late: { bg: '#fef3c7', color: '#9a6d00' },
+  absent: { bg: 'var(--color-danger-soft)', color: 'var(--color-danger)' },
+};
 
 export default function AttendanceMark() {
   const { t } = useTranslation();
@@ -55,9 +61,11 @@ export default function AttendanceMark() {
     setDraft((rs) => (rs || []).map((r) => (r.userId === userId ? { ...r, status } : r)));
   };
 
+  // "Hammasi" tugmalari faqat BELGILANMAGAN o'quvchilarga ta'sir qiladi -
+  // avval belgilanganlar (masalan "qatnashdi") o'z holatida qoladi
   const setAll = (status) => {
     setDirty(true);
-    setDraft((rs) => (rs || []).map((r) => ({ ...r, status })));
+    setDraft((rs) => (rs || []).map((r) => (r.status === 'unmarked' ? { ...r, status } : r)));
   };
 
   const save = async () => {
@@ -166,6 +174,9 @@ export default function AttendanceMark() {
                   <Clock3 size={18} className="mr-1.5" /> {t('attMark.allLate')}
                 </Button>
               </div>
+              <div className="text-[12px] text-muted font-semibold text-center -mt-1">
+                {t('attMark.quickHint')}
+              </div>
 
               <Card className="p-0 p-0 -my-1.5">
                 {(draft || []).map((r) => {
@@ -231,23 +242,45 @@ export default function AttendanceMark() {
                 </span>
               </div>
               {summary.rows.map((r) => (
-                <div key={r.userId} className="flex items-center gap-4 px-4 py-3.5 border-b border-border last:border-b-0 hover:bg-surface-2/40 transition-colors">
-                  <Avatar w={48} avatar={r.avatar} frame={r.currentFrame} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-[14.5px] truncate">
-                      <AnimatedName config={r.currentEffect?.config}>{r.full_name}</AnimatedName>
+                <div key={r.userId} className="px-4 py-3.5 border-b border-border last:border-b-0 hover:bg-surface-2/40 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <Avatar w={48} avatar={r.avatar} frame={r.currentFrame} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-[14.5px] truncate">
+                        <AnimatedName config={r.currentEffect?.config}>{r.full_name}</AnimatedName>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-success-soft text-success">
+                        <CheckCircle2 size={14} /> {r.present}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-accent-soft text-[#9a6d00]">
+                        <Clock3 size={14} /> {r.late}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-danger-soft text-danger">
+                        <XCircle size={14} /> {r.absent}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-success-soft text-success">
-                      <CheckCircle2 size={14} /> {r.present}
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-accent-soft text-[#9a6d00]">
-                      <Clock3 size={14} /> {r.late}
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-danger-soft text-danger">
-                      <XCircle size={14} /> {r.absent}
-                    </span>
+                  {/* Kunlik davomat: har bir box ichida oyning kuni (sana) ko'rinadi */}
+                  <div className="flex gap-1.5 overflow-x-auto mt-3 pt-0.5 pb-1 -mx-1 px-1">
+                    {(r.days || []).map((st, i) => {
+                      const d = summary.dates[i];
+                      const meta = DAY_META[st];
+                      return (
+                        <div
+                          key={d}
+                          title={`${d} — ${meta ? t(`attMark.${st}`) : t('attMark.unmarked')}`}
+                          className="w-[30px] h-[30px] rounded-[10px] flex items-center justify-center text-[11.5px] font-extrabold shrink-0 tabular-nums transition-colors"
+                          style={{
+                            background: meta ? meta.bg : 'var(--color-surface-3)',
+                            color: meta ? meta.color : 'var(--color-muted)',
+                          }}
+                        >
+                          {Number(d.slice(8))}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}

@@ -131,9 +131,6 @@ export default function GroupDetail() {
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-[14.5px] flex items-center gap-2 flex-wrap">
                       <AnimatedName config={m.currentEffect?.config}>{m.full_name}</AnimatedName>
-                      {m.discount > 0 && (
-                        <Badge color="warn">{t('payments.discount')}: {m.discount}%</Badge>
-                      )}
                     </div>
                     <div className="text-[12.5px] text-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
                       <span className="tabular-nums">{fmtPhone(m.phone)}</span>
