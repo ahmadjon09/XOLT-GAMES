@@ -288,8 +288,10 @@ export default function QuizPlay() {
     const myIdx = final.final.findIndex((p) => p.userId === myId);
     const my = final.final[myIdx];
     return (
-      <div className="page no-nav" style={{ paddingTop: 24 }}>
-        <Confetti />
+      <>
+        <TopBar title={session?.quizName || t('quiz.title')} back onBack={leave} />
+        <div className="page no-nav" style={{ paddingTop: 24 }}>
+          <Confetti />
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <div style={{ fontSize: 24, fontWeight: 900 }}>{t('quiz.finalResults')}</div>
           <div style={{ color: 'var(--muted)', fontSize: 13.5 }}>{session?.quizName}</div>
@@ -324,7 +326,8 @@ export default function QuizPlay() {
         <Button variant="outline" className="full" style={{ marginTop: 14 }} onClick={leave}>
           <LogOut size={16} /> {t('quiz.exit')}
         </Button>
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -335,11 +338,11 @@ export default function QuizPlay() {
     const myResult = reveal?.results?.find((r) => r.userId === myId);
 
     return (
-      <div className="page no-nav" style={{ paddingTop: 10 }}>
-        <TopBar title={session?.quizName || t('quiz.title')} back />
+      <>
+        <TopBar title={session?.quizName || t('quiz.title')} back onBack={leave} />
+        <div className="page no-nav" style={{ paddingTop: 10 }}>
 
-        {}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '6px 0 12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '6px 0 12px' }}>
           <span className="badge primary">{t('quiz.question')} {question.index + 1} {t('quiz.of')} {question.totalQuestions}</span>
           <span className="badge neutral">{myPlayer?.score || 0} {t('quiz.points')}</span>
         </div>
@@ -407,7 +410,8 @@ export default function QuizPlay() {
             {myResult.answerIndex === null && ` • ${t('quiz.noAnswer')}`}
           </div>
         )}
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -415,9 +419,10 @@ export default function QuizPlay() {
   if (phase === PHASE.LOBBY && session) {
     const players = session.players || [];
     return (
-      <div className="page" style={{ paddingTop: 14 }}>
-        <TopBar title={session.quizName || t('quiz.title')} back />
-        <Card style={{ textAlign: 'center', padding: 24, marginTop: 8 }}>
+      <>
+        <TopBar title={session.quizName || t('quiz.title')} back onBack={leave} />
+        <div className="page" style={{ paddingTop: 14 }}>
+          <Card style={{ textAlign: 'center', padding: 24, marginTop: 8 }}>
           <div style={{ fontWeight: 900, fontSize: 18 }}>{t('quiz.waitingHost')}</div>
           <div style={{ color: 'var(--muted)', fontSize: 13.5, marginTop: 4 }}>
             {session.totalQuestions} {t('quiz.questionCount')}
@@ -446,21 +451,25 @@ export default function QuizPlay() {
         <Button variant="outline" className="full" style={{ marginTop: 16 }} onClick={leave}>
           <X size={16} /> {t('quiz.exit')}
         </Button>
-      </div>
+        </div>
+      </>
     );
   }
 
   
   return (
-    <div className="page" style={{ paddingTop: 14 }}>
-      <Card>
-        <EmptyState
-          icon={ListChecks}
-          title={t('quiz.ended')}
-          sub={kicked ? t('quiz.kickedMsg') : undefined}
-          action={<Button variant="outline" onClick={leave}>{t('quiz.exit')}</Button>}
-        />
-      </Card>
-    </div>
+    <>
+      <TopBar title={session?.quizName || t('quiz.title')} back onBack={leave} />
+      <div className="page" style={{ paddingTop: 14 }}>
+        <Card>
+          <EmptyState
+            icon={ListChecks}
+            title={t('quiz.ended')}
+            sub={kicked ? t('quiz.kickedMsg') : undefined}
+            action={<Button variant="outline" onClick={leave}>{t('quiz.exit')}</Button>}
+          />
+        </Card>
+      </div>
+    </>
   );
 }

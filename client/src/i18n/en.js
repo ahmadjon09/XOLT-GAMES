@@ -404,6 +404,7 @@ export const en = {
     waitAnswer: 'Receiving answers...',
   },
   staff: {
+    title: 'Dashboard',
     dashboard: 'Dashboard',
     myProfile: 'My profile',
     groups: 'Groups',
@@ -517,6 +518,7 @@ export const en = {
     quizImage: 'Quiz image',
   },
   hostP: {
+    title: 'Quiz host',
     selectQuiz: 'Select a quiz',
     qrCode: 'QR code',
     roomCode: 'Room code',
@@ -928,5 +930,14 @@ export const en = {
     chess: 'Chess',
     typerace: 'Typing',
     codebattle: 'Code battle',
+  },
+  install: {
+    title: 'Install XOLT Games',
+    desc: 'Add the app — games open faster and in full screen',
+    button: 'Install',
+    later: 'Later',
+    installed: 'App installed',
+    iosTitle: 'Add the app',
+    iosDesc: 'Tap the Share button, then choose "Add to Home Screen"',
   },
 }

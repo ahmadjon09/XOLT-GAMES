@@ -7,6 +7,7 @@ import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { Card, Button, Select, Input, Field, PageLoader, EmptyState, Avatar, AnimatedName, Segmented, Spinner, PageHeader } from '../../components/ui.jsx';
 import { todayKey, currentMonth, monthLabel } from '../../utils/format.js';
+import { TopBar } from '../../layouts/Layouts.jsx';
 
 const STATUS = ['present', 'late', 'absent'];
 const STATUS_META = {
@@ -97,6 +98,7 @@ export default function AttendanceMark() {
   if (!groups || groupsLoading) {
     return (
       <>
+        <TopBar title={t('attMark.title')} back />
         <div className="page-staff pt-4">
         <PageHeader icon={CalendarCheck2} title={t('attMark.title')} />
         <PageLoader />
@@ -107,6 +109,7 @@ export default function AttendanceMark() {
 
   return (
     <>
+      <TopBar title={t('attMark.title')} back />
       <div className="page-staff pt-4 space-y-3.5">
         <PageHeader
           icon={CalendarCheck2}

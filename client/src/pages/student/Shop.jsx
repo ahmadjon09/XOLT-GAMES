@@ -79,7 +79,7 @@ export default function Shop() {
 
   return (
     <>
-      <TopBar title={t('shop.title')} right={<CoinBadge value={data.coin} />} />
+      <TopBar title={t('shop.title')} />
       <div className="page pt-4 space-y-[var(--gap)]">
         <div className="lg:max-w-[520px]">
           <Segmented

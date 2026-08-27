@@ -274,8 +274,10 @@ export default function Chess() {
   if (finalResult && game) {
     const won = finalResult.draw ? null : finalResult.winner === myRole;
     return (
-      <div className="page no-nav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40 }}>
-        {won && <Confetti />}
+      <>
+        <TopBar title={t('chess.title')} back onBack={leave} />
+        <div className="page no-nav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40 }}>
+          {won && <Confetti />}
         <div
           className="w-[84px] h-[84px] rounded-[28px] flex items-center justify-center mb-4 text-white"
           style={{ background: won ? 'var(--grad-gold)' : won === null ? 'var(--grad-primary-soft)' : 'linear-gradient(135deg,#64748b,#334155)', boxShadow: won ? 'var(--glow-gold)' : 'none' }}
@@ -305,7 +307,8 @@ export default function Chess() {
             </Button>
           </div>
         </Card>
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -315,12 +318,9 @@ export default function Chess() {
     for (let dr = 0; dr < 8; dr++) rows.push(Array.from({ length: 8 }, (_, df) => [flip ? 7 - dr : dr, flip ? 7 - df : df]));
 
     return (
-      <div className="page no-nav" style={{ paddingTop: 10 }}>
-        <TopBar
-          title={t('chess.title')}
-          back
-          right={<CoinBadge value={user?.coin ?? 0} />}
-        />
+      <>
+        <TopBar title={t('chess.title')} back onBack={leave} />
+        <div className="page no-nav" style={{ paddingTop: 10 }}>
         <div className="pt-2.5 space-y-3 max-w-[520px] mx-auto">
           {!connected && (
             <div className="bg-accent-soft text-[#9a6d00] rounded-[12px] px-3.5 py-2.5 text-[13px] font-bold text-center">
@@ -386,7 +386,7 @@ export default function Chess() {
                     >
                       {isLast && <span className="absolute inset-0" style={{ background: 'rgba(251,191,36,.32)' }} />}
                       {kingInCheck && <span className="absolute inset-0" style={{ background: 'radial-gradient(circle, rgba(239,68,68,.65) 0%, rgba(239,68,68,.25) 70%, transparent 100%)' }} />}
-                      {isSel && <span className="absolute inset-0" style={{ background: 'rgba(124,58,237,.35)' }} />}
+                      {isSel && <span className="absolute inset-0" style={{ background: 'rgba(251,191,36,.42)', boxShadow: 'inset 0 0 0 3px rgba(251,191,36,.95)' }} />}
                       {piece ? (
                         <span
                           className="relative z-10 leading-none"
@@ -489,7 +489,8 @@ export default function Chess() {
         />
 
         {scanOpen && <QRScanner onScan={scanHandler} onClose={() => setScanOpen(false)} />}
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -497,9 +498,10 @@ export default function Chess() {
   if (game && game.status === 'waiting') {
     const joinUrl = `${window.location.origin}/game/chess?join=${game.gameId}`;
     return (
-      <div className="page no-nav" style={{ paddingTop: 10 }}>
+      <>
         <TopBar title={t('chess.title')} back />
-        <div className="pt-3.5 space-y-4 max-w-[440px] mx-auto text-center">
+        <div className="page no-nav" style={{ paddingTop: 10 }}>
+          <div className="pt-3.5 space-y-4 max-w-[440px] mx-auto text-center">
           <Card className="p-6">
             <div className="font-black text-[18px] mb-1">{t('chess.waitingForOpponent')}</div>
             <div className="text-[13px] text-muted mb-4">{t('chess.shareCode')}</div>
@@ -519,16 +521,18 @@ export default function Chess() {
               {t('chess.cancel')}
             </Button>
           </Card>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   // ============ BOSH SAHIFA (yaratish / qo'shilish) ============
   return (
-    <div className="page no-nav" style={{ paddingTop: 10 }}>
+    <>
       <TopBar title={t('chess.title')} back />
-      <div className="pt-3.5 space-y-3.5 max-w-[520px] mx-auto">
+      <div className="page no-nav" style={{ paddingTop: 10 }}>
+        <div className="pt-3.5 space-y-3.5 max-w-[520px] mx-auto">
         <Card className="p-4">
           <div className="font-extrabold text-[15.5px] mb-3.5 flex items-center gap-2">
             <Swords size={18} className="text-primary" /> {t('chess.createGame')}
@@ -586,9 +590,10 @@ export default function Chess() {
             </div>
           </Link>
         </Card>
+        </div>
+        {scanOpen && <QRScanner onScan={scanHandler} onClose={() => setScanOpen(false)} />}
       </div>
-      {scanOpen && <QRScanner onScan={scanHandler} onClose={() => setScanOpen(false)} />}
-    </div>
+    </>
   );
 }
 

@@ -11,6 +11,7 @@ import {
   Sheet, ConfirmDialog, Badge, PageHeader, IconButton, SearchInput, PhoneInput, Pagination, SkeletonRow,
 } from '../../components/ui.jsx';
 import { fmtNum, fmtPhone } from '../../utils/format.js';
+import { TopBar } from '../../layouts/Layouts.jsx';
 
 export default function AdminUsers() {
   const { t } = useTranslation();
@@ -102,7 +103,9 @@ export default function AdminUsers() {
   };
 
   return (
-    <div className="page-staff pt-4">
+    <>
+      <TopBar title={t('usersP.title')} back />
+      <div className="page-staff pt-4">
       {/* Header */}
       <PageHeader
         icon={Users}
@@ -253,5 +256,6 @@ export default function AdminUsers() {
         loading={busy}
       />
     </div>
+    </>
   );
 }

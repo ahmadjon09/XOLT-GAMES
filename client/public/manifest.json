@@ -1,0 +1,103 @@
+{
+  "name": "XOLT Games",
+  "short_name": "XOLT",
+  "description": "XOLT Games — ta'lim o'yinlari platformasi: matematika dueli, shaxmat, yozish poygasi, viktorinalar va do'kon.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f6f4fc",
+  "theme_color": "#5b21b6",
+  "lang": "uz",
+  "dir": "ltr",
+  "categories": ["education", "games", "entertainment"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Bosh sahifa",
+      "short_name": "Bosh",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icons/shortcut-home-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "O'yinlar",
+      "short_name": "O'yinlar",
+      "url": "/lobby",
+      "icons": [
+        {
+          "src": "/icons/shortcut-games-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Do'kon",
+      "short_name": "Do'kon",
+      "url": "/shop",
+      "icons": [
+        {
+          "src": "/icons/shortcut-shop-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Reyting",
+      "short_name": "Reyting",
+      "url": "/leaderboard",
+      "icons": [
+        {
+          "src": "/icons/shortcut-leaderboard-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Profil",
+      "short_name": "Profil",
+      "url": "/profile",
+      "icons": [
+        {
+          "src": "/icons/shortcut-profile-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

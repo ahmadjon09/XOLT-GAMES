@@ -169,11 +169,13 @@
     min-height: 100vh;
   }
 
-  /* Yuqori panel — mobil: yopishqoq, desktop: statik sarlavha qatori */
+  /* YUQORI PANEL (navbar) — BARCHA SAHIFALARDA BIR XIL, SIMETRIK:
+     3 ustunli to'r — [orqaga|logo] ... [sarlavha markazda] ... [til+tugmalar]
+     Mobil: yopishqoq (sticky), desktop: statik sarlavha qatori */
   .topbar {
     position: sticky;
     top: 0;
-    z-index: 40;
+    z-index: 45;
     background: rgba(255, 255, 255, 0.88);
     backdrop-filter: blur(14px) saturate(140%);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
@@ -183,11 +185,53 @@
     width: 100%;
     max-width: var(--container);
     margin: 0 auto;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 10px;
     min-height: var(--topbar-h);
     padding: 8px var(--pad);
+  }
+  .topbar-left {
+    justify-self: start;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .topbar-title {
+    justify-self: center;
+    min-width: 0;
+    max-width: 40vw;
+    text-align: center;
+  }
+  .topbar-title .t {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar-right {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  /* Xodim bo'limlar menyu — TopBar ostida yopishqoq (faqat mobil) */
+  .staffmenu {
+    position: sticky;
+    top: calc(var(--topbar-h) + 1px);
+    z-index: 44;
+    background: rgba(246, 244, 252, 0.94);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border-bottom: 1px solid var(--color-border);
+    padding: 8px 12px;
   }
 
   /* Pastki navigatsiya — markazlashgan "suzuvchi" panel */
@@ -431,6 +475,13 @@
     background: var(--grad-primary);
     color: #fff;
     box-shadow: var(--glow-primary);
+    font-weight: 800;
+  }
+  /* Til tanlagichning faol (tanlangan) tugmasi — bir xil kuchli ko'rinish */
+  .lang-active {
+    background: var(--grad-primary);
+    color: #fff;
+    box-shadow: var(--glow-primary);
   }
   .segment.scroll { @apply justify-start; }
   .segment.scroll button { flex: none; }
@@ -530,6 +581,65 @@
   .confetti-wrap { position: fixed; inset: 0; pointer-events: none; z-index: 70; overflow: hidden; }
   .confetti-piece { position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px; animation: confettiFall linear forwards; }
   .qr-corner { position: absolute; width: 34px; height: 34px; box-shadow: 0 0 12px rgba(253, 199, 0, .4); }
+
+  /* ============================ PWA O'RNATISH BANNERI ============================ */
+  /* Ekranning chekasida suzuvchi kichik modal — ilova ornatilmagan bo'lganda */
+  .install-banner {
+    position: fixed;
+    z-index: 55;
+    right: 14px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    max-width: min(94vw, 400px);
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(124, 58, 237, 0.22);
+    border-radius: var(--r-lg);
+    box-shadow: 0 14px 44px rgba(58, 26, 120, 0.22);
+    padding: 12px 34px 12px 12px;
+    backdrop-filter: blur(10px);
+    animation: slideUp .28s ease;
+  }
+  .install-ico { width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(76, 29, 149, 0.25); }
+  .install-text { flex: 1; min-width: 0; }
+  .install-title { font-weight: 800; font-size: 13.5px; letter-spacing: -0.01em; color: var(--color-ink); }
+  .install-desc { font-size: 11.5px; color: var(--color-muted); font-weight: 600; line-height: 1.4; margin-top: 2px; }
+  .install-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--grad-primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 13px;
+    border: none;
+    border-radius: var(--r-xs);
+    padding: 10px 14px;
+    box-shadow: var(--glow-primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .install-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(76, 29, 149, 0.4); }
+  .install-btn:active { transform: scale(0.97); }
+  .install-btn.ios { width: 40px; height: 40px; padding: 0; border-radius: var(--r-sm); }
+  .install-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-muted);
+    background: transparent;
+    border: none;
+  }
+  .install-close:hover { background: var(--color-surface-2); color: var(--color-ink); }
 }
 
 /* =========================================================================
@@ -647,9 +757,12 @@
     max-width: var(--container);
     padding: 28px 36px 56px;
   }
-  .topbar { position: static; background: transparent; backdrop-filter: none; border-bottom: none; }
-  .topbar-inner { max-width: var(--container); padding: 28px 36px 4px; min-height: 0; }
+  .topbar { position: static; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: none; }
+  .topbar-inner { max-width: var(--container); padding: 26px 36px 2px; min-height: 0; gap: 16px; }
+  .topbar-title { max-width: 480px; }
+  .topbar-title .t { font-size: 20px; }
   .bottomnav { display: none; }
+  .staffmenu { display: none; }
   .card { border-radius: var(--r-lg); padding: 22px; }
   body {
     background:
@@ -663,6 +776,16 @@
 @media (min-width: 1600px) {
   .page, .page-staff, .page-no-nav, .page.no-nav { padding-left: 44px; padding-right: 44px; }
   .topbar-inner { padding-left: 44px; padding-right: 44px; }
+}
+
+/* Mobil: o'rnatish banneri pastki navigatsiyadan ustida to'liq kenglikda */
+@media (max-width: 1023px) {
+  .install-banner {
+    left: 12px;
+    right: 12px;
+    max-width: none;
+    bottom: calc(var(--nav-h) + var(--nav-gap) + 12px + env(safe-area-inset-bottom));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -11,6 +11,7 @@ import {
   Badge, Sheet, ConfirmDialog, PageHeader, IconButton, NumberInput, MiniStat, PageError, SkeletonRow,
 } from '../../components/ui.jsx';
 import { currentMonth, monthLabel, fmtMoney, fmtDate } from '../../utils/format.js';
+import { TopBar } from '../../layouts/Layouts.jsx';
 
 export default function CashierPayments() {
   const { t } = useTranslation();
@@ -116,7 +117,9 @@ export default function CashierPayments() {
   const hasError = rowsError || overviewError;
 
   return (
-    <div className="page-staff pt-4">
+    <>
+      <TopBar title={t('cashP.title')} back />
+      <div className="page-staff pt-4">
       {/* Header */}
       <PageHeader
         icon={Wallet}
@@ -349,5 +352,6 @@ export default function CashierPayments() {
         loading={busy}
       />
     </div>
+    </>
   );
 }

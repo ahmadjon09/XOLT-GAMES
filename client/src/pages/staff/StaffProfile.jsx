@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Upload, ChevronRight, LogOut, Loader2, KeyRound, ShieldCheck, CalendarCheck2, ListChecks, Users } from 'lucide-react';
+import { Pencil, Upload, ChevronRight, Loader2, KeyRound, ShieldCheck, CalendarCheck2, ListChecks, Users } from 'lucide-react';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -25,7 +25,6 @@ export default function StaffProfile() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [passOpen, setPassOpen] = useState(false);
-  const [logoutOpen, setLogoutOpen] = useState(false);
   const fileRef = useRef(null);
   const [avatarCrop, setAvatarCrop] = useState(null);
 
@@ -33,7 +32,6 @@ export default function StaffProfile() {
   const [passForm, setPassForm] = useState({ oldPassword: '', newPassword: '', newPassword2: '' });
   const [busy, setBusy] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
 
   const { data: profile, isLoading } = useGet('/staff/profile');
 
@@ -109,20 +107,10 @@ export default function StaffProfile() {
     }
   };
 
-  const handleLogout = async () => {
-    setLoggingOut(true);
-    try {
-      await logout();
-      navigate('/login');
-    } finally {
-      setLoggingOut(false);
-    }
-  };
-
   if (isLoading && !profile) {
     return (
       <>
-        <TopBar title={t('staffProfile.title')} />
+        <TopBar title={t('staffProfile.title')} back />
         <div className="page-staff pt-4">
           <div className="grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] gap-[var(--gap)] items-start">
             <Card className="flex flex-col items-center gap-3">
@@ -144,15 +132,11 @@ export default function StaffProfile() {
     <>
       <TopBar
         title={t('staffProfile.title')}
+        back
         right={
-          <div className="flex gap-1.5">
-            <button className="btn ghost sm" onClick={() => setPassOpen(true)} title={t('staffProfile.changePassword')}>
-              <KeyRound size={17} />
-            </button>
-            <button className="btn ghost sm" onClick={() => setLogoutOpen(true)} title={t('nav.logout')}>
-              <LogOut size={17} />
-            </button>
-          </div>
+          <button className="btn ico ghost" onClick={() => setPassOpen(true)} title={t('staffProfile.changePassword')} aria-label={t('staffProfile.changePassword')}>
+            <KeyRound size={18} />
+          </button>
         }
       />
       <div className="page-staff pt-4">
@@ -326,15 +310,6 @@ export default function StaffProfile() {
         </Field>
         <Button className="w-full" loading={busy} onClick={changePassword}>{t('common.save')}</Button>
       </Sheet>
-
-      <ConfirmDialog
-        open={logoutOpen}
-        title={t('auth.logoutConfirm')}
-        onClose={() => setLogoutOpen(false)}
-        onConfirm={handleLogout}
-        confirmText={t('common.yesSure')}
-        loading={loggingOut}
-      />
 
       <ImageCropper
         open={!!avatarCrop}

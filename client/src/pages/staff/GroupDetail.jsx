@@ -11,6 +11,7 @@ import {
   PageHeader, SearchInput, PhoneInput, MiniStat, SkeletonRow,
 } from '../../components/ui.jsx';
 import { fmtPhone } from '../../utils/format.js';
+import { TopBar } from '../../layouts/Layouts.jsx';
 
 export default function GroupDetail() {
   const { t } = useTranslation();
@@ -71,7 +72,9 @@ export default function GroupDetail() {
   const absentTotal = (members || []).reduce((s, m) => s + m.attendance.absent, 0);
 
   return (
-    <div className="page-staff pt-4">
+    <>
+      <TopBar title={group?.name || t('groupsP.title')} back />
+      <div className="page-staff pt-4">
       <PageHeader
         icon={Users}
         title={group?.name || t('groupsP.title')}
@@ -182,5 +185,6 @@ export default function GroupDetail() {
         loading={busy}
       />
     </div>
+    </>
   );
 }

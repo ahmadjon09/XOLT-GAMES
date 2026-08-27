@@ -11,6 +11,7 @@ import {
   PageHeader, NumberInput, AutoGrid,
 } from '../../components/ui.jsx';
 import { fmtMoney } from '../../utils/format.js';
+import { TopBar } from '../../layouts/Layouts.jsx';
 
 export default function TeacherGroups() {
   const { t } = useTranslation();
@@ -57,7 +58,9 @@ export default function TeacherGroups() {
   };
 
   return (
-    <div className="page-staff pt-4">
+    <>
+      <TopBar title={t('groupsP.title')} back />
+      <div className="page-staff pt-4">
       <PageHeader
         icon={Users}
         title={t('groupsP.title')}
@@ -127,5 +130,6 @@ export default function TeacherGroups() {
         loading={busy}
       />
     </div>
+    </>
   );
 }

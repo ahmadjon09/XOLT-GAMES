@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Users, CalendarCheck2, ListChecks, Wallet, Store, Trophy, User as UserIcon, UserRound, Keyboard, Code2, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { AutoGrid, Card } from '../../components/ui.jsx';
+import { TopBar } from '../../layouts/Layouts.jsx';
 
 export default function StaffHome() {
   const { t } = useTranslation();
@@ -25,7 +26,9 @@ export default function StaffHome() {
   ].filter((s) => s.roles.includes(role));
 
   return (
-    <div className="page-staff pt-4 space-y-[var(--gap)]">
+    <>
+      <TopBar title={t('staff.title')} />
+      <div className="page-staff pt-4 space-y-[var(--gap)]">
       <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="text-[22px] font-extrabold tracking-tight truncate">
@@ -60,5 +63,6 @@ export default function StaffHome() {
         ))}
       </AutoGrid>
     </div>
+    </>
   );
 }
