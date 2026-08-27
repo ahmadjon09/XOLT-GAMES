@@ -54,7 +54,6 @@ router.get(
         phone: u.phone,
         username: u.username,
         coin: u.coin,
-        discount: u.discount,
         score: u.score,
         currentFrame: u.currentFrame,
         currentEffect: u.currentEffect,
@@ -152,7 +151,6 @@ router.get(
       phone: user.phone,
       username: user.username,
       coin: user.coin,
-      discount: user.discount,
       score: user.score,
       week_score: user.week_score,
       month_score: user.month_score,
@@ -215,7 +213,6 @@ router.patch(
       full_name: z.string().min(3).max(60).optional(),
       username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional().nullable(),
       password: z.string().min(4).max(50).optional(),
-      discount: z.number().int().min(0).max(100).optional(),
       groupIds: z.array(z.string()).max(10).optional(),
     });
     const data = schema.parse(req.body);
@@ -227,7 +224,6 @@ router.patch(
     if (data.full_name) update.full_name = data.full_name;
     if (data.username !== undefined) update.username = data.username;
     if (data.password) update.password = await hashPassword(data.password);
-    if (data.discount !== undefined) update.discount = data.discount;
 
     if (data.groupIds) {
       let groupIds = data.groupIds;

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Calculator, ListChecks, Grid3x3, Keyboard, Code2, Trophy,
-  CalendarCheck2, Wallet, ChevronRight, QrCode, KeyRound, User, Swords, Coins,
+  CalendarCheck2, Wallet, ChevronRight, QrCode, KeyRound, User, Users, Swords, Coins,
 } from 'lucide-react';
 import { useGet } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -22,6 +22,9 @@ export default function Home() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { data: groups } = useGet('/user/groups', { fallbackData: null });
+  // Guruh ichidagi reytingim (birinchi guruh bo'yicha)
+  const { data: groupRank } = useGet('/user/group-ranking', { fallbackData: [] });
+  const myGroup = (groupRank || [])[0] || null;
 
   const games = [
     { key: 'math', to: '/game/math', icon: Calculator, title: t('home.mathTitle'), desc: t('home.mathDesc'), tag: '1v1' },
@@ -35,7 +38,8 @@ export default function Home() {
   const stats = [
     { label: t('home.myCoins'), value: fmtNum(user?.coin ?? 0), color: '#9a6d00', bg: 'var(--color-accent-soft)', icon: Coins },
     { label: t('home.myScore'), value: fmtNum(user?.score ?? 0), color: 'var(--color-primary)', bg: 'var(--color-primary-soft)', icon: Trophy },
-    { label: t('home.groupsCount'), value: groups ? groups.length : '…', color: 'var(--color-ink)', bg: 'var(--color-surface-2)', icon: User },
+    { label: t('home.myGroupRank'), value: myGroup ? `#${myGroup.myRank}/${myGroup.membersCount}` : '—', color: '#0284c7', bg: 'var(--color-info-soft)', icon: User },
+    { label: t('home.groupsCount'), value: groups ? groups.length : '…', color: 'var(--color-ink)', bg: 'var(--color-surface-2)', icon: Users },
   ];
 
   const quick = [

@@ -22,7 +22,7 @@ export default function CashierPayments() {
   const [groupId, setGroupId] = useState(groupParam || '');
   const [month, setMonth] = useState(currentMonth());
   const [addTarget, setAddTarget] = useState(null);
-  const [form, setForm] = useState({ amount: 0, note: '' });
+  const [form, setForm] = useState({ amount: 0, discount: 0, note: '' });
   const [busy, setBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
@@ -67,11 +67,12 @@ export default function CashierPayments() {
         month,
         amount: form.amount || 0,
         status,
+        discount: form.discount || 0,
         note: form.note || null,
       });
       toast.success(status === 'paid' ? t('cashP.paymentAdded') : t('cashP.paymentUpdated'));
       setAddTarget(null);
-      setForm({ amount: 0, note: '' });
+      setForm({ amount: 0, discount: 0, note: '' });
       refresh();
     } catch (e) {
       toast.error(errorMessage(e));
@@ -168,7 +169,7 @@ export default function CashierPayments() {
 
           {rows.map((r) => {
             const eff = r.effectiveFee || 0;
-            const hasDiscount = r.discount > 0;
+            const payDiscount = r.payment?.discount || 0;
             return (
               <div key={r.userId} className="flex items-center gap-3.5 px-4 py-3.5 border-b border-border last:border-b-0 hover:bg-surface-2/40 transition-colors">
                 <Avatar w={44} avatar={r.avatar} frame={r.currentFrame} />
@@ -177,15 +178,15 @@ export default function CashierPayments() {
                     <span className="font-bold text-[14.5px] truncate">
                       <AnimatedName config={r.currentEffect?.config}>{r.full_name}</AnimatedName>
                     </span>
-                    {hasDiscount && (
-                      <Badge color="warn">{t('payments.discount')}: {r.discount}%</Badge>
+                    {payDiscount > 0 && (
+                      <Badge color="warn">{t('payments.discount')}: {payDiscount}%</Badge>
                     )}
                   </div>
                   <div className="text-[12.5px] text-muted flex flex-wrap items-center gap-1.5 mt-0.5">
-                    {hasDiscount && r.monthlyFee > 0 ? (
+                    {payDiscount > 0 && r.monthlyFee > 0 ? (
                       <>
                         <span className="line-through opacity-60 tabular-nums">{fmtMoney(r.monthlyFee)}</span>
-                        <span className="font-bold text-success tabular-nums">{fmtMoney(eff)}</span>
+                        <span className="font-bold text-success tabular-nums">{fmtMoney(r.payment.effectiveFee)}</span>
                         <span>so'm</span>
                       </>
                     ) : (
@@ -245,7 +246,7 @@ export default function CashierPayments() {
                   <Button
                     variant="soft"
                     size="sm"
-                    onClick={() => { setAddTarget(r); setForm({ amount: 0, note: '' }); }}
+                    onClick={() => { setAddTarget(r); setForm({ amount: 0, discount: 0, note: '' }); }}
                     disabled={busy}
                     className="shrink-0"
                   >
@@ -285,18 +286,14 @@ export default function CashierPayments() {
         onClose={() => setAddTarget(null)}
         title={`${t('cashP.addForStudent')}: ${addTarget?.full_name || ''}`}
       >
-        {addTarget?.effectiveFee > 0 && (
+        {addTarget?.monthlyFee > 0 && (
           <div className="bg-surface-2 rounded-[14px] p-3.5 mb-3.5 text-[13.5px]">
             <div>{t('payments.monthlyFee')}: <b className="tabular-nums">{fmtMoney(addTarget.monthlyFee || 0)} so'm</b></div>
-            {addTarget?.discount > 0 && (
-              <div>{t('payments.discount')}: <b>{addTarget.discount}%</b></div>
+            {form.discount > 0 && (
+              <div className="mt-1 font-bold text-success tabular-nums">
+                {t('payments.effectiveFee')}: {fmtMoney(Math.round((addTarget.monthlyFee || 0) * (1 - (form.discount || 0) / 100)))} so'm
+              </div>
             )}
-            <div className="mt-1 font-bold text-success tabular-nums">
-              {t('payments.effectiveFee')}: {fmtMoney(addTarget.effectiveFee)} so'm
-              {addTarget?.discount > 0 && (
-                <Badge color="warn" className="ml-2">{t('payments.fullWithDiscount')}</Badge>
-              )}
-            </div>
           </div>
         )}
         <Field label={t('cashP.amount')}>
@@ -305,6 +302,16 @@ export default function CashierPayments() {
             min={0}
             onChange={(v) => setForm({ ...form, amount: v })}
             placeholder="200000"
+            disabled={busy}
+          />
+        </Field>
+        <Field label={t('payments.oneTimeDiscount')} hint={t('payments.oneTimeDiscountHint')}>
+          <NumberInput
+            value={form.discount}
+            min={0}
+            max={100}
+            onChange={(v) => setForm({ ...form, discount: v })}
+            placeholder="0"
             disabled={busy}
           />
         </Field>

@@ -194,12 +194,12 @@ async function main() {
   const g1 = await prisma.group.upsert({
     where: { id: 'group_math_5a' },
     update: { teacherId: teacher.id, monthlyFee: 200000 },
-    create: { id: 'group_math_5a', name: 'Matematika 5-A', rank: 1, monthlyFee: 200000, teacherId: teacher.id },
+    create: { id: 'group_math_5a', name: 'Matematika 5-A', monthlyFee: 200000, teacherId: teacher.id },
   });
   const g2 = await prisma.group.upsert({
     where: { id: 'group_eng_5b' },
     update: { teacherId: teacher.id, monthlyFee: 250000 },
-    create: { id: 'group_eng_5b', name: 'Ingliz tili 5-B', rank: 2, monthlyFee: 250000, teacherId: teacher.id },
+    create: { id: 'group_eng_5b', name: 'Ingliz tili 5-B', monthlyFee: 250000, teacherId: teacher.id },
   });
 
   // ===== O'QUVCHILAR (ba'zilari ikkala guruhda) =====
@@ -212,12 +212,8 @@ async function main() {
   ];
 
   for (const s of students) {
-    // Chegirmalar: 2- va 4- o'quvchilarga
-    if (s.phone === '+998900000002') s.discount = 25;
-    if (s.phone === '+998900000004') s.discount = 50;
     const exists = await prisma.user.findUnique({ where: { phone: s.phone } });
     if (exists) {
-      if (s.discount) await prisma.user.update({ where: { id: exists.id }, data: { discount: s.discount } });
       // Guruh a'zoligini kafolatlash
       for (const gid of s.groups) {
         await prisma.groupMember.upsert({
@@ -235,7 +231,6 @@ async function main() {
         username: s.username,
         password: await hash('1234'),
         coin: s.coin,
-        discount: s.discount || 0,
         score: s.score,
         week_score: Math.floor(s.score * 0.4),
         month_score: Math.floor(s.score * 0.7),

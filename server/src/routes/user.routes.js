@@ -284,7 +284,6 @@ router.get(
     });
 
     const groupIds = memberships.map((m) => m.groupId);
-    const me = await prisma.user.findUnique({ where: { id: req.user.id } });
     const [attendance, payments] = await Promise.all([
       prisma.attendance.findMany({ where: { userId: req.user.id, groupId: { in: groupIds } }, orderBy: { date: 'desc' } }),
       prisma.payment.findMany({ where: { userId: req.user.id, groupId: { in: groupIds } }, orderBy: { month: 'desc' } }),
@@ -300,7 +299,6 @@ router.get(
           name: m.group.name,
           joinedAt: m.joinedAt,
           monthlyFee: m.group.monthlyFee,
-          discount: me ? me.discount : 0,
           teacher: m.group.teacher ? { id: m.group.teacher.id, full_name: m.group.teacher.full_name } : null,
           attendance: {
             present: groupAttendance.filter((a) => a.status === 'present').length,
@@ -308,10 +306,59 @@ router.get(
             late: groupAttendance.filter((a) => a.status === 'late').length,
             total: groupAttendance.length,
           },
-          payments: groupPayments.map((p) => paymentView(p, m.group, me)),
+          payments: groupPayments.map((p) => paymentView(p, m.group)),
         };
       })
     );
+  })
+);
+
+// GET /api/user/group-ranking?period=all|week|month - o'z guruhlarimdagi reytingim
+// O'quvchi qaysi guruhda qanday o'rinda turganini ko'radi
+router.get(
+  '/group-ranking',
+  requireAuth('user'),
+  asyncH(async (req, res) => {
+    const period = ['all', 'week', 'month'].includes(req.query.period) ? req.query.period : 'all';
+    const field = period === 'week' ? 'week_score' : period === 'month' ? 'month_score' : 'score';
+
+    const memberships = await prisma.groupMember.findMany({
+      where: { userId: req.user.id },
+      include: { group: { include: { teacher: { select: { full_name: true } } } } },
+      orderBy: { joinedAt: 'asc' },
+    });
+
+    const result = [];
+    for (const m of memberships) {
+      const members = await prisma.groupMember.findMany({
+        where: { groupId: m.groupId },
+        include: { user: { include: { currentFrame: true, currentEffect: true } } },
+      });
+      // Ballar bo'yicha kamayish tartibida
+      const sorted = [...members].sort((a, b) => (b.user[field] ?? 0) - (a.user[field] ?? 0));
+      const rows = sorted.map((mem, idx) => ({
+        id: mem.user.id,
+        full_name: mem.user.full_name,
+        avatar: mem.user.avatar,
+        username: mem.user.username,
+        currentFrame: mem.user.currentFrame,
+        currentEffect: mem.user.currentEffect,
+        score: mem.user[field] ?? 0,
+        rank: idx + 1,
+        isMe: mem.userId === req.user.id,
+      }));
+      result.push({
+        groupId: m.group.id,
+        groupName: m.group.name,
+        teacher: m.group.teacher?.full_name || null,
+        membersCount: rows.length,
+        myRank: rows.find((r) => r.isMe)?.rank ?? null,
+        myScore: rows.find((r) => r.isMe)?.score ?? 0,
+        rows,
+      });
+    }
+
+    return ok(res, result);
   })
 );
 
@@ -363,12 +410,11 @@ router.get(
   })
 );
 
-// GET /api/user/payments - to'lov holatim (monthlyFee + discount bilan)
+// GET /api/user/payments - to'lov holatim (bir martalik chegirma bilan)
 router.get(
   '/payments',
   requireAuth('user'),
   asyncH(async (req, res) => {
-    const me = await prisma.user.findUnique({ where: { id: req.user.id } });
     const payments = await prisma.payment.findMany({
       where: { userId: req.user.id },
       include: { group: true },
@@ -378,7 +424,7 @@ router.get(
     return ok(
       res,
       payments.map((p) => {
-        const view = paymentView(p, p.group, me);
+        const view = paymentView(p, p.group);
         return {
           ...view,
           group: { id: p.group.id, name: p.group.name },

@@ -33,6 +33,9 @@ export default function Profile() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const { data: profile, isLoading } = useGet('/user/profile');
+  // Guruh ichidagi reytingim (har guruh bo'yicha o'rin)
+  const { data: groupRank } = useGet('/user/group-ranking', { fallbackData: [] });
+  const rankOf = (groupId) => (groupRank || []).find((g) => g.groupId === groupId) || null;
 
   const onAvatarPick = async (file) => {
     if (!file) return;
@@ -202,26 +205,35 @@ export default function Profile() {
                 {profile.groups.length === 0 ? (
                   <div className="text-center text-muted py-6 text-[13.5px]">{t('profile.noGroups')}</div>
                 ) : (
-                  profile.groups.map((g) => (
-                    <div key={g.id} className="list-row">
-                      <div
-                        className="w-11 h-11 bg-surface-2 flex items-center justify-center font-extrabold text-primary shrink-0"
-                        style={{ borderRadius: 'var(--r-sm)' }}
-                      >
-                        {g.name.slice(0, 1)}
+                  profile.groups.map((g) => {
+                    const gr = rankOf(g.id);
+                    return (
+                      <div key={g.id} className="list-row">
+                        <div
+                          className="w-11 h-11 bg-surface-2 flex items-center justify-center font-extrabold text-primary shrink-0"
+                          style={{ borderRadius: 'var(--r-sm)' }}
+                        >
+                          {g.name.slice(0, 1)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-[14.5px] truncate">{g.name}</div>
+                          <div className="text-[12px] text-muted truncate">
+                            {g.teacher ? g.teacher.full_name : ''}
+                            {gr && ` • ${t('lb.myGroupRank')}: #${gr.myRank}/${gr.membersCount}`}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {gr && (
+                            <span className="badge primary">#{gr.myRank}<span className="opacity-60">/{gr.membersCount}</span></span>
+                          )}
+                          <span className="badge present">{t('attendance.present')}: {g.attendance.present}</span>
+                          {g.attendance.absent > 0 && (
+                            <span className="badge absent">{t('attendance.absent')}: {g.attendance.absent}</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-[14.5px] truncate">{g.name}</div>
-                        <div className="text-[12px] text-muted truncate">{g.teacher ? g.teacher.full_name : ''}</div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="badge present">{t('attendance.present')}: {g.attendance.present}</span>
-                        {g.attendance.absent > 0 && (
-                          <span className="badge absent">{t('attendance.absent')}: {g.attendance.absent}</span>
-                        )}
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </Card>
             </section>

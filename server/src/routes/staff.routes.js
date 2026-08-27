@@ -88,7 +88,7 @@ router.get(
     });
     return ok(
       res,
-      groups.map((g) => ({ id: g.id, name: g.name, rank: g.rank, monthlyFee: g.monthlyFee, teacher: g.teacher, membersCount: g._count.members, createdAt: g.createdAt }))
+      groups.map((g) => ({ id: g.id, name: g.name, monthlyFee: g.monthlyFee, teacher: g.teacher, membersCount: g._count.members, createdAt: g.createdAt }))
     );
   })
 );
@@ -98,14 +98,14 @@ router.post(
   '/groups',
   asyncH(async (req, res) => {
     if (!['ADMIN', 'TEACHER'].includes(req.user.role)) throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
-    const schema = z.object({ name: z.string().min(2, 'Guruh nomi kamida 2 belgi').max(60), rank: z.number().int().min(0).max(100).optional(), monthlyFee: z.number().min(0).max(100_000_000).optional() });
-    const { name, rank, monthlyFee } = schema.parse(req.body);
+    const schema = z.object({ name: z.string().min(2, 'Guruh nomi kamida 2 belgi').max(60), monthlyFee: z.number().min(0).max(100_000_000).optional() });
+    const { name, monthlyFee } = schema.parse(req.body);
 
     const teacherId = req.user.role === 'ADMIN' && req.body.teacherId ? req.body.teacherId : req.user.id;
     const teacher = await prisma.staff.findUnique({ where: { id: teacherId } });
     if (!teacher || teacher.role === 'CASHIER') throw new ApiError(400, 'INVALID_TEACHER', 'O\'qituvchi topilmadi');
 
-    const group = await prisma.group.create({ data: { name, rank: rank || 0, monthlyFee: monthlyFee || 0, teacherId } });
+    const group = await prisma.group.create({ data: { name, monthlyFee: monthlyFee || 0, teacherId } });
     return ok(res, group);
   })
 );
@@ -115,7 +115,7 @@ router.patch(
   '/groups/:id',
   asyncH(async (req, res) => {
     await canAccessGroup(req.user.db, req.params.id);
-    const schema = z.object({ name: z.string().min(2).max(60).optional(), rank: z.number().int().min(0).max(100).optional(), monthlyFee: z.number().min(0).max(100_000_000).optional() });
+    const schema = z.object({ name: z.string().min(2).max(60).optional(), monthlyFee: z.number().min(0).max(100_000_000).optional() });
     const data = schema.parse(req.body);
     const group = await prisma.group.update({ where: { id: req.params.id }, data });
     return ok(res, group);
@@ -622,7 +622,6 @@ router.get(
       res,
       group.members.map((m) => {
         const p = payments.find((x) => x.userId === m.user.id);
-        const eff = effectiveFee(monthlyFee, m.user.discount);
         const history = allPayments
           .filter((x) => x.userId === m.user.id)
           .sort((a, b) => (a.month < b.month ? 1 : -1));
@@ -632,11 +631,10 @@ router.get(
           avatar: m.user.avatar,
           currentFrame: m.user.currentFrame,
           phone: m.user.phone,
-          discount: m.user.discount,
           monthlyFee,
-          effectiveFee: eff,
+          effectiveFee: monthlyFee,
           payment: p
-            ? paymentView(p, group, m.user)
+            ? paymentView(p, group)
             : null,
           history: history.map((h) => ({ id: h.id, month: h.month, amount: h.amount, status: h.status })),
         };
@@ -646,6 +644,8 @@ router.get(
 );
 
 // POST /api/staff/payments - to'lov qo'shish / yangilash (upsert)
+// discount — BIR MARTALIK chegirma (0-100%): faqat shu to'lovga qo'llanadi,
+// o'quvchining keyingi to'lovlariga ta'sir qilmaydi
 router.post(
   '/payments',
   asyncH(async (req, res) => {
@@ -656,18 +656,25 @@ router.post(
       amount: z.number().positive('Summa musbat bo\'lishi kerak'),
       month: z.string().regex(/^\d{4}-\d{2}$/, 'Oy format: YYYY-MM'),
       status: z.enum(['paid', 'unpaid']).optional(),
+      discount: z.number().int().min(0).max(100).optional(),
       note: z.string().max(200).optional().nullable(),
     });
     const data = schema.parse(req.body);
 
     const member = await prisma.groupMember.findUnique({
       where: { userId_groupId: { userId: data.userId, groupId: data.groupId } },
-      include: { group: true, user: true },
+      include: { group: true },
     });
     if (!member) throw new ApiError(400, 'NOT_IN_GROUP', 'O\'quvchi bu guruhda emas');
 
-    // Chegirma bilan effektiv to'lov: agar summa yetmasa -> partial (chala)
-    const eff = effectiveFee(member.group.monthlyFee, member.user.discount);
+    // Mavjud to'lov bo'lsa — chegirma uzatilmagan bo'lsa eski qiymati qoladi
+    const existing = await prisma.payment.findUnique({
+      where: { userId_groupId_month: { userId: data.userId, groupId: data.groupId, month: data.month } },
+    });
+    const discount = data.discount !== undefined ? data.discount : existing?.discount || 0;
+
+    // Bir martalik chegirma bilan effektiv to'lov: summa yetmasa -> partial (chala)
+    const eff = effectiveFee(member.group.monthlyFee, discount);
     const finalStatus = data.status === 'unpaid' ? 'unpaid' : normalizeStatus(data.amount, eff);
 
     const payment = await prisma.payment.upsert({
@@ -678,6 +685,7 @@ router.post(
         amount: data.amount,
         month: data.month,
         status: finalStatus,
+        discount,
         note: data.note || null,
         paidAt: finalStatus === 'paid' ? new Date() : null,
         createdById: req.user.id,
@@ -685,12 +693,13 @@ router.post(
       update: {
         amount: data.amount,
         status: finalStatus,
+        discount,
         note: data.note !== undefined ? data.note : undefined,
         paidAt: finalStatus === 'paid' ? new Date() : finalStatus === 'unpaid' ? null : undefined,
       },
     });
 
-    const view = paymentView(payment, member.group, member.user);
+    const view = paymentView(payment, member.group);
     return ok(res, view, { message: 'To\'lov saqlandi' });
   })
 );
@@ -703,17 +712,19 @@ router.patch(
     const schema = z.object({
       status: z.enum(['paid', 'unpaid']).optional(),
       amount: z.number().positive().optional(),
+      discount: z.number().int().min(0).max(100).optional(),
       note: z.string().max(200).optional().nullable(),
     });
     const data = schema.parse(req.body);
 
     const payment = await prisma.payment.findUnique({
       where: { id: req.params.id },
-      include: { group: true, user: true },
+      include: { group: true },
     });
     if (!payment) throw new ApiError(404, 'NOT_FOUND', 'To\'lov topilmadi');
 
-    const eff = effectiveFee(payment.group.monthlyFee, payment.user.discount);
+    const discount = data.discount !== undefined ? data.discount : payment.discount;
+    const eff = effectiveFee(payment.group.monthlyFee, discount);
     const amount = data.amount ?? payment.amount;
     const finalStatus = data.status === 'unpaid' ? 'unpaid' : data.status ?? normalizeStatus(amount, eff);
 
@@ -722,12 +733,13 @@ router.patch(
       data: {
         status: finalStatus,
         amount,
+        discount,
         note: data.note !== undefined ? data.note : payment.note,
         paidAt: finalStatus === 'paid' ? new Date() : finalStatus === 'unpaid' ? null : payment.paidAt,
       },
     });
 
-    const view = paymentView(updated, payment.group, payment.user);
+    const view = paymentView(updated, payment.group);
     return ok(res, view, { message: 'To\'lov holati yangilandi' });
   })
 );

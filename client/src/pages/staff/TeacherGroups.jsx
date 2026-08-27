@@ -18,7 +18,6 @@ export default function TeacherGroups() {
   const invalidate = useInvalidate();
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
-  const [rank, setRank] = useState(0);
   const [monthlyFee, setMonthlyFee] = useState(0);
   const [busy, setBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -30,11 +29,10 @@ export default function TeacherGroups() {
     if (!name.trim()) return;
     setBusy(true);
     try {
-      await Fetch.post('/staff/groups', { name: name.trim(), rank, monthlyFee });
+      await Fetch.post('/staff/groups', { name: name.trim(), monthlyFee });
       toast.success(t('groupsP.created'));
       setCreateOpen(false);
       setName('');
-      setRank(0);
       setMonthlyFee(0);
       invalidate('/staff/groups');
     } catch (e) {
@@ -93,7 +91,6 @@ export default function TeacherGroups() {
                   <div className="text-[12.5px] text-muted mt-0.5 flex items-center gap-1 flex-wrap">
                     <span className="inline-flex items-center gap-1"><Users size={12} /> {g.membersCount} {t('groupsP.members')}</span>
                     {g.monthlyFee > 0 && <span className="tabular-nums">• {fmtMoney(g.monthlyFee)} so'm/oy</span>}
-                    {g.rank > 0 && <span>• {t('groupsP.rank')}: {g.rank}</span>}
                   </div>
                 </div>
               </Link>
@@ -113,9 +110,6 @@ export default function TeacherGroups() {
       <Sheet open={createOpen} onClose={() => setCreateOpen(false)} title={t('groupsP.createGroup')}>
         <Field label={t('groupsP.groupName')}>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Matematika 6-A" />
-        </Field>
-        <Field label={t('groupsP.rank')} hint={t('groupsP.rankHint')}>
-          <NumberInput value={rank} min={0} max={100} onChange={setRank} />
         </Field>
         <Field label={t('payments.monthlyFee')} hint={t('payments.monthlyFeeHint')}>
           <NumberInput value={monthlyFee} min={0} onChange={setMonthlyFee} placeholder="200000" />
