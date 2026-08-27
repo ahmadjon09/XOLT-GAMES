@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGet } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Avatar, AnimatedName, Pagination } from '../../components/ui.jsx';
+import { TopBar } from '../../layouts/Layouts.jsx';
 import { fmtNum, cx } from '../../utils/format.js';
 import gg1 from '../../assets/gg1.png';
 import gg2 from '../../assets/gg2.png';
@@ -61,8 +62,10 @@ export default function Leaderboard() {
 
   if (isLoading && !data) {
     return (
-      <div className="page pt-4 space-y-[var(--gap)]">
-        <div className="card h-[88px]">
+      <>
+        <TopBar title={t('lb.title')} />
+        <div className="page pt-4 space-y-[var(--gap)]">
+          <div className="card h-[88px]">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-surface-2 animate-pulse" />
             <div className="space-y-2 flex-1">
@@ -91,18 +94,22 @@ export default function Leaderboard() {
             </div>
           ))}
         </div>
-      </div>
+        </div>
+      </>
     );
   }
 
   if (!data) {
     return (
-      <div className="w-full flex items-center min-h-screen justify-center text-red-400 p-8">
-        <div className="text-center">
-          <FaExclamationTriangle className="text-5xl mx-auto mb-4" />
-          <p>{t('common.serverError')}</p>
+      <>
+        <TopBar title={t('lb.title')} />
+        <div className="w-full flex items-center min-h-screen justify-center text-red-400 p-8">
+          <div className="text-center">
+            <FaExclamationTriangle className="text-5xl mx-auto mb-4" />
+            <p>{t('common.serverError')}</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -158,9 +165,11 @@ export default function Leaderboard() {
   };
 
   return (
-    <div className="page pt-4 space-y-[var(--gap)]">
-      <div className="card">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+    <>
+      <TopBar title={t('lb.title')} />
+      <div className="page pt-4 space-y-[var(--gap)]">
+        <div className="card">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 text-yellow-400 flex items-center justify-center">
               <Trophy />
@@ -390,6 +399,7 @@ export default function Leaderboard() {
           )}
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }

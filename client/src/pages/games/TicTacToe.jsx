@@ -164,8 +164,10 @@ export default function TicTacToe() {
   if (finalResult) {
     const won = finalResult.draw ? null : finalResult.winner === myRole;
     return (
-      <div className="page no-nav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40 }}>
-        {won && <Confetti />}
+      <>
+        <TopBar title={t('ttt.title')} back onBack={leave} />
+        <div className="page no-nav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40 }}>
+          {won && <Confetti />}
         <div style={{ fontSize: 30, fontWeight: 900, textAlign: 'center', marginBottom: 4 }}>
           {won === null ? t('ttt.draw') : won ? t('ttt.youWon') : t('ttt.youLost')}
         </div>
@@ -182,7 +184,8 @@ export default function TicTacToe() {
             <Button className="full" onClick={() => socket.emit('ttt:rematch', { gameId: game.gameId })}><RefreshCw size={16} /> {t('ttt.rematch')}</Button>
           </div>
         </Card>
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -190,10 +193,11 @@ export default function TicTacToe() {
   if (game && game.status === 'active' && game.host && game.guest) {
     const isHost = myRole === 'host';
     return (
-      <div className="page no-nav" style={{ paddingTop: 10 }}>
-        <TopBar title={t('ttt.title')} back />
+      <>
+        <TopBar title={t('ttt.title')} back onBack={leave} />
+        <div className="page no-nav" style={{ paddingTop: 10 }}>
 
-        {!connected && (
+          {!connected && (
           <div style={{ background: 'var(--accent-soft)', color: '#b45309', borderRadius: 12, padding: '9px 14px', fontSize: 13, fontWeight: 700, marginBottom: 10, textAlign: 'center' }}>
             {t('math.reconnecting')}
           </div>
@@ -259,7 +263,8 @@ export default function TicTacToe() {
         <Button variant="danger-soft" className="full" style={{ marginTop: 20 }} onClick={leave}>
           <Flag size={16} /> {t('ttt.leave')}
         </Button>
-      </div>
+        </div>
+      </>
     );
   }
 

@@ -8,6 +8,7 @@ import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { Card, Button, EmptyState, ConfirmDialog, PageHeader, IconButton, PageError, SkeletonRow } from '../../components/ui.jsx';
 import { fmtDate } from '../../utils/format.js';
+import { TopBar } from '../../layouts/Layouts.jsx';
 
 export default function QuizzesList() {
   const { t } = useTranslation();
@@ -36,7 +37,9 @@ export default function QuizzesList() {
   };
 
   return (
-    <div className="page-staff pt-4">
+    <>
+      <TopBar title={t('quizzesP.title')} back />
+      <div className="page-staff pt-4">
       {/* Header */}
       <PageHeader
         icon={ListChecks}
@@ -109,5 +112,6 @@ export default function QuizzesList() {
         loading={busy}
       />
     </div>
+    </>
   );
 }

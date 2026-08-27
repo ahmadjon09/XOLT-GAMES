@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Home, Store, Trophy, User, LayoutDashboard, Users, CalendarCheck2, ListChecks,
@@ -8,28 +8,169 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSocket } from '../context/SocketContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
-import { CoinBadge, ConfirmDialog } from '../components/ui.jsx';
+import { CoinBadge, ConfirmDialog, LangSwitcher } from '../components/ui.jsx';
 import { Logo } from './Logo.jsx';
 import { cx } from '../utils/format.js';
 
-// ---------- TopBar ----------
-export function TopBar({ title, right, back }) {
+// =========================================================================
+// YAGONA NAVBAR TIZIMI
+// Barcha sahifalar (student, o'yin, xodim) bir xil TopBar'dan foydalanadi:
+//   [ orqaga|logo ]      [ sarlavha — markazda ]      [ til + tugmalar ]
+// Mobil: yopishqoq (sticky), desktop: statik sarlavha qatori.
+// =========================================================================
+
+// Chiqish tugmasi — o'z tasdiq modaliga ega (har joyda bir xil)
+function LogoutButton({ className, children }) {
+  const { t } = useTranslation();
+  const { logout } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+
+  const handle = () => {
+    setOpen(false);
+    logout();
+    toast.success(t('common.done'));
+    navigate('/login');
+  };
+
   return (
-    <div className="topbar">
-      <div className="topbar-inner">
-        {back && (
-          <button onClick={() => navigate(-1)} className="btn ico ghost" aria-label="back">
-            <ChevronLeft size={20} />
-          </button>
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="font-extrabold text-[17px] truncate tracking-tight">{title}</div>
-        </div>
-        {right && <div className="flex items-center gap-2 shrink-0">{right}</div>}
-      </div>
-    </div>
+    <>
+      <button className={className} onClick={() => setOpen(true)}>
+        {children}
+      </button>
+      <ConfirmDialog
+        open={open}
+        title={t('auth.logoutConfirm')}
+        onClose={() => setOpen(false)}
+        onConfirm={handle}
+        confirmText={t('common.yesSure')}
+      />
+    </>
   );
+}
+
+// TopBar o'ng tomonidagi yagona boshqaruvlar: til + rolni tugmalari
+// Barcha sahifalarda aynan shu blok — navbar har doim bir xil bo'ladi
+function TopControls() {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  if (!user) return null;
+  const isStaff = user.kind === 'staff';
+
+  return (
+    <>
+      {/* Til — mobil: flaglar, desktop: to'liq nomlar */}
+      <div className="lg:hidden shrink-0"><LangSwitcher compact /></div>
+      <div className="hidden lg:flex shrink-0"><LangSwitcher /></div>
+      {/* Coin — kichik ekranda joy tejarasi uchun yashiriladi (sahifa ichida ko'rinadi) */}
+      {!isStaff && <span className="hidden sm:inline-flex shrink-0"><CoinBadge value={user?.coin ?? 0} /></span>}
+      {isStaff && (
+        <Link
+          to="/staff/profile"
+          className="btn ico ghost shrink-0"
+          aria-label={t('staff.myProfile')}
+          title={t('staff.myProfile')}
+        >
+          <UserRound size={18} />
+        </Link>
+      )}
+      <LogoutButton
+        className="btn ico ghost shrink-0"
+      >
+        <span className="sr-only">{t('nav.logout')}</span>
+        <LogOut size={18} />
+      </LogoutButton>
+    </>
+  );
+}
+
+// Yagona yuqori panel — barcha sahifalarda bir xil, simetrik
+// back: orqaga tugma (yo'q bo'lsa logo ko'rinadi)
+// onBack: orqaga tugma boshqa ish holatida (masalan o'yindan chiqish)
+export function TopBar({ title, right, back, onBack, withStaffMenu = true }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const homeTo = user?.kind === 'staff' ? '/staff' : '/';
+  const menu = useStaffMenu();
+
+  return (
+    <>
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div className="topbar-left">
+            {back ? (
+              <button
+                className="btn ico ghost shrink-0"
+                onClick={onBack || (() => navigate(-1))}
+                aria-label={t('common.back')}
+                title={t('common.back')}
+              >
+                <ChevronLeft size={20} />
+              </button>
+            ) : (
+              <Link to={homeTo} className="flex items-center gap-2.5 min-w-0" aria-label={t('common.appName')}>
+                <Logo size={30} />
+                <span className="brand hidden xl:inline truncate">{t('common.appName')}</span>
+              </Link>
+            )}
+          </div>
+
+          <div className="topbar-title">
+            <div className="t truncate">{title}</div>
+          </div>
+
+          <div className="topbar-right">
+            {right && <div className="flex items-center gap-2 shrink-0">{right}</div>}
+            <TopControls />
+          </div>
+        </div>
+      </header>
+      {user?.kind === 'staff' && withStaffMenu && <StaffSectionNav menu={menu} />}
+    </>
+  );
+}
+
+// Xodim sahifalari uchun bo'limlar menyu — TopBar ostida yopishqoq (faqat mobil)
+function StaffSectionNav({ menu }) {
+  return (
+    <nav className="staffmenu lg:hidden" aria-label="staff">
+      <div className="segment scroll w-full">
+        {menu.map((m) => (
+          <NavLink key={m.to} to={m.to} end={m.end}>
+            {({ isActive }) => (
+              <button className={isActive ? 'active' : ''} aria-current={isActive ? 'page' : undefined}>
+                <m.icon size={15} />
+                {m.label}
+              </button>
+            )}
+          </NavLink>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+// Xodim menyu ro'yxati (rolga qarab) — Sidebar va mobil menyu uchun yagona manba
+function useStaffMenu() {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const role = user?.role;
+  return [
+    { to: '/staff', end: true, icon: LayoutDashboard, label: t('staff.dashboard'), roles: ['ADMIN', 'TEACHER', 'CASHIER'] },
+    { to: '/staff/profile', icon: UserRound, label: t('staff.myProfile'), roles: ['ADMIN', 'TEACHER', 'CASHIER'] },
+    { to: '/staff/groups', icon: Users, label: t('staff.groups'), roles: ['ADMIN', 'TEACHER'] },
+    { to: '/staff/attendance', icon: CalendarCheck2, label: t('staff.attendance'), roles: ['ADMIN', 'TEACHER'] },
+    { to: '/staff/quizzes', icon: ListChecks, label: t('staff.quizzes'), roles: ['ADMIN', 'TEACHER'] },
+    { to: '/staff/payments', icon: Wallet, label: t('staff.payments'), roles: ['ADMIN', 'CASHIER'] },
+    { to: '/staff/users', icon: Users, label: t('staff.users'), roles: ['ADMIN', 'CASHIER', 'TEACHER'] },
+    { to: '/staff/staff', icon: User, label: t('staff.staff'), roles: ['ADMIN'] },
+    { to: '/staff/shop', icon: Store, label: t('staff.shop'), roles: ['ADMIN'] },
+    { to: '/staff/typing-texts', icon: Keyboard, label: t('typing.manageTexts'), roles: ['ADMIN', 'TEACHER'] },
+    { to: '/staff/code-questions', icon: Code2, label: t('code.manageQuestions'), roles: ['ADMIN', 'TEACHER'] },
+    { to: '/staff/stats', icon: Trophy, label: t('staff.stats'), roles: ['ADMIN'] },
+  ].filter((m) => m.roles.includes(role));
 }
 
 // ---------- BottomNav (markazlashgan suzuvchi panel) ----------
@@ -147,15 +288,10 @@ function Sidebar({ items, title, sub, footer }) {
 }
 
 // ---------- StudentLayout ----------
+// Navbar'lar TopBar ichida — layout faqat sidebar (desktop) va pastki nav (mobil)
 export function StudentLayout() {
   const { t } = useTranslation();
-  const { user, logout } = useAuth();
-  const { connected } = useSocket();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const toast = useToast();
-  const [logoutOpen, setLogoutOpen] = useState(false);
-  const hideTopbar = location.pathname === '/leaderboard';
+  const { user } = useAuth();
 
   const navItems = [
     { to: '/', end: true, icon: Home, label: t('nav.home') },
@@ -165,37 +301,8 @@ export function StudentLayout() {
     { to: '/profile', icon: User, label: t('nav.profile') },
   ];
 
-  const handleLogout = () => {
-    logout();
-    toast.success(t('common.done'));
-    navigate('/login');
-  };
-
   return (
     <>
-      {!hideTopbar && (
-        <div className="topbar lg:hidden">
-          <div className="topbar-inner">
-            <Link to="/" className="flex items-center gap-2 min-w-0">
-              <Logo size={30} />
-              <span className="brand truncate">{t('common.appName')}</span>
-            </Link>
-            <div className="flex-1" />
-            <div className="flex items-center gap-2 shrink-0">
-              {connected ? <Wifi size={15} className="text-success" /> : <WifiOff size={15} className="text-danger" />}
-              <CoinBadge value={user?.coin ?? 0} />
-              <button
-                onClick={() => setLogoutOpen(true)}
-                className="btn ico ghost"
-                aria-label={t('nav.logout')}
-              >
-                <LogOut size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <Sidebar
         title="XOLT Games"
         sub={t('home.heroSub')}
@@ -206,12 +313,9 @@ export function StudentLayout() {
               <span className="text-xs font-bold text-white/70">{t('home.myCoins')}</span>
               <CoinBadge value={user?.coin ?? 0} />
             </div>
-            <button
-              onClick={() => setLogoutOpen(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-xs font-bold text-white/80 transition hover:bg-white/20 hover:text-white"
-            >
+            <LogoutButton className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-xs font-bold text-white/80 transition hover:bg-white/20 hover:text-white">
               <LogOut size={14} /> {t('nav.logout')}
-            </button>
+            </LogoutButton>
           </div>
         }
       />
@@ -223,82 +327,26 @@ export function StudentLayout() {
       <div className="lg:hidden">
         <BottomNav items={navItems} />
       </div>
-
-      <ConfirmDialog
-        open={logoutOpen}
-        title={t('auth.logoutConfirm')}
-        onClose={() => setLogoutOpen(false)}
-        onConfirm={handleLogout}
-        confirmText={t('common.yesSure')}
-      />
     </>
   );
 }
 
 // ---------- StaffLayout ----------
+// Navbar'lar TopBar ichida — layout faqat sidebar (desktop)
+// Mobil bo'limlar menyusi TopBar ostida chiqadi (StaffSectionNav)
 export function StaffLayout() {
   const { t } = useTranslation();
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const toast = useToast();
-  const [logoutOpen, setLogoutOpen] = useState(false);
-
-  const role = user?.role;
-  const menu = [
-    { to: '/staff', end: true, icon: LayoutDashboard, label: t('staff.dashboard'), roles: ['ADMIN', 'TEACHER', 'CASHIER'] },
-    { to: '/staff/profile', icon: UserRound, label: t('staff.myProfile'), roles: ['ADMIN', 'TEACHER', 'CASHIER'] },
-    { to: '/staff/groups', icon: Users, label: t('staff.groups'), roles: ['ADMIN', 'TEACHER'] },
-    { to: '/staff/attendance', icon: CalendarCheck2, label: t('staff.attendance'), roles: ['ADMIN', 'TEACHER'] },
-    { to: '/staff/quizzes', icon: ListChecks, label: t('staff.quizzes'), roles: ['ADMIN', 'TEACHER'] },
-    { to: '/staff/payments', icon: Wallet, label: t('staff.payments'), roles: ['ADMIN', 'CASHIER'] },
-    { to: '/staff/users', icon: Users, label: t('staff.users'), roles: ['ADMIN', 'CASHIER', 'TEACHER'] },
-    { to: '/staff/staff', icon: User, label: t('staff.staff'), roles: ['ADMIN'] },
-    { to: '/staff/shop', icon: Store, label: t('staff.shop'), roles: ['ADMIN'] },
-    { to: '/staff/typing-texts', icon: Keyboard, label: t('typing.manageTexts'), roles: ['ADMIN', 'TEACHER'] },
-    { to: '/staff/code-questions', icon: Code2, label: t('code.manageQuestions'), roles: ['ADMIN', 'TEACHER'] },
-    { to: '/staff/stats', icon: Trophy, label: t('staff.stats'), roles: ['ADMIN'] },
-  ].filter((m) => m.roles.includes(role));
+  const { user } = useAuth();
+  const menu = useStaffMenu();
 
   const roleLabel = {
     TEACHER: t('staff.roleTeacher'),
     CASHIER: t('staff.roleCashier'),
     ADMIN: t('staff.roleAdmin'),
-  }[role];
+  }[user?.role];
 
   return (
     <>
-      <div className="topbar lg:hidden">
-        <div className="topbar-inner">
-          <Logo size={30} />
-          <div className="flex-1 min-w-0">
-            <div className="font-extrabold text-[15px] truncate">{user?.full_name}</div>
-            <div className="text-[11.5px] font-bold text-primary truncate">{roleLabel}</div>
-          </div>
-          <button className="btn ico ghost" onClick={() => navigate('/staff/profile')} title={t('staff.myProfile')}>
-            <UserRound size={18} />
-          </button>
-          <button className="btn ico ghost" onClick={() => setLogoutOpen(true)} title={t('nav.logout')}>
-            <LogOut size={18} />
-          </button>
-        </div>
-      </div>
-
-      {/* Mobil bo'limlar paneli — topbar ostida yopishqoq */}
-      <div className="lg:hidden sticky top-[var(--topbar-h)] z-[35] bg-[rgba(246,244,252,0.92)] backdrop-blur-md px-3 py-2.5 border-b border-border">
-        <div className="segment scroll w-full">
-          {menu.map((m) => (
-            <NavLink key={m.to} to={m.to} end={m.end}>
-              {({ isActive }) => (
-                <button className={isActive ? 'active' : ''}>
-                  <m.icon size={15} />
-                  {m.label}
-                </button>
-              )}
-            </NavLink>
-          ))}
-        </div>
-      </div>
-
       <Sidebar
         title="XOLT"
         sub={roleLabel}
@@ -318,12 +366,9 @@ export function StaffLayout() {
                 <div className="text-[11px] font-semibold text-white/55">{roleLabel}</div>
               </div>
             </Link>
-            <button
-              onClick={() => setLogoutOpen(true)}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2 text-xs font-bold text-white/80 transition hover:bg-white/20 hover:text-white"
-            >
+            <LogoutButton className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2 text-xs font-bold text-white/80 transition hover:bg-white/20 hover:text-white">
               <LogOut size={14} /> {t('nav.logout')}
-            </button>
+            </LogoutButton>
           </div>
         }
       />
@@ -331,18 +376,6 @@ export function StaffLayout() {
       <main className="lg:ml-[var(--sidebar-w)]">
         <Outlet />
       </main>
-
-      <ConfirmDialog
-        open={logoutOpen}
-        title={t('auth.logoutConfirm')}
-        onClose={() => setLogoutOpen(false)}
-        onConfirm={() => {
-          logout();
-          toast.success(t('common.done'));
-          navigate('/login');
-        }}
-        confirmText={t('common.yesSure')}
-      />
     </>
   );
 }

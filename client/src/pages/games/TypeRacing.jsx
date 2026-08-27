@@ -501,8 +501,10 @@ export default function TypeRacing() {
   if (phase === PHASE.RESULTS && final) {
     const my = final.find((p) => p.userId === myId);
     return (
-      <div className="page pt-6 space-y-4">
-        <div className="text-center">
+      <>
+        <TopBar title={t('typing.race')} back onBack={leave} />
+        <div className="page pt-6 space-y-4">
+          <div className="text-center">
           <div className="text-2xl font-black">{t('typing.results')}</div>
           <div className="text-muted text-sm">{t('typing.race')}</div>
           {my && (
@@ -536,7 +538,8 @@ export default function TypeRacing() {
             <Play size={16} className="mr-1.5" /> {t('typing.again')}
           </Button>
         </div>
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -545,19 +548,15 @@ export default function TypeRacing() {
     const myPlayer = session?.players?.find((p) => p.userId === myId);
     const myProgress = myPlayer?.progress || 0;
     return (
-      <div className="page pt-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Keyboard size={20} className="text-primary" />
-            {t('typing.race')}
-          </h2>
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-primary">{myWpm} WPM</span>
-            <Button variant="ghost" size="sm" onClick={leave} className="text-danger">
-              <Flag size={16} />
-            </Button>
-          </div>
-        </div>
+      <>
+        {/* Bir xil uslub — solo rejimdekilar (yagona navbar) */}
+        <TopBar
+          title={t('typing.race')}
+          back
+          onBack={leave}
+          right={<span className="badge primary tabular-nums shrink-0">{myWpm} WPM</span>}
+        />
+        <div className="page pt-4 space-y-4">
 
         {/* Live leaderboard */}
         <Card className="p-3">
@@ -629,7 +628,8 @@ export default function TypeRacing() {
             <Zap size={16} className="mr-1.5" /> {t('typing.waiting')}
           </Button>
         )}
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -639,18 +639,10 @@ export default function TypeRacing() {
     const isHost = session.hostId === myId;
     const joinUrl = `${window.location.origin}/game/typerace?code=${session.code}`;
     return (
-      <div className="page pt-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Keyboard size={20} className="text-primary" />
-            {t('typing.race')}
-          </h2>
-          <Button variant="ghost" size="sm" onClick={leave} className="text-danger">
-            <Flag size={16} />
-          </Button>
-        </div>
-
-        <Card className="text-center p-6">
+      <>
+        <TopBar title={t('typing.race')} back onBack={leave} />
+        <div className="page pt-4 space-y-4">
+          <Card className="text-center p-6">
           <div className="text-sm font-semibold text-muted">{t('typing.waitingPlayers')}</div>
           <div className="text-sm mt-1">
             {t('typing.lang')}: <b className="text-primary">{session.lang === 'uz' ? "O'zbek" : session.lang === 'ru' ? 'Русский' : 'English'}</b>
@@ -685,7 +677,8 @@ export default function TypeRacing() {
         >
           <Play size={18} className="mr-1.5" /> {isHost ? t('typing.start') : t('typing.waitHost')}
         </Button>
-      </div>
+        </div>
+      </>
     );
   }
 

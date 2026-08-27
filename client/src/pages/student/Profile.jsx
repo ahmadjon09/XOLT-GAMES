@@ -16,12 +16,11 @@ import { fileToDataUrl, validateImageFile } from '../../utils/cropImage.js';
 export default function Profile() {
   const { t } = useTranslation();
   const toast = useToast();
-  const { user, refresh, logout } = useAuth();
+  const { user, refresh } = useAuth();
   const invalidate = useInvalidate();
   const [editOpen, setEditOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [passOpen, setPassOpen] = useState(false);
-  const [logoutOpen, setLogoutOpen] = useState(false);
   const [sound, setSound] = useState(isSoundEnabled());
   const fileRef = useRef(null);
   const [avatarCrop, setAvatarCrop] = useState(null);
@@ -30,7 +29,6 @@ export default function Profile() {
   const [passForm, setPassForm] = useState({ oldPassword: '', newPassword: '', newPassword2: '' });
   const [busy, setBusy] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
 
   const { data: profile, isLoading } = useGet('/user/profile');
   // Guruh ichidagi reytingim (har guruh bo'yicha o'rin)
@@ -102,15 +100,6 @@ export default function Profile() {
     }
   };
 
-  const handleLogout = async () => {
-    setLoggingOut(true);
-    try {
-      await logout();
-    } finally {
-      setLoggingOut(false);
-    }
-  };
-
   if (isLoading && !profile) {
     return (
       <>
@@ -142,10 +131,9 @@ export default function Profile() {
       <TopBar
         title={t('profile.title')}
         right={
-          <div className="flex gap-1.5">
-            <button className="btn ghost sm" onClick={() => setSettingsOpen(true)}><Settings size={17} /></button>
-            <button className="btn ghost sm" onClick={() => setLogoutOpen(true)}><LogOut size={17} /></button>
-          </div>
+          <button className="btn ico ghost" onClick={() => setSettingsOpen(true)} title={t('common.settings')} aria-label={t('common.settings')}>
+            <Settings size={18} />
+          </button>
         }
       />
       <div className="page pt-4">
@@ -308,15 +296,6 @@ export default function Profile() {
         </Field>
         <Button className="w-full" loading={busy} onClick={changePassword}>{t('common.save')}</Button>
       </Sheet>
-
-      <ConfirmDialog
-        open={logoutOpen}
-        title={t('auth.logoutConfirm')}
-        onClose={() => setLogoutOpen(false)}
-        onConfirm={handleLogout}
-        confirmText={t('common.yesSure')}
-        loading={loggingOut}
-      />
 
       <ImageCropper
         open={!!avatarCrop}

@@ -10,6 +10,7 @@ import {
   Badge, PageHeader, IconButton, PhoneInput, SkeletonRow,
 } from '../../components/ui.jsx';
 import { fmtDate, fmtPhone } from '../../utils/format.js';
+import { TopBar } from '../../layouts/Layouts.jsx';
 
 const ROLE_LABEL = { ADMIN: 'staff.roleAdmin', TEACHER: 'staff.roleTeacher', CASHIER: 'staff.roleCashier' };
 const ROLE_COLOR = { ADMIN: 'danger', TEACHER: 'info', CASHIER: 'warn' };
@@ -87,7 +88,9 @@ export default function AdminStaff() {
   };
 
   return (
-    <div className="page-staff pt-4">
+    <>
+      <TopBar title={t('staffP.title')} back />
+      <div className="page-staff pt-4">
       <PageHeader
         icon={UserCog}
         title={t('staffP.title')}
@@ -183,5 +186,6 @@ export default function AdminStaff() {
         loading={busy}
       />
     </div>
+    </>
   );
 }

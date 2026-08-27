@@ -260,8 +260,10 @@ export default function MathGame() {
   if (finalResult) {
     const won = finalResult.draw ? null : finalResult.winner === myRole;
     return (
-      <div className="page no-nav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40 }}>
-        {won && <Confetti />}
+      <>
+        <TopBar title={t('math.title')} back onBack={leaveGame} />
+        <div className="page no-nav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40 }}>
+          {won && <Confetti />}
         <div style={{ fontSize: 30, fontWeight: 900, textAlign: 'center', marginBottom: 6 }}>
           {won === null ? t('math.draw') : won ? t('math.youWon') : t('math.youLost')}
         </div>
@@ -294,7 +296,8 @@ export default function MathGame() {
             <Button className="full" onClick={rematch}><RefreshCw size={16} /> {t('math.rematch')}</Button>
           </div>
         </Card>
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -307,10 +310,11 @@ export default function MathGame() {
     const curRound = Math.min(game.currentRound, totalRounds);
 
     return (
-      <div className="page no-nav" style={{ paddingTop: 10 }}>
-        <TopBar title={t('math.title')} back />
+      <>
+        <TopBar title={t('math.title')} back onBack={leaveGame} />
+        <div className="page no-nav" style={{ paddingTop: 10 }}>
 
-        {!connected && (
+          {!connected && (
           <div style={{ background: 'var(--accent-soft)', color: '#b45309', borderRadius: 12, padding: '9px 14px', fontSize: 13, fontWeight: 700, marginBottom: 10, textAlign: 'center' }}>
             {t('math.reconnecting')}
           </div>
@@ -398,7 +402,8 @@ export default function MathGame() {
         <Button variant="danger-soft" className="full" style={{ marginTop: 14 }} onClick={leaveGame}>
           <Flag size={16} /> {t('math.leave')}
         </Button>
-      </div>
+        </div>
+      </>
     );
   }
 

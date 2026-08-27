@@ -10,6 +10,7 @@ import {
   PageHeader, IconButton, NumberInput, PageError, SkeletonGrid,
 } from '../../components/ui.jsx';
 import { fmtNum } from '../../utils/format.js';
+import { TopBar } from '../../layouts/Layouts.jsx';
 
 const EMPTY_FRAME = { id: '', name: '', price: 0, rarity: 'common', image: '', animation: '' };
 const EMPTY_EFFECT = { id: '', name: '', price: 0, type: 'text', config: '' };
@@ -142,7 +143,9 @@ export default function AdminShop() {
   };
 
   return (
-    <div className="page-staff pt-4">
+    <>
+      <TopBar title={t('shopA.title')} back />
+      <div className="page-staff pt-4">
       {/* Header */}
       <PageHeader
         icon={Store}
@@ -287,5 +290,6 @@ export default function AdminShop() {
         loading={busy}
       />
     </div>
+    </>
   );
 }

@@ -7,6 +7,7 @@ import {
 import { useGet } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { AutoGrid, Card, CoinBadge, EmptyState } from '../../components/ui.jsx';
+import { TopBar } from '../../layouts/Layouts.jsx';
 import { fmtNum } from '../../utils/format.js';
 
 const gameMeta = {
@@ -50,9 +51,11 @@ export default function Home() {
   ];
 
   return (
-    <div className="page pt-4 space-y-[var(--gap)]">
-      {/* Salomlashuv */}
-      <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <>
+      <TopBar title={t('nav.home')} />
+      <div className="page pt-4 space-y-[var(--gap)]">
+        {/* Salomlashuv */}
+        <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="text-[22px] font-extrabold tracking-tight truncate">
             {t('auth.welcome')}, {user?.full_name?.split(' ')[0]}!
@@ -182,6 +185,7 @@ export default function Home() {
           {t('home.myRank')}
         </Link>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

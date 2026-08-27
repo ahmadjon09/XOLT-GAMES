@@ -11,6 +11,7 @@ import { useGet } from '../../api/hooks.js';
 import { Card, StatCard, Segmented, PageHeader, MiniStat } from '../../components/ui.jsx';
 
 import { fmtNum } from '../../utils/format.js';
+import { TopBar } from '../../layouts/Layouts.jsx';
 
 const PIE_COLORS = ['#5b1ea6', '#fdc700', '#ef4444'];
 
@@ -23,7 +24,9 @@ export default function AdminDashboard() {
   const { data: charts } = useGet(`/staff/stats/charts?days=${days}`);
 
   if (!overview) return (
-    <div className="page-staff pt-4">
+    <>
+      <TopBar title={t('statsP.title')} back />
+      <div className="page-staff pt-4">
       <PageHeader icon={Activity} title={t('statsP.title')} />
       <div className="grid-fit mb-[var(--gap)]" style={{ '--col': '210px' }}>
         {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
@@ -43,12 +46,14 @@ export default function AdminDashboard() {
         <div className="h-[150px] rounded-[14px] bg-surface-2 animate-pulse" />
       </Card>
     </div>
+    </>
   );
 
   const roleLabels = { ADMIN: t('staff.roleAdmin'), TEACHER: t('staff.roleTeacher'), CASHIER: t('staff.roleCashier') };
 
   return (
     <>
+      <TopBar title={t('statsP.title')} back />
       <div className="page-staff pt-4">
         <PageHeader icon={Activity} title={t('statsP.title')} sub={t('statsP.overview')} />
         {/* Umumiy ko'rsatkichlar */}

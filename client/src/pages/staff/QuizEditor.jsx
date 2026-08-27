@@ -10,6 +10,7 @@ import { Card, Button, Input, Field, Textarea, PageLoader, Select, PageHeader } 
 import ImageCropper from '../../components/ImageCropper.jsx';
 import { fileToDataUrl, validateImageFile } from '../../utils/cropImage.js';
 import { fmtInt } from '../../utils/format.js';
+import { TopBar } from '../../layouts/Layouts.jsx';
 
 const EMPTY_QUESTION = () => ({
   text: '',
@@ -133,7 +134,9 @@ export default function QuizEditor() {
   if (loading || quizLoading) return <PageLoader />;
 
   return (
-    <div className="page-staff pt-4 space-y-3.5">
+    <>
+      <TopBar title={t('quizzesP.title')} back />
+      <div className="page-staff pt-4 space-y-3.5">
       {/* Header */}
       <PageHeader
         icon={ListChecks}
@@ -281,5 +284,6 @@ export default function QuizEditor() {
         label={t('crop.cropQuestion')}
       />
     </div>
+    </>
   );
 }

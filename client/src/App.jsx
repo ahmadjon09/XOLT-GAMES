@@ -2,6 +2,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import { PageLoader } from './components/ui.jsx';
+import InstallPrompt from './components/InstallPrompt.jsx';
 
 import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -60,6 +61,8 @@ function Guard({ children, kind, roles }) {
 export default function App() {
   return (
     <BrowserRouter>
+      {/* PWA: ilova ornatilmagan bo'lsa chekadan "O'rnatib oling" banneri */}
+      <InstallPrompt />
       <Routes>
         <Route path="/login" element={<Login />} />
 

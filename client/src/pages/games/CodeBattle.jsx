@@ -370,8 +370,10 @@ export default function CodeBattle() {
   if (phase === PHASE.RESULTS && final) {
     const myIdx = final.final.findIndex((p) => p.userId === myId);
     return (
-      <div className="page no-nav" style={{ paddingTop: 24 }}>
-        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+      <>
+        <TopBar title={t('code.battle')} back onBack={leave} />
+        <div className="page no-nav" style={{ paddingTop: 24 }}>
+          <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 26, fontWeight: 900 }}>{t('code.results')}</div>
           <div style={{ color: 'var(--muted)', fontSize: 13.5 }}>{session?.category?.toUpperCase()}</div>
           {myIdx >= 0 && (
@@ -402,7 +404,8 @@ export default function CodeBattle() {
             <Play size={15} /> {t('code.newBattle')}
           </Button>
         </div>
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -410,10 +413,11 @@ export default function CodeBattle() {
   if ((phase === PHASE.QUESTION || phase === PHASE.REVEAL) && question) {
     const answeredCount = (session?.players || []).filter((p) => p.answered).length;
     return (
-      <div className="page no-nav" style={{ paddingTop: 10 }}>
-        <TopBar title={t('code.battle')} back />
+      <>
+        <TopBar title={t('code.battle')} back onBack={leave} />
+        <div className="page no-nav" style={{ paddingTop: 10 }}>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '6px 0 12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '6px 0 12px' }}>
           <span className="badge primary">{t('quiz.question')} {question.index + 1} {t('quiz.of')} {question.totalQuestions}</span>
           <span className="badge neutral">{answeredCount}/{session?.players?.length || 0}</span>
         </div>
@@ -458,7 +462,8 @@ export default function CodeBattle() {
             </Button>
           </Card>
         )}
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -468,9 +473,10 @@ export default function CodeBattle() {
     const isHost = session.hostId === myId;
     const joinUrl = `${window.location.origin}/game/codebattle?code=${session.code}`;
     return (
-      <div className="page" style={{ paddingTop: 14 }}>
-        <TopBar title={t('code.battle')} back />
-        <Card style={{ textAlign: 'center', padding: 22, marginTop: 8 }}>
+      <>
+        <TopBar title={t('code.battle')} back onBack={leave} />
+        <div className="page" style={{ paddingTop: 14 }}>
+          <Card style={{ textAlign: 'center', padding: 22, marginTop: 8 }}>
           <div style={{ fontWeight: 900, fontSize: 18 }}>{t('code.waitingPlayers')}</div>
           <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 14 }}>
             {session.category?.toUpperCase()} • {session.questionsCount} {t('quizzesP.questionCount')}
@@ -504,7 +510,8 @@ export default function CodeBattle() {
         <Button variant="outline" className="full" style={{ marginTop: 10 }} onClick={leave}>
           <Flag size={15} /> {t('common.exit')}
         </Button>
-      </div>
+        </div>
+      </>
     );
   }
 

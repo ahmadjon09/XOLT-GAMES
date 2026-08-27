@@ -834,7 +834,7 @@ export function LangSwitcher({ compact, dark }) {
   const base = dark
     ? 'text-white/80 hover:bg-white/10'
     : 'text-muted hover:bg-surface-2';
-  const active = dark ? 'bg-white/20 text-white' : 'bg-primary text-white shadow-sm';
+  const active = dark ? 'bg-white/20 text-white' : 'lang-active';
   return (
     <div className="flex items-center gap-2">
       {langs.map((l) => (

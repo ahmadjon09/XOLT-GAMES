@@ -404,6 +404,7 @@ export const uz = {
     waitAnswer: 'Javoblar qabul qilinmoqda...',
   },
   staff: {
+    title: 'Boshqaruv paneli',
     dashboard: 'Boshqaruv',
     myProfile: 'Mening profilim',
     groups: 'Guruhlar',
@@ -517,6 +518,7 @@ export const uz = {
     quizImage: 'Viktorina rasmi',
   },
   hostP: {
+    title: 'Viktorina boshqaruvi',
     selectQuiz: 'Viktorinani tanlang',
     qrCode: 'QR kod',
     roomCode: 'Xona kodi',
@@ -928,5 +930,14 @@ export const uz = {
     chess: 'Shaxmat',
     typerace: 'Yozish',
     codebattle: 'Kod jang',
+  },
+  install: {
+    title: "XOLT Games'ni o'rnatish",
+    desc: "Ilovani qo'shing — o'yinlar tezroq ochiladi va to'liq ekranda ishlaydi",
+    button: "O'rnatish",
+    later: 'Keyinroq',
+    installed: 'Ilova o\'rnatildi',
+    iosTitle: 'Ilovani qo\'shish',
+    iosDesc: 'Ulashish tugmasini bosing, so\'ng "Bosh sahifaga qo\'shish"ni tanlang',
   },
 }
