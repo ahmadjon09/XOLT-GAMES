@@ -9,10 +9,12 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { errorMessage } from '../../api/fetcher.js';
 import {
   Button, Card, Input, Field, QRCode, QRScanner, CopyButton, PlayerCard, Confetti,
-  NumberInput, Segmented, Sheet, ConfirmDialog, Avatar, AnimatedName, CoinBadge,
+  NumberInput, Segmented, Sheet, Avatar, AnimatedName, CoinBadge,
   GameVisibilityToggle,
 } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
+import { useGameExit } from '../../hooks/useGameExit.jsx';
+import QuickPlay from '../../components/QuickPlay.jsx';
 import { initAudio, sounds } from '../../utils/sound.js';
 import { fmtInt } from '../../utils/format.js';
 import { getLegalMoves, rcToSquare } from '../../utils/chess.js';
@@ -51,7 +53,6 @@ export default function Chess() {
   const [game, setGame] = useState(null);
   const [finalResult, setFinalResult] = useState(null);
   const [oppDisconnected, setOppDisconnected] = useState(false);
-  const [resignOpen, setResignOpen] = useState(false);
   const [selected, setSelected] = useState(null); // [r, f]
   const [promoPending, setPromoPending] = useState(null); // { from, to }
   const [, setTick] = useState(0);
@@ -230,6 +231,17 @@ export default function Chess() {
     setSelected(null);
   };
 
+  // Oson chiqish: back, brauzer back (router -1), sahifadan ketish
+  const inGame = !!game && !finalResult;
+  const { requestExit, exitDialog } = useGameExit({
+    active: inGame,
+    leave,
+    fallbackTo: '/',
+    exitTitle: t('game.exitTitle'),
+    exitMessage: t('game.exitActiveMsg'),
+    confirmText: t('game.exitBtn'),
+  });
+
   const doMove = (to, promotion) => {
     if (!selected) return;
     const from = rcToSquare(selected);
@@ -275,7 +287,7 @@ export default function Chess() {
     const won = finalResult.draw ? null : finalResult.winner === myRole;
     return (
       <>
-        <TopBar title={t('chess.title')} back onBack={leave} />
+        <TopBar title={t('chess.title')} back onBack={requestExit} />
         <div className="page no-nav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40 }}>
           {won && <Confetti />}
         <div
@@ -301,13 +313,14 @@ export default function Chess() {
             {t('chess.movesCount')}: {game.moves.length} • {t('chess.pointsEarned')}: +{finalResult.earnedPoints}
           </div>
           <div className="flex gap-2.5">
-            <Button variant="outline" className="flex-1" onClick={leave}><Flag size={16} /> {t('chess.leave')}</Button>
+            <Button variant="outline" className="flex-1" onClick={requestExit}><Flag size={16} /> {t('chess.leave')}</Button>
             <Button className="flex-1" onClick={() => { sounds.click(); socket.emit('chess:rematch', { gameId: game.gameId }); }}>
               <RefreshCw size={16} /> {t('chess.rematch')}
             </Button>
           </div>
         </Card>
         </div>
+        {exitDialog}
       </>
     );
   }
@@ -319,7 +332,7 @@ export default function Chess() {
 
     return (
       <>
-        <TopBar title={t('chess.title')} back onBack={leave} />
+        <TopBar title={t('chess.title')} back onBack={requestExit} />
         <div className="page no-nav" style={{ paddingTop: 10 }}>
         <div className="pt-2.5 space-y-3 max-w-[520px] mx-auto">
           {!connected && (
@@ -448,8 +461,8 @@ export default function Chess() {
                 </div>
               )}
             </Card>
-            <Button variant="danger-soft" onClick={() => setResignOpen(true)}>
-              <Flag size={15} /> {t('chess.resign')}
+            <Button variant="danger-soft" onClick={requestExit}>
+              <Flag size={15} /> {t('common.exit')}
             </Button>
           </div>
         </div>
@@ -476,19 +489,8 @@ export default function Chess() {
           </div>
         </Sheet>
 
-        <ConfirmDialog
-          open={resignOpen}
-          title={t('chess.resignConfirm')}
-          message={t('chess.resignMsg')}
-          danger
-          onClose={() => setResignOpen(false)}
-          onConfirm={() => {
-            setResignOpen(false);
-            socket.emit('chess:resign', { gameId: game.gameId });
-          }}
-        />
-
         {scanOpen && <QRScanner onScan={scanHandler} onClose={() => setScanOpen(false)} />}
+        {exitDialog}
         </div>
       </>
     );
@@ -499,7 +501,7 @@ export default function Chess() {
     const joinUrl = `${window.location.origin}/game/chess?join=${game.gameId}`;
     return (
       <>
-        <TopBar title={t('chess.title')} back />
+        <TopBar title={t('chess.title')} back onBack={requestExit} />
         <div className="page no-nav" style={{ paddingTop: 10 }}>
           <div className="pt-3.5 space-y-4 max-w-[440px] mx-auto text-center">
           <Card className="p-6">
@@ -530,9 +532,15 @@ export default function Chess() {
   // ============ BOSH SAHIFA (yaratish / qo'shilish) ============
   return (
     <>
-      <TopBar title={t('chess.title')} back />
+      <TopBar title={t('chess.title')} back onBack={requestExit} />
       <div className="page no-nav" style={{ paddingTop: 10 }}>
         <div className="pt-3.5 space-y-3.5 max-w-[520px] mx-auto">
+        {/* TEZ O'YIN — bitta bosishda raqib topish */}
+        <QuickPlay
+          type="chess"
+          onQuickJoin={(id) => { setJoinCode(id); socket.emit('chess:join', { gameId: id }); }}
+          onQuickCreate={() => socket.emit('chess:create', { bet: 0, timeControl, isPublic: true })}
+        />
         <Card className="p-4">
           <div className="font-extrabold text-[15.5px] mb-3.5 flex items-center gap-2">
             <Swords size={18} className="text-primary" /> {t('chess.createGame')}
@@ -592,6 +600,7 @@ export default function Chess() {
         </Card>
         </div>
         {scanOpen && <QRScanner onScan={scanHandler} onClose={() => setScanOpen(false)} />}
+        {exitDialog}
       </div>
     </>
   );

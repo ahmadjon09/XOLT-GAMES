@@ -27,6 +27,18 @@ davomat, to'lovlar, do'kon (frame/effect), reyting va statistika.
 - **Code Battle (10 o'yinchi)** — kod ko'rsatiladi, output nima chiqishini topish; o'qituvchi
   savollar tuzadi (kategoriyalar: js, python, csharp, java, php, sql); solo mashq rejimi ham bor
   (to'g'ri javobga coin)
+- **Shashka / Checkers (1v1)** — klassik 8x8 shashka: olish majburiy, zanjirli olishlar
+  (avtomatik davom ettirish), damka (uchuvchi), oxirgi qatorga yetganda damka bo'lish, timer,
+  coin tikish, rematch, refresh bo'lganda o'yinga qaytish; zanjirli olish yozuvi `c3:e5:g7`
+
+### Oson chiqish va tez o'yin (UX)
+- **Yagona chiqish tizimi (`useGameExit`)** — barcha o'yinlarda: TopBar "orqaga" tugmasi
+  aktiv o'yinda tasdiq so'raydi va o'yindan chiqaradi; brauzer/Android **back** (router -1)
+  bosilganda o'yin ushlanadi (tasodifiy yutqazishdan saqlaydi); sahifadan har qanday yo'l bilan
+  ketilganda serverga avtomatik `leave` yuboriladi — "Siz allaqachon aktiv o'yindasiz" xatosi
+  endi chiqmaydi
+- **TEZ O'YIN tugmasi (`QuickPlay`)** — Math/TTT/Shaxmat/Shashka sahifalarida bitta bosish:
+  ochiq (public, bet-siz) o'yin bo'lsa unga qo'shiladi, bo'lmasa yangi ochiq o'yin yaratadi
 
 ### Boshqa
 - **O'quvchi detallari** — har bir o'quvchi uchun to'liq sahifa: profil, reyting o'rni, guruhlar (davomat darajasi + to'lov holati), davomat tarixi (oy kalendari bilan), to'lov tarixi va yutilgan o'yinlar — tab'lar bilan (`/staff/users/:id`)

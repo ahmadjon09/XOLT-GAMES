@@ -9,6 +9,8 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { errorMessage } from '../../api/fetcher.js';
 import { Button, Card, Input, Field, QRCode, QRScanner, CopyButton, Spinner, PlayerCard, Confetti, NumberInput, GameVisibilityToggle } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
+import { useGameExit } from '../../hooks/useGameExit.jsx';
+import QuickPlay from '../../components/QuickPlay.jsx';
 import { sounds } from '../../utils/sound.js';
 
 const WIN_LINES = [
@@ -149,6 +151,17 @@ export default function TicTacToe() {
     setFinalResult(null);
   };
 
+  // Oson chiqish: back, brauzer back (router -1), sahifadan ketish
+  const inGame = !!game && !finalResult;
+  const { requestExit, exitDialog } = useGameExit({
+    active: inGame,
+    leave,
+    fallbackTo: '/',
+    exitTitle: t('game.exitTitle'),
+    exitMessage: t('game.exitActiveMsg'),
+    confirmText: t('game.exitBtn'),
+  });
+
   const scanHandler = (text) => {
     setScanOpen(false);
     try {
@@ -165,7 +178,7 @@ export default function TicTacToe() {
     const won = finalResult.draw ? null : finalResult.winner === myRole;
     return (
       <>
-        <TopBar title={t('ttt.title')} back onBack={leave} />
+        <TopBar title={t('ttt.title')} back onBack={requestExit} />
         <div className="page no-nav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40 }}>
           {won && <Confetti />}
         <div style={{ fontSize: 30, fontWeight: 900, textAlign: 'center', marginBottom: 4 }}>
@@ -180,11 +193,12 @@ export default function TicTacToe() {
             </div>
           )}
           <div style={{ display: 'flex', gap: 10 }}>
-            <Button variant="outline" className="full" onClick={leave}><Flag size={16} /> {t('ttt.leave')}</Button>
+            <Button variant="outline" className="full" onClick={requestExit}><Flag size={16} /> {t('ttt.leave')}</Button>
             <Button className="full" onClick={() => socket.emit('ttt:rematch', { gameId: game.gameId })}><RefreshCw size={16} /> {t('ttt.rematch')}</Button>
           </div>
         </Card>
         </div>
+        {exitDialog}
       </>
     );
   }
@@ -194,7 +208,7 @@ export default function TicTacToe() {
     const isHost = myRole === 'host';
     return (
       <>
-        <TopBar title={t('ttt.title')} back onBack={leave} />
+        <TopBar title={t('ttt.title')} back onBack={requestExit} />
         <div className="page no-nav" style={{ paddingTop: 10 }}>
 
           {!connected && (
@@ -260,10 +274,11 @@ export default function TicTacToe() {
           ))}
         </div>
 
-        <Button variant="danger-soft" className="full" style={{ marginTop: 20 }} onClick={leave}>
-          <Flag size={16} /> {t('ttt.leave')}
+        <Button variant="danger-soft" className="full" style={{ marginTop: 20 }} onClick={requestExit}>
+          <Flag size={16} /> {t('common.exit')}
         </Button>
         </div>
+        {exitDialog}
       </>
     );
   }
@@ -274,7 +289,7 @@ export default function TicTacToe() {
 
   return (
     <>
-      <TopBar title={t('ttt.title')} back />
+      <TopBar title={t('ttt.title')} back onBack={requestExit} />
       <div className="page" style={{ paddingTop: 14 }}>
         {waiting ? (
           <Card style={{ textAlign: 'center', padding: 24 }}>
@@ -293,6 +308,14 @@ export default function TicTacToe() {
           </Card>
         ) : (
           <>
+            {/* TEZ O'YIN — bitta bosishda raqib topish */}
+            <div style={{ marginBottom: 14 }}>
+              <QuickPlay
+                type="tictactoe"
+                onQuickJoin={(id) => { setJoinCode(id); socket.emit('ttt:join', { gameId: id }); }}
+                onQuickCreate={() => socket.emit('ttt:create', { bet: 0, rounds, isPublic: true })}
+              />
+            </div>
             <Card style={{ marginBottom: 14 }}>
               <div style={{ fontWeight: 800, fontSize: 15.5, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Grid3x3 size={19} color="var(--primary)" /> {t('ttt.createGame')}
@@ -351,6 +374,7 @@ export default function TicTacToe() {
         )}
 
         {scanOpen && <QRScanner onScan={scanHandler} onClose={() => setScanOpen(false)} />}
+        {exitDialog}
       </div>
     </>
   );

@@ -15,6 +15,7 @@ import {
   QRCode, QRScanner, CopyButton, Spinner, CoinBadge, Segmented, Ring, GameVisibilityToggle,
 } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
+import { useGameExit } from '../../hooks/useGameExit.jsx';
 import { sounds, initAudio } from '../../utils/sound.js';
 
 const CATEGORIES = ['js', 'python', 'csharp', 'java', 'php', 'sql'];
@@ -323,6 +324,8 @@ export default function CodeBattle() {
         <div className="page" style={{ paddingTop: 14 }}>
           <PracticeMode />
         </div>
+
+        {exitDialog}
       </>
     );
   }
@@ -355,6 +358,17 @@ export default function CodeBattle() {
     navigate('/game/codebattle', { replace: true });
   };
 
+  // Oson chiqish: back, brauzer back (router -1), sahifadan ketishda avto-leave
+  const inRoom = !!session && phase !== PHASE.ENTER;
+  const { requestExit, exitDialog } = useGameExit({
+    active: inRoom,
+    leave,
+    fallbackTo: '/',
+    exitTitle: t('game.exitTitle'),
+    exitMessage: t('game.exitActiveMsg'),
+    confirmText: t('game.exitBtn'),
+  });
+
   const scanHandler = (v) => {
     setScanOpen(false);
     try {
@@ -371,7 +385,7 @@ export default function CodeBattle() {
     const myIdx = final.final.findIndex((p) => p.userId === myId);
     return (
       <>
-        <TopBar title={t('code.battle')} back onBack={leave} />
+        <TopBar title={t('code.battle')} back onBack={requestExit} />
         <div className="page no-nav" style={{ paddingTop: 24 }}>
           <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 26, fontWeight: 900 }}>{t('code.results')}</div>
@@ -405,6 +419,8 @@ export default function CodeBattle() {
           </Button>
         </div>
         </div>
+
+        {exitDialog}
       </>
     );
   }
@@ -414,7 +430,7 @@ export default function CodeBattle() {
     const answeredCount = (session?.players || []).filter((p) => p.answered).length;
     return (
       <>
-        <TopBar title={t('code.battle')} back onBack={leave} />
+        <TopBar title={t('code.battle')} back onBack={requestExit} />
         <div className="page no-nav" style={{ paddingTop: 10 }}>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '6px 0 12px' }}>
@@ -463,6 +479,8 @@ export default function CodeBattle() {
           </Card>
         )}
         </div>
+
+        {exitDialog}
       </>
     );
   }
@@ -474,7 +492,7 @@ export default function CodeBattle() {
     const joinUrl = `${window.location.origin}/game/codebattle?code=${session.code}`;
     return (
       <>
-        <TopBar title={t('code.battle')} back onBack={leave} />
+        <TopBar title={t('code.battle')} back onBack={requestExit} />
         <div className="page" style={{ paddingTop: 14 }}>
           <Card style={{ textAlign: 'center', padding: 22, marginTop: 8 }}>
           <div style={{ fontWeight: 900, fontSize: 18 }}>{t('code.waitingPlayers')}</div>
@@ -507,10 +525,11 @@ export default function CodeBattle() {
         <Button className="full lg" style={{ marginTop: 16 }} disabled={players.length === 0 || !isHost} onClick={() => socket.emit('code:start')}>
           <Play size={17} /> {isHost ? t('code.start') : t('typing.waitHost')}
         </Button>
-        <Button variant="outline" className="full" style={{ marginTop: 10 }} onClick={leave}>
+        <Button variant="outline" className="full" style={{ marginTop: 10 }} onClick={requestExit}>
           <Flag size={15} /> {t('common.exit')}
         </Button>
         </div>
+        {exitDialog}
       </>
     );
   }
@@ -518,7 +537,7 @@ export default function CodeBattle() {
   
   return (
     <>
-      <TopBar title={t('code.battle')} back />
+      <TopBar title={t('code.battle')} back onBack={requestExit} />
       <div className="page" style={{ paddingTop: 14 }}>
         {}
         <Card style={{ marginBottom: 12, textAlign: 'center', padding: 18, background: 'linear-gradient(135deg, #f1ebfe, #fff)' }}>

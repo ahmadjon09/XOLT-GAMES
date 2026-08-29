@@ -12,6 +12,7 @@ import {
   QRCode, QRScanner, CopyButton, Segmented, GameVisibilityToggle,
 } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
+import { useGameExit } from '../../hooks/useGameExit.jsx';
 import { sounds, initAudio } from '../../utils/sound.js';
 // import { fmtNum } from '../../utils/format.js';
 import { getLang } from '../../i18n/index.js';
@@ -434,6 +435,17 @@ export default function TypeRacing() {
     navigate('/game/typerace', { replace: true });
   };
 
+  // Oson chiqish: back, brauzer back (router -1), sahifadan ketishda avto-leave
+  const inRoom = phase === PHASE.LOBBY || phase === PHASE.PLAYING || (phase === PHASE.RESULTS && !!session);
+  const { requestExit, exitDialog } = useGameExit({
+    active: inRoom,
+    leave,
+    fallbackTo: '/',
+    exitTitle: t('game.exitTitle'),
+    exitMessage: t('game.exitActiveMsg'),
+    confirmText: t('game.exitBtn'),
+  });
+
   const scanHandler = (textVal) => {
     setScanOpen(false);
     try {
@@ -502,7 +514,7 @@ export default function TypeRacing() {
     const my = final.find((p) => p.userId === myId);
     return (
       <>
-        <TopBar title={t('typing.race')} back onBack={leave} />
+        <TopBar title={t('typing.race')} back onBack={requestExit} />
         <div className="page pt-6 space-y-4">
           <div className="text-center">
           <div className="text-2xl font-black">{t('typing.results')}</div>
@@ -531,7 +543,7 @@ export default function TypeRacing() {
           ))}
         </Card>
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={leave}>
+          <Button variant="outline" className="flex-1" onClick={requestExit}>
             <Flag size={16} className="mr-1.5" /> {t('common.exit')}
           </Button>
           <Button className="flex-1" onClick={() => { setSession(null); setPhase(PHASE.ENTER); navigate('/game/typerace', { replace: true }); }}>
@@ -539,6 +551,7 @@ export default function TypeRacing() {
           </Button>
         </div>
         </div>
+        {exitDialog}
       </>
     );
   }
@@ -553,7 +566,7 @@ export default function TypeRacing() {
         <TopBar
           title={t('typing.race')}
           back
-          onBack={leave}
+          onBack={requestExit}
           right={<span className="badge primary tabular-nums shrink-0">{myWpm} WPM</span>}
         />
         <div className="page pt-4 space-y-4">
@@ -629,6 +642,7 @@ export default function TypeRacing() {
           </Button>
         )}
         </div>
+        {exitDialog}
       </>
     );
   }
@@ -640,7 +654,7 @@ export default function TypeRacing() {
     const joinUrl = `${window.location.origin}/game/typerace?code=${session.code}`;
     return (
       <>
-        <TopBar title={t('typing.race')} back onBack={leave} />
+        <TopBar title={t('typing.race')} back onBack={requestExit} />
         <div className="page pt-4 space-y-4">
           <Card className="text-center p-6">
           <div className="text-sm font-semibold text-muted">{t('typing.waitingPlayers')}</div>
@@ -678,6 +692,7 @@ export default function TypeRacing() {
           <Play size={18} className="mr-1.5" /> {isHost ? t('typing.start') : t('typing.waitHost')}
         </Button>
         </div>
+        {exitDialog}
       </>
     );
   }

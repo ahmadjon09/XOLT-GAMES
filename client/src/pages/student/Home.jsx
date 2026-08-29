@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Calculator, ListChecks, Grid3x3, Keyboard, Code2, Trophy,
-  CalendarCheck2, Wallet, ChevronRight, QrCode, KeyRound, User, Users, Swords, Coins,
+  CalendarCheck2, Wallet, ChevronRight, QrCode, KeyRound, User, Users, Swords, Coins, Disc3,
 } from 'lucide-react';
 import { useGet } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -14,6 +14,7 @@ const gameMeta = {
   math: { color: '#5b21b6', bg: '#f0eafd' },
   quiz: { color: '#e34c6b', bg: '#fdeef1' },
   chess: { color: '#b45309', bg: '#fdf3d7' },
+  checkers: { color: '#dc2626', bg: '#fdeaea' },
   typerace: { color: '#0284c7', bg: '#e4f4fd' },
   code: { color: '#7c3aed', bg: '#f3eefe' },
   ttt: { color: '#16a34a', bg: '#e6f7ec' },
@@ -30,6 +31,7 @@ export default function Home() {
   const games = [
     { key: 'math', to: '/game/math', icon: Calculator, title: t('home.mathTitle'), desc: t('home.mathDesc'), tag: '1v1' },
     { key: 'chess', to: '/game/chess', icon: Swords, title: t('home.chessTitle'), desc: t('home.chessDesc'), tag: '1v1' },
+    { key: 'checkers', to: '/game/checkers', icon: Disc3, title: t('home.checkersTitle'), desc: t('home.checkersDesc'), tag: '1v1' },
     { key: 'quiz', to: '/quiz/join', icon: ListChecks, title: t('home.quizTitle'), desc: t('home.quizDesc'), tag: 'LIVE' },
     { key: 'typerace', to: '/game/typerace', icon: Keyboard, title: t('home.typingTitle'), desc: t('home.typingDesc'), tag: '10P' },
     { key: 'code', to: '/game/codebattle', icon: Code2, title: t('home.codeTitle'), desc: t('home.codeDesc'), tag: '10P' },

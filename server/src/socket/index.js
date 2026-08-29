@@ -41,6 +41,7 @@ export function setupSocket(httpServer, corsOrigins) {
   setupTypingRace(io);
   setupCodeBattle(io);
   setupChessGame(io);
+  setupCheckersGame(io);
 
   return io;
 }

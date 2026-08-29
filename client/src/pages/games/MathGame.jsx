@@ -9,6 +9,8 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { errorMessage } from '../../api/fetcher.js';
 import { Button, Card, Input, Field, Stepper, Segmented, Ring, QRCode, QRScanner, CopyButton, CoinBadge, Spinner, PlayerCard, Confetti, NumberInput, GameVisibilityToggle } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
+import { useGameExit } from '../../hooks/useGameExit.jsx';
+import QuickPlay from '../../components/QuickPlay.jsx';
 import Latex from '../../components/Latex.jsx';
 import { sounds } from '../../utils/sound.js';
 import { fmtNum } from '../../utils/format.js';
@@ -235,6 +237,17 @@ export default function MathGame() {
     setRoundResult(null);
   };
 
+  // Oson chiqish: back, brauzer back (router -1), sahifadan ketish
+  const inGame = !!game && !finalResult;
+  const { requestExit, exitDialog } = useGameExit({
+    active: inGame,
+    leave: leaveGame,
+    fallbackTo: '/',
+    exitTitle: t('game.exitTitle'),
+    exitMessage: t('game.exitActiveMsg'),
+    confirmText: t('game.exitBtn'),
+  });
+
   const scanHandler = (text) => {
     setScanOpen(false);
     
@@ -261,7 +274,7 @@ export default function MathGame() {
     const won = finalResult.draw ? null : finalResult.winner === myRole;
     return (
       <>
-        <TopBar title={t('math.title')} back onBack={leaveGame} />
+        <TopBar title={t('math.title')} back onBack={requestExit} />
         <div className="page no-nav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40 }}>
           {won && <Confetti />}
         <div style={{ fontSize: 30, fontWeight: 900, textAlign: 'center', marginBottom: 6 }}>
@@ -292,11 +305,12 @@ export default function MathGame() {
             </div>
           )}
           <div style={{ display: 'flex', gap: 10 }}>
-            <Button variant="outline" className="full" onClick={leaveGame}><Flag size={16} /> {t('math.leave')}</Button>
+            <Button variant="outline" className="full" onClick={requestExit}><Flag size={16} /> {t('math.leave')}</Button>
             <Button className="full" onClick={rematch}><RefreshCw size={16} /> {t('math.rematch')}</Button>
           </div>
         </Card>
         </div>
+        {exitDialog}
       </>
     );
   }
@@ -311,7 +325,7 @@ export default function MathGame() {
 
     return (
       <>
-        <TopBar title={t('math.title')} back onBack={leaveGame} />
+        <TopBar title={t('math.title')} back onBack={requestExit} />
         <div className="page no-nav" style={{ paddingTop: 10 }}>
 
           {!connected && (
@@ -399,10 +413,11 @@ export default function MathGame() {
           )}
         </Card>
 
-        <Button variant="danger-soft" className="full" style={{ marginTop: 14 }} onClick={leaveGame}>
-          <Flag size={16} /> {t('math.leave')}
+        <Button variant="danger-soft" className="full" style={{ marginTop: 14 }} onClick={requestExit}>
+          <Flag size={16} /> {t('common.exit')}
         </Button>
         </div>
+        {exitDialog}
       </>
     );
   }
@@ -435,7 +450,14 @@ export default function MathGame() {
           </Card>
         ) : (
           <>
-            {}
+            {/* TEZ O'YIN — bitta bosishda raqib topish */}
+            <div style={{ marginBottom: 14 }}>
+              <QuickPlay
+                type="math"
+                onQuickJoin={(id) => { setJoinCode(id); socket.emit('mathgame:join', { gameId: id }); }}
+                onQuickCreate={() => socket.emit('mathgame:create', { rounds, bet: 0, difficulty, isPublic: true })}
+              />
+            </div>
             <Card style={{ marginBottom: 14 }}>
               <div style={{ fontWeight: 800, fontSize: 15.5, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Calculator size={19} color="var(--primary)" /> {t('math.createGame')}
@@ -496,6 +518,7 @@ export default function MathGame() {
         )}
 
         {scanOpen && <QRScanner onScan={scanHandler} onClose={() => setScanOpen(false)} />}
+        {exitDialog}
       </div>
     </>
   );
