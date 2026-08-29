@@ -74,6 +74,7 @@ router.post(
         phone,
         username: data.username || null,
         password: await hashPassword(data.password),
+        coin: 100, // har bir yangi o'quvchi 100 coin bilan boshlaydi
       },
     });
 

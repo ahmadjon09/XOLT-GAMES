@@ -26,7 +26,7 @@ model User {
   phone           String       @unique
   username        String?      @unique
   password        String
-  coin            Int          @default(0)
+  coin            Int          @default(100)
   week_score      Int          @default(0)
   month_score     Int          @default(0)
   score           Int          @default(0)

@@ -74,11 +74,16 @@ export function findOrCreateByPhone(phone) {
     full_name: 'Demo ' + String(phone).slice(-4),
     kind: 'user',
     role: 'STUDENT',
-    coin: 500,
+    coin: 100,
     score: 0,
   });
 }
 
 export function getUser(id) {
   return users.get(id) || null;
+}
+
+// Test skriptlari uchun: userni to'g'ridan-to'g'ri yaratish/yangilash
+export function upsertUser(u) {
+  return seed(u);
 }

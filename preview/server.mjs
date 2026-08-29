@@ -22,11 +22,13 @@ const { setupMathGame } = await import('../server/src/socket/mathGame.js');
 const { setupTicTacToe } = await import('../server/src/socket/tictactoe.js');
 const { setupChessGame } = await import('../server/src/socket/chessGame.js');
 const { setupCheckersGame } = await import('../server/src/socket/checkersGame.js');
+const { setupRaceGame } = await import('../server/src/socket/raceGame.js');
 const { socketAuthenticate, checkConnectionLimit, registerEventRateLimit } = await import('../server/src/socket/shared.js');
 const { getMathLobbyRooms } = await import('../server/src/socket/mathGame.js');
 const { getTicTacToeLobbyRooms } = await import('../server/src/socket/tictactoe.js');
 const { getChessLobbyRooms } = await import('../server/src/socket/chessGame.js');
 const { getCheckersLobbyRooms } = await import('../server/src/socket/checkersGame.js');
+const { getRaceLobbyRooms } = await import('../server/src/socket/raceGame.js');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
@@ -83,6 +85,7 @@ const server = http.createServer((req, res) => {
         ...getTicTacToeLobbyRooms(),
         ...getChessLobbyRooms(),
         ...getCheckersLobbyRooms(),
+        ...getRaceLobbyRooms(),
       ].sort((a, b) => b.createdAt - a.createdAt)));
     }
     return send404();
@@ -139,6 +142,7 @@ setupMathGame(io);
 setupTicTacToe(io);
 setupChessGame(io);
 setupCheckersGame(io);
+setupRaceGame(io);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`[preview] Demo server: http://0.0.0.0:${PORT} (DB'siz, xotira rejimi)`);

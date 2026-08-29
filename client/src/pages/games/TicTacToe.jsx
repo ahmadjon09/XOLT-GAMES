@@ -7,7 +7,7 @@ import { useSocket } from '../../context/SocketContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { errorMessage } from '../../api/fetcher.js';
-import { Button, Card, Input, Field, QRCode, QRScanner, CopyButton, Spinner, PlayerCard, Confetti, NumberInput, GameVisibilityToggle } from '../../components/ui.jsx';
+import { Button, Card, Input, Field, QRCode, QRScanner, CopyButton, Spinner, PlayerCard, Confetti, NumberInput, GameVisibilityToggle, Stepper } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { useGameExit } from '../../hooks/useGameExit.jsx';
 import QuickPlay from '../../components/QuickPlay.jsx';
@@ -40,7 +40,9 @@ export default function TicTacToe() {
 
   const myRole = game ? (game.host?.id === user?.id ? 'host' : game.guest?.id === user?.id ? 'guest' : null) : null;
   const opponent = game ? (myRole === 'host' ? game.guest : game.host) : null;
-  const myMark = myRole === 'host' ? 'X' : 'O';
+  // X/O har roundda almashadi: kim X ekanini server aytadi (xRole)
+  const myMark = game?.xRole ? (myRole === game.xRole ? 'X' : 'O') : (myRole === 'host' ? 'X' : 'O');
+  const oppMark = myMark === 'X' ? 'O' : 'X';
   const currentTurnIsMe = game?.turn === myRole;
 
   
@@ -257,7 +259,7 @@ export default function TicTacToe() {
         <div style={{ textAlign: 'center', marginBottom: 16, fontWeight: 800, fontSize: 15 }}>
           {currentTurnIsMe ? t('ttt.yourTurn') : t('ttt.oppTurn')}
           <span style={{ color: 'var(--muted)', fontWeight: 600, fontSize: 13, marginLeft: 8 }}>
-            ({myMark === 'X' ? t('ttt.youAreX') : t('ttt.youAreO')})
+            ({t('ttt.youAreMark', { mark: myMark })} • {t('ttt.round')} {game.currentRound}: X — {game.xRole === myRole ? t('math.you') : t('math.opponent')})
           </span>
         </div>
 
@@ -325,25 +327,10 @@ export default function TicTacToe() {
               </Field>
               <Field label={t('ttt.rounds')}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    {[1, 3, 5, 7].map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => setRounds(r)}
-                        className="badge"
-                        style={{
-                          cursor: 'pointer',
-                          background: rounds === r ? 'var(--primary-soft)' : 'var(--surface-2)',
-                          color: rounds === r ? 'var(--primary)' : 'var(--muted)',
-                          padding: '8px 14px',
-                          border: rounds === r ? '1.5px solid var(--primary)' : '1.5px solid transparent',
-                        }}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
+                  <Stepper value={rounds} onChange={setRounds} min={1} max={9} />
+                  <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{Math.floor(rounds / 2) + 1} {t('math.x')}</span>
                 </div>
+                <div className="text-[11.5px] text-muted mt-1.5">{t('ttt.roundsHint')}</div>
               </Field>
               <Field label={t('game.visibility')}>
                 <GameVisibilityToggle value={isPublic} onChange={setIsPublic} />
