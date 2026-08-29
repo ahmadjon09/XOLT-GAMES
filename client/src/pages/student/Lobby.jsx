@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Calculator, Grid3x3, Swords, Keyboard, Code2, Users, RefreshCw, Radio,
+  Calculator, Grid3x3, Swords, Keyboard, Code2, Users, RefreshCw, Radio, Disc3, Car,
 } from 'lucide-react';
 import { useGet } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -18,6 +18,8 @@ const TYPE_META = {
   math: { icon: Calculator, color: '#5b21b6', bg: '#f0eafd', key: 'lobby.math' },
   tictactoe: { icon: Grid3x3, color: '#16a34a', bg: '#e6f7ec', key: 'lobby.tictactoe' },
   chess: { icon: Swords, color: '#b45309', bg: '#fdf3d7', key: 'lobby.chess' },
+  checkers: { icon: Disc3, color: '#dc2626', bg: '#fdeaea', key: 'lobby.checkers' },
+  race: { icon: Car, color: '#0d9488', bg: '#d9f4f0', key: 'lobby.race' },
   typerace: { icon: Keyboard, color: '#0284c7', bg: '#e4f4fd', key: 'lobby.typerace' },
   codebattle: { icon: Code2, color: '#7c3aed', bg: '#f3eefe', key: 'lobby.codebattle' },
 };
@@ -26,6 +28,8 @@ const JOIN_ROUTE = {
   math: '/game/math?join=',
   tictactoe: '/game/ttt?join=',
   chess: '/game/chess?join=',
+  checkers: '/game/checkers?join=',
+  race: '/game/race?join=',
   typerace: '/game/typerace?code=',
   codebattle: '/game/codebattle?code=',
 };
@@ -54,9 +58,10 @@ export default function Lobby() {
       parts.push(`${room.rounds}x`);
     }
     if (room.type === 'tictactoe') parts.push(`${room.rounds}x`);
-    if (room.type === 'chess') parts.push(room.timeControl > 0 ? `${room.timeControl}s` : t('lobby.noTime'));
+    if (room.type === 'chess' || room.type === 'checkers') parts.push(room.timeControl > 0 ? `${room.timeControl}s` : t('lobby.noTime'));
     if (room.type === 'typerace') parts.push(room.lang?.toUpperCase());
     if (room.type === 'codebattle') parts.push(room.category?.toUpperCase());
+    if (room.type === 'race') parts.push(t(`race.track_${room.track || 'city'}`));
     if (room.players !== undefined) parts.push(`${room.players}${room.maxPlayers ? `/${room.maxPlayers}` : ''}`);
     return parts.join(' • ');
   };
@@ -99,6 +104,8 @@ export default function Lobby() {
             { value: 'math', label: t('lobby.math') },
             { value: 'tictactoe', label: t('lobby.tictactoe') },
             { value: 'chess', label: t('lobby.chess') },
+            { value: 'checkers', label: t('lobby.checkers') },
+            { value: 'race', label: t('lobby.race') },
             { value: 'typerace', label: t('lobby.typerace') },
             { value: 'codebattle', label: t('lobby.codebattle') },
               ]}

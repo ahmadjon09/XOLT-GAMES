@@ -21,6 +21,8 @@ import QuizPlay from './pages/games/QuizPlay.jsx';
 import TypeRacing from './pages/games/TypeRacing.jsx';
 import CodeBattle from './pages/games/CodeBattle.jsx';
 import Chess from './pages/games/Chess.jsx';
+import Checkers from './pages/games/Checkers.jsx';
+import Race from './pages/games/Race.jsx';
 import { TypingTexts, CodeQuestions } from './pages/staff/GameContent.jsx';
 
 import StaffHome from './pages/staff/StaffHome.jsx';
@@ -130,6 +132,22 @@ export default function App() {
           element={
             <Guard kind="user">
               <Chess />
+            </Guard>
+          }
+        />
+        <Route
+          path="/game/checkers"
+          element={
+            <Guard kind="user">
+              <Checkers />
+            </Guard>
+          }
+        />
+        <Route
+          path="/game/race"
+          element={
+            <Guard kind="user">
+              <Race />
             </Guard>
           }
         />

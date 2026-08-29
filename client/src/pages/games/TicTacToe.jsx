@@ -7,8 +7,10 @@ import { useSocket } from '../../context/SocketContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { errorMessage } from '../../api/fetcher.js';
-import { Button, Card, Input, Field, QRCode, QRScanner, CopyButton, Spinner, PlayerCard, Confetti, NumberInput, GameVisibilityToggle } from '../../components/ui.jsx';
+import { Button, Card, Input, Field, QRCode, QRScanner, CopyButton, Spinner, PlayerCard, Confetti, NumberInput, GameVisibilityToggle, Stepper } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
+import { useGameExit } from '../../hooks/useGameExit.jsx';
+import QuickPlay from '../../components/QuickPlay.jsx';
 import { sounds } from '../../utils/sound.js';
 
 const WIN_LINES = [
@@ -38,7 +40,9 @@ export default function TicTacToe() {
 
   const myRole = game ? (game.host?.id === user?.id ? 'host' : game.guest?.id === user?.id ? 'guest' : null) : null;
   const opponent = game ? (myRole === 'host' ? game.guest : game.host) : null;
-  const myMark = myRole === 'host' ? 'X' : 'O';
+  // X/O har roundda almashadi: kim X ekanini server aytadi (xRole)
+  const myMark = game?.xRole ? (myRole === game.xRole ? 'X' : 'O') : (myRole === 'host' ? 'X' : 'O');
+  const oppMark = myMark === 'X' ? 'O' : 'X';
   const currentTurnIsMe = game?.turn === myRole;
 
   
@@ -149,6 +153,17 @@ export default function TicTacToe() {
     setFinalResult(null);
   };
 
+  // Oson chiqish: back, brauzer back (router -1), sahifadan ketish
+  const inGame = !!game && !finalResult;
+  const { requestExit, exitDialog } = useGameExit({
+    active: inGame,
+    leave,
+    fallbackTo: '/',
+    exitTitle: t('game.exitTitle'),
+    exitMessage: t('game.exitActiveMsg'),
+    confirmText: t('game.exitBtn'),
+  });
+
   const scanHandler = (text) => {
     setScanOpen(false);
     try {
@@ -165,7 +180,7 @@ export default function TicTacToe() {
     const won = finalResult.draw ? null : finalResult.winner === myRole;
     return (
       <>
-        <TopBar title={t('ttt.title')} back onBack={leave} />
+        <TopBar title={t('ttt.title')} back onBack={requestExit} />
         <div className="page no-nav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40 }}>
           {won && <Confetti />}
         <div style={{ fontSize: 30, fontWeight: 900, textAlign: 'center', marginBottom: 4 }}>
@@ -180,11 +195,12 @@ export default function TicTacToe() {
             </div>
           )}
           <div style={{ display: 'flex', gap: 10 }}>
-            <Button variant="outline" className="full" onClick={leave}><Flag size={16} /> {t('ttt.leave')}</Button>
+            <Button variant="outline" className="full" onClick={requestExit}><Flag size={16} /> {t('ttt.leave')}</Button>
             <Button className="full" onClick={() => socket.emit('ttt:rematch', { gameId: game.gameId })}><RefreshCw size={16} /> {t('ttt.rematch')}</Button>
           </div>
         </Card>
         </div>
+        {exitDialog}
       </>
     );
   }
@@ -194,7 +210,7 @@ export default function TicTacToe() {
     const isHost = myRole === 'host';
     return (
       <>
-        <TopBar title={t('ttt.title')} back onBack={leave} />
+        <TopBar title={t('ttt.title')} back onBack={requestExit} />
         <div className="page no-nav" style={{ paddingTop: 10 }}>
 
           {!connected && (
@@ -243,7 +259,7 @@ export default function TicTacToe() {
         <div style={{ textAlign: 'center', marginBottom: 16, fontWeight: 800, fontSize: 15 }}>
           {currentTurnIsMe ? t('ttt.yourTurn') : t('ttt.oppTurn')}
           <span style={{ color: 'var(--muted)', fontWeight: 600, fontSize: 13, marginLeft: 8 }}>
-            ({myMark === 'X' ? t('ttt.youAreX') : t('ttt.youAreO')})
+            ({t('ttt.youAreMark', { mark: myMark })} • {t('ttt.round')} {game.currentRound}: X — {game.xRole === myRole ? t('math.you') : t('math.opponent')})
           </span>
         </div>
 
@@ -260,10 +276,11 @@ export default function TicTacToe() {
           ))}
         </div>
 
-        <Button variant="danger-soft" className="full" style={{ marginTop: 20 }} onClick={leave}>
-          <Flag size={16} /> {t('ttt.leave')}
+        <Button variant="danger-soft" className="full" style={{ marginTop: 20 }} onClick={requestExit}>
+          <Flag size={16} /> {t('common.exit')}
         </Button>
         </div>
+        {exitDialog}
       </>
     );
   }
@@ -274,7 +291,7 @@ export default function TicTacToe() {
 
   return (
     <>
-      <TopBar title={t('ttt.title')} back />
+      <TopBar title={t('ttt.title')} back onBack={requestExit} />
       <div className="page" style={{ paddingTop: 14 }}>
         {waiting ? (
           <Card style={{ textAlign: 'center', padding: 24 }}>
@@ -293,6 +310,14 @@ export default function TicTacToe() {
           </Card>
         ) : (
           <>
+            {/* TEZ O'YIN — bitta bosishda raqib topish */}
+            <div style={{ marginBottom: 14 }}>
+              <QuickPlay
+                type="tictactoe"
+                onQuickJoin={(id) => { setJoinCode(id); socket.emit('ttt:join', { gameId: id }); }}
+                onQuickCreate={() => socket.emit('ttt:create', { bet: 0, rounds, isPublic: true })}
+              />
+            </div>
             <Card style={{ marginBottom: 14 }}>
               <div style={{ fontWeight: 800, fontSize: 15.5, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Grid3x3 size={19} color="var(--primary)" /> {t('ttt.createGame')}
@@ -302,25 +327,10 @@ export default function TicTacToe() {
               </Field>
               <Field label={t('ttt.rounds')}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    {[1, 3, 5, 7].map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => setRounds(r)}
-                        className="badge"
-                        style={{
-                          cursor: 'pointer',
-                          background: rounds === r ? 'var(--primary-soft)' : 'var(--surface-2)',
-                          color: rounds === r ? 'var(--primary)' : 'var(--muted)',
-                          padding: '8px 14px',
-                          border: rounds === r ? '1.5px solid var(--primary)' : '1.5px solid transparent',
-                        }}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
+                  <Stepper value={rounds} onChange={setRounds} min={1} max={9} />
+                  <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{Math.floor(rounds / 2) + 1} {t('math.x')}</span>
                 </div>
+                <div className="text-[11.5px] text-muted mt-1.5">{t('ttt.roundsHint')}</div>
               </Field>
               <Field label={t('game.visibility')}>
                 <GameVisibilityToggle value={isPublic} onChange={setIsPublic} />
@@ -351,6 +361,7 @@ export default function TicTacToe() {
         )}
 
         {scanOpen && <QRScanner onScan={scanHandler} onClose={() => setScanOpen(false)} />}
+        {exitDialog}
       </div>
     </>
   );

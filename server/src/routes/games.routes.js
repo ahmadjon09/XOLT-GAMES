@@ -9,6 +9,8 @@ import { prisma } from '../prisma/client.js';
 import { getMathLobbyRooms } from '../socket/mathGame.js';
 import { getTicTacToeLobbyRooms } from '../socket/tictactoe.js';
 import { getChessLobbyRooms } from '../socket/chessGame.js';
+import { getCheckersLobbyRooms } from '../socket/checkersGame.js';
+import { getRaceLobbyRooms } from '../socket/raceGame.js';
 import { getTypingLobbyRooms } from '../socket/typingRace.js';
 import { getCodeLobbyRooms } from '../socket/codeBattle.js';
 
@@ -25,6 +27,8 @@ router.get(
       ...getMathLobbyRooms(),
       ...getTicTacToeLobbyRooms(),
       ...getChessLobbyRooms(),
+      ...getCheckersLobbyRooms(),
+      ...getRaceLobbyRooms(),
       ...getTypingLobbyRooms(),
       ...getCodeLobbyRooms(),
     ].sort((a, b) => b.createdAt - a.createdAt);

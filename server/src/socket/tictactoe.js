@@ -48,6 +48,7 @@ function sanitizeGame(game) {
     lastRoundWinner: game.lastRoundWinner,
     board: game.board,
     turn: game.turn,
+    xRole: game.xRole, // bu roundda kim X bilan o'ynaydi (har roundda almashadi)
     moveCount: game.moveCount,
     winner: game.winner,
     winningLine: game.winningLine,
@@ -96,8 +97,9 @@ async function handleRoundEnd(io, game, roundWinner) {
   game.moveCount = 0;
   game.winner = null;
   game.winningLine = null;
-  // Navbat: round g'olibiga (yoki durrangda host ga)
-  game.turn = roundWinner || 'host';
+  // X/O va birinchi yurish huquqi har roundda ALMASHADI (X har doim birinchi yuradi)
+  game.xRole = game.xRole === 'host' ? 'guest' : 'host';
+  game.turn = game.xRole;
   game.lastActivity = Date.now();
 
   io.to(game.gameId).emit('ttt:round_end', {
@@ -359,6 +361,8 @@ export function setupTicTacToe(io) {
           lastRoundWinner: null,
           board: Array(9).fill(null),
           turn: 'host',
+          xRole: 'host', // 1-roundda host X; keyingi roundlarda almashadi
+          startXRole: 'host', // bu o'yinda 1-roundda kim X edi (revanshda almashadi)
           moveCount: 0,
           winner: null,
           winningLine: null,
@@ -413,7 +417,7 @@ export function setupTicTacToe(io) {
         game.guest = buildPlayerData(user, socket.id);
         game.guestBet = game.bet;
         game.status = 'active';
-        game.turn = 'host';
+        game.turn = game.xRole || 'host';
         game.lastActivity = Date.now();
 
         registerGame(userId, 'ttt', gameId);
@@ -443,14 +447,14 @@ export function setupTicTacToe(io) {
         if (!Number.isInteger(cell) || cell < 0 || cell > 8) return emitError(socket, 'INVALID_CELL', 'Noto\'g\'ri katak');
         if (game.board[cell] !== null) return emitError(socket, 'CELL_TAKEN', 'Bu katak band');
 
-        game.board[cell] = role === 'host' ? 'X' : 'O';
+        game.board[cell] = role === game.xRole ? 'X' : 'O';
         game.moveCount += 1;
         game.lastActivity = Date.now();
 
         const result = checkWin(game.board);
 
         if (result) {
-          const roundWinner = result.winner === 'X' ? 'host' : 'guest';
+          const roundWinner = result.winner === 'X' ? game.xRole : (game.xRole === 'host' ? 'guest' : 'host');
           game.winner = roundWinner;
           game.winningLine = result.line;
           game.lastRoundWinner = roundWinner;
@@ -565,7 +569,10 @@ export function setupTicTacToe(io) {
         game.currentRound = 1;
         game.lastRoundWinner = null;
         game.board = Array(9).fill(null);
-        game.turn = 'host';
+        // Revanshda X/birinchi yurish huquqi oldingi o'yin boshlang'ichiga nisbatan ALMASHADI
+        game.startXRole = (game.startXRole || 'host') === 'host' ? 'guest' : 'host';
+        game.xRole = game.startXRole;
+        game.turn = game.xRole;
         game.moveCount = 0;
         game.winner = null;
         game.winningLine = null;

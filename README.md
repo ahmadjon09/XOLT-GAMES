@@ -27,6 +27,30 @@ davomat, to'lovlar, do'kon (frame/effect), reyting va statistika.
 - **Code Battle (10 o'yinchi)** — kod ko'rsatiladi, output nima chiqishini topish; o'qituvchi
   savollar tuzadi (kategoriyalar: js, python, csharp, java, php, sql); solo mashq rejimi ham bor
   (to'g'ri javobga coin)
+- **Shashka / Checkers (1v1)** — klassik 8x8 shashka: olish majburiy, zanjirli olishlar
+  (avtomatik davom ettirish), damka (uchuvchi), oxirgi qatorga yetganda damka bo'lish, timer,
+  coin tikish, rematch, refresh bo'lganda o'yinga qaytish; zanjirli olish yozuvi `c3:e5:g7`
+- **Poyga / Race (2-4 o'yinchi)** — 2D canvas poyga: 3 xil yo'l (Shahar/Cho'l/Tog'),
+  to'siqlar server seed'i bilan hamma uchun bir xil, jonli o'rindiqlar (pozitsiyalar),
+  3-2-1-GO countdown, finish chizig'i, o'rinlar bo'yicha coin; mobil uchun TO'LIQ EKRAN
+  (fullscreen + landscape lock) va ekrandagi katta ◀ ▶ tugmalar, svayp va klaviatura boshqaruvi
+
+### Boshqa yaxshilanishlar
+- **X/O (Tic-Tac-Toe) adolatli navbat** — X va O belgilari hamda birinchi yurish huquqi har
+  raundda navbatma-navbat ALMASHADI (revanshda ham); raundlar soni boshqa o'yinlardagi kabi
+  Stepper bilan tanlanadi (1-9)
+- **Yangi o'quvchiga 100 coin** — ro'yxatdan o'tishda avtomatik (schema default + register)
+- **Navbar media fix** — tor ekranlar (<400px, <360px) va landscape balandligi uchun himoya:
+  topbar overflow bloki, ixchamlangan bottomnav, segment filtrlari sig'ishi
+
+### Oson chiqish va tez o'yin (UX)
+- **Yagona chiqish tizimi (`useGameExit`)** — barcha o'yinlarda: TopBar "orqaga" tugmasi
+  aktiv o'yinda tasdiq so'raydi va o'yindan chiqaradi; brauzer/Android **back** (router -1)
+  bosilganda o'yin ushlanadi (tasodifiy yutqazishdan saqlaydi); sahifadan har qanday yo'l bilan
+  ketilganda serverga avtomatik `leave` yuboriladi — "Siz allaqachon aktiv o'yindasiz" xatosi
+  endi chiqmaydi
+- **TEZ O'YIN tugmasi (`QuickPlay`)** — Math/TTT/Shaxmat/Shashka sahifalarida bitta bosish:
+  ochiq (public, bet-siz) o'yin bo'lsa unga qo'shiladi, bo'lmasa yangi ochiq o'yin yaratadi
 
 ### Boshqa
 - **O'quvchi detallari** — har bir o'quvchi uchun to'liq sahifa: profil, reyting o'rni, guruhlar (davomat darajasi + to'lov holati), davomat tarixi (oy kalendari bilan), to'lov tarixi va yutilgan o'yinlar — tab'lar bilan (`/staff/users/:id`)

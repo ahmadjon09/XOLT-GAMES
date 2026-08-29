@@ -9,6 +9,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { errorMessage } from '../../api/fetcher.js';
 import { Button, Card, Input, Field, QRScanner, Ring, Avatar, AnimatedName, Podium, Confetti, CoinBadge, Spinner, EmptyState } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
+import { useGameExit } from '../../hooks/useGameExit.jsx';
 import { sounds } from '../../utils/sound.js';
 
 const PHASE = { ENTER: 'enter', LOBBY: 'lobby', QUESTION: 'question', REVEAL: 'reveal', RESULTS: 'results', ENDED: 'ended' };
@@ -217,6 +218,17 @@ export default function QuizPlay() {
     navigate('/quiz/play', { replace: true });
   };
 
+  // Oson chiqish: back, brauzer back (router -1), sahifadan ketishda avto-leave
+  const inSession = !!session && phase !== PHASE.ENTER;
+  const { requestExit, exitDialog } = useGameExit({
+    active: inSession,
+    leave,
+    fallbackTo: '/',
+    exitTitle: t('game.exitTitle'),
+    exitMessage: t('game.exitActiveMsg'),
+    confirmText: t('game.exitBtn'),
+  });
+
   const scanHandler = (text) => {
     setScanOpen(false);
     try {
@@ -234,7 +246,7 @@ export default function QuizPlay() {
   if (phase === PHASE.ENTER) {
     return (
       <>
-        <TopBar title={t('quiz.title')} back />
+        <TopBar title={t('quiz.title')} back onBack={requestExit} />
         <div className="page" style={{ paddingTop: 14 }}>
           <Card style={{ textAlign: 'center', padding: 26 }}>
             <div style={{ width: 64, height: 64, borderRadius: 20, background: '#fdeef1', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
@@ -279,6 +291,8 @@ export default function QuizPlay() {
           </Card>
         </div>
         {scanOpen && <QRScanner onScan={scanHandler} onClose={() => setScanOpen(false)} />}
+
+        {exitDialog}
       </>
     );
   }
@@ -289,7 +303,7 @@ export default function QuizPlay() {
     const my = final.final[myIdx];
     return (
       <>
-        <TopBar title={session?.quizName || t('quiz.title')} back onBack={leave} />
+        <TopBar title={session?.quizName || t('quiz.title')} back onBack={requestExit} />
         <div className="page no-nav" style={{ paddingTop: 24 }}>
           <Confetti />
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
@@ -327,6 +341,8 @@ export default function QuizPlay() {
           <LogOut size={16} /> {t('quiz.exit')}
         </Button>
         </div>
+
+        {exitDialog}
       </>
     );
   }
@@ -339,7 +355,7 @@ export default function QuizPlay() {
 
     return (
       <>
-        <TopBar title={session?.quizName || t('quiz.title')} back onBack={leave} />
+        <TopBar title={session?.quizName || t('quiz.title')} back onBack={requestExit} />
         <div className="page no-nav" style={{ paddingTop: 10 }}>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '6px 0 12px' }}>
@@ -411,6 +427,8 @@ export default function QuizPlay() {
           </div>
         )}
         </div>
+
+        {exitDialog}
       </>
     );
   }
@@ -420,7 +438,7 @@ export default function QuizPlay() {
     const players = session.players || [];
     return (
       <>
-        <TopBar title={session.quizName || t('quiz.title')} back onBack={leave} />
+        <TopBar title={session.quizName || t('quiz.title')} back onBack={requestExit} />
         <div className="page" style={{ paddingTop: 14 }}>
           <Card style={{ textAlign: 'center', padding: 24, marginTop: 8 }}>
           <div style={{ fontWeight: 900, fontSize: 18 }}>{t('quiz.waitingHost')}</div>
@@ -452,6 +470,8 @@ export default function QuizPlay() {
           <X size={16} /> {t('quiz.exit')}
         </Button>
         </div>
+
+        {exitDialog}
       </>
     );
   }
@@ -459,14 +479,14 @@ export default function QuizPlay() {
   
   return (
     <>
-      <TopBar title={session?.quizName || t('quiz.title')} back onBack={leave} />
+      <TopBar title={session?.quizName || t('quiz.title')} back onBack={requestExit} />
       <div className="page" style={{ paddingTop: 14 }}>
         <Card>
           <EmptyState
             icon={ListChecks}
             title={t('quiz.ended')}
             sub={kicked ? t('quiz.kickedMsg') : undefined}
-            action={<Button variant="outline" onClick={leave}>{t('quiz.exit')}</Button>}
+            action={<Button variant="outline" onClick={requestExit}>{t('quiz.exit')}</Button>}
           />
         </Card>
       </div>
