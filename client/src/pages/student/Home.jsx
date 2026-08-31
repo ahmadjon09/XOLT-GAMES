@@ -183,7 +183,7 @@ export default function Home() {
       <div className="text-center pt-2 pb-1">
         <Link
           to="/leaderboard"
-          className="inline-flex items-center gap-2 text-[13.5px] font-bold text-primary hover:underline underline-offset-4 transition-colors"
+          className="inline-flex items-center justify-center gap-2 min-h-[40px] px-2 text-[13.5px] font-bold text-primary hover:underline underline-offset-4 transition-colors"
         >
           <Trophy size={17} />
           {t('home.myRank')}

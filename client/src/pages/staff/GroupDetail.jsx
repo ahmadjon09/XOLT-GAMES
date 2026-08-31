@@ -6,15 +6,18 @@ import { UserPlus, Trash2, CalendarCheck2, Wallet, CheckCircle2, XCircle, Clock3
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import {
   Card, Button, Input, Field, EmptyState, Avatar, AnimatedName, Badge, Sheet, ConfirmDialog,
   PageHeader, SearchInput, PhoneInput, MiniStat, SkeletonRow,
 } from '../../components/ui.jsx';
+import CoinSheet, { CoinButton } from '../../components/CoinSheet.jsx';
 import { fmtPhone } from '../../utils/format.js';
 import { TopBar } from '../../layouts/Layouts.jsx';
 
 export default function GroupDetail() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { id } = useParams();
   const toast = useToast();
   const navigate = useNavigate();
@@ -22,6 +25,7 @@ export default function GroupDetail() {
   const [form, setForm] = useState({ phone: '', full_name: '', password: '' });
   const [busy, setBusy] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
+  const [coinTarget, setCoinTarget] = useState(null);
   const [search, setSearch] = useState('');
 
   // SWR cache bilan
@@ -147,13 +151,19 @@ export default function GroupDetail() {
                       )}
                     </div>
                   </div>
-                  <button
-                    className="w-[38px] h-[38px] rounded-[13px] flex items-center justify-center text-danger hover:bg-danger-soft transition-all shrink-0"
-                    onClick={(e) => { e.stopPropagation(); setRemoveTarget(m); }}
-                    title={t('groupsP.removeMember')}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <CoinButton
+                      title={t('coins.manage')}
+                      onClick={(e) => { e.stopPropagation(); setCoinTarget(m); }}
+                    />
+                    <button
+                      className="w-[38px] h-[38px] rounded-[13px] flex items-center justify-center text-danger hover:bg-danger-soft transition-all shrink-0"
+                      onClick={(e) => { e.stopPropagation(); setRemoveTarget(m); }}
+                      title={t('groupsP.removeMember')}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </Card>
@@ -174,6 +184,14 @@ export default function GroupDetail() {
         </Field>
         <Button className="w-full" loading={busy} onClick={addStudent}>{t('common.add')}</Button>
       </Sheet>
+
+      <CoinSheet
+        open={!!coinTarget}
+        user={coinTarget}
+        canTake={user?.role !== 'TEACHER'}
+        onClose={() => setCoinTarget(null)}
+        onDone={() => invalidate(`/staff/groups/${id}`)}
+      />
 
       <ConfirmDialog
         open={!!removeTarget}

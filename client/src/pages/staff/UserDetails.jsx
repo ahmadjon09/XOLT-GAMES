@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Pencil, Trash2, CheckCircle2, XCircle, Clock3, Trophy, Gamepad2, Phone, User as UserIcon,
-  CalendarCheck2, Wallet, Layers, Plus, Check, ChevronRight,
+  CalendarCheck2, Wallet, Layers, Plus, Check, ChevronRight, Coins,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -17,6 +17,7 @@ import {
   Sheet, ConfirmDialog, CoinBadge, StatCard, Select, Segmented,
   PageHeader, NumberInput,
 } from '../../components/ui.jsx';
+import CoinSheet from '../../components/CoinSheet.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { fmtNum, fmtMoney, fmtDate, fmtPhone, monthLabel, cx, currentMonth } from '../../utils/format.js';
 
@@ -41,6 +42,7 @@ export default function UserDetails() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const [coinOpen, setCoinOpen] = useState(false);
   const [payForm, setPayForm] = useState({ groupId: '', amount: '', month: currentMonth(), discount: 0, note: '', status: 'paid' });
   const [form, setForm] = useState({ full_name: '', username: '', password: '', groupIds: [] });
   const [busy, setBusy] = useState(false);
@@ -221,6 +223,11 @@ export default function UserDetails() {
         back
         right={
           <div className="flex gap-1.5">
+            {(canPay || canEdit) && (
+              <button className="btn ghost sm" onClick={() => setCoinOpen(true)} title={t('coins.manage')}>
+                <Coins size={17} className="icon-hover" style={{ color: '#9a6d00' }} />
+              </button>
+            )}
             {canPay && (
               <button className="btn ghost sm" onClick={openPay} title={t('userDetail.addPayment')}>
                 <Plus size={17} className="icon-hover" style={{ color: 'var(--success)' }} />
@@ -262,7 +269,14 @@ export default function UserDetails() {
             <span className="badge primary">
               <Trophy size={12} /> {t('userDetail.rank')}: #{data.rank}
             </span>
-            <CoinBadge value={data.coin} />
+            <button
+              type="button"
+              onClick={() => setCoinOpen(true)}
+              title={t('coins.manage')}
+              className="cursor-pointer inline-flex items-center min-h-[30px]"
+            >
+              <CoinBadge value={data.coin} />
+            </button>
             <span className="badge neutral">{t('userDetail.memberSince')}: {fmtDate(data.createdAt)}</span>
           </div>
         </Card>
@@ -284,7 +298,7 @@ export default function UserDetails() {
         {/* ============ OVERVIEW ============ */}
         {tab === 'overview' && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 12 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
               <StatCard icon={Trophy} label={t('profile.score')} value={fmtNum(data.score)} color="var(--primary)" />
               <StatCard icon={Trophy} label={t('profile.weekScore')} value={fmtNum(data.week_score)} color="var(--info)" />
               <StatCard icon={Trophy} label={t('profile.monthScore')} value={fmtNum(data.month_score)} color="var(--success)" />
@@ -357,18 +371,18 @@ export default function UserDetails() {
             {/* Umumiy davomat qisqacha */}
             <div style={{ fontSize: 15.5, fontWeight: 800, margin: '18px 0 10px' }}>{t('userDetail.attendanceShort')}</div>
             <Card style={{ padding: 14 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
+              <div className="grid grid-cols-3 gap-2 mb-2.5">
                 <div style={{ textAlign: 'center', background: 'var(--success-soft)', borderRadius: 12, padding: '10px 6px' }}>
                   <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--success)' }}>{presentAtt}</div>
-                  <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 600 }}>{t('attMark.present')}</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 600, lineHeight: 1.25, overflowWrap: 'anywhere' }}>{t('attMark.present')}</div>
                 </div>
                 <div style={{ textAlign: 'center', background: '#fef3c7', borderRadius: 12, padding: '10px 6px' }}>
                   <div style={{ fontSize: 18, fontWeight: 900, color: '#b45309' }}>{lateAtt}</div>
-                  <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 600 }}>{t('attMark.late')}</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 600, lineHeight: 1.25, overflowWrap: 'anywhere' }}>{t('attMark.late')}</div>
                 </div>
                 <div style={{ textAlign: 'center', background: 'var(--danger-soft)', borderRadius: 12, padding: '10px 6px' }}>
                   <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--danger)' }}>{absentAtt}</div>
-                  <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 600 }}>{t('attMark.absent')}</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 600, lineHeight: 1.25, overflowWrap: 'anywhere' }}>{t('attMark.absent')}</div>
                 </div>
               </div>
               {rate !== null && (
@@ -397,12 +411,12 @@ export default function UserDetails() {
                 const dayNames = ['Y', 'D', 'S', 'Ch', 'P', 'J', 'Sh'];
                 return (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 6 }}>
+                    <div className="grid grid-cols-7 gap-1.5 mb-1.5">
                       {dayNames.map((d, i) => (
                         <div key={i} style={{ textAlign: 'center', fontSize: 10.5, fontWeight: 800, color: 'var(--muted)' }}>{d}</div>
                       ))}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+                    <div className="grid grid-cols-7 gap-1.5">
                       {cells.map((c, i) =>
                         c === null ? (
                           <div key={i} />
@@ -459,7 +473,7 @@ export default function UserDetails() {
                 <Plus size={16} /> {t('userDetail.addPayment')}
               </Button>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+            <div className="grid grid-cols-2 gap-2 mb-3">
               <Card style={{ padding: 12 }}>
                 <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 700 }}>{t('payments.totalPaid')}</div>
                 <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--success)' }} className="tabular-nums">{fmtMoney(paidSum)} so'm</div>
@@ -499,7 +513,7 @@ export default function UserDetails() {
         {/* ============ O'YINLAR ============ */}
         {tab === 'games' && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12 }}>
+            <div className="grid grid-cols-2 gap-2 mb-3">
               <Card style={{ padding: 12, textAlign: 'center' }}>
                 <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--success)' }}>{totalWins}</div>
                 <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>{t('userDetail.wins')}</div>
@@ -541,21 +555,21 @@ export default function UserDetails() {
           </>
         )}
 
-        {/* Amallar */}
-        <div style={{ display: 'flex', gap: 10, marginTop: 18, marginBottom: 10 }}>
+        {/* Amallar — mobilda har biri alohida qator (sig'masa yonma-yon) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5" style={{ marginTop: 18, marginBottom: 10 }}>
           {canPay && (
-            <Button variant="success-soft" className="full" onClick={openPay}>
-              <Plus size={16} /> {t('userDetail.addPayment')}
+            <Button variant="success-soft" className="w-full min-w-0" onClick={openPay}>
+              <Plus size={16} /> <span className="truncate">{t('userDetail.addPayment')}</span>
             </Button>
           )}
           {canEdit && (
-            <Button variant="outline" className="full" onClick={openEdit}>
-              <Pencil size={16} /> {t('userDetail.editStudent')}
+            <Button variant="outline" className="w-full min-w-0" onClick={openEdit}>
+              <Pencil size={16} /> <span className="truncate">{t('userDetail.editStudent')}</span>
             </Button>
           )}
           {isAdmin && (
-            <Button variant="danger-soft" className="full" onClick={() => setDeleteOpen(true)}>
-              <Trash2 size={16} /> {t('userDetail.deleteStudent')}
+            <Button variant="danger-soft" className="w-full min-w-0" onClick={() => setDeleteOpen(true)}>
+              <Trash2 size={16} /> <span className="truncate">{t('userDetail.deleteStudent')}</span>
             </Button>
           )}
         </div>
@@ -573,29 +587,48 @@ export default function UserDetails() {
           <Input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••" />
         </Field>
         <Field label={t('usersP.assignGroups')}>
+          {/* Guruh chip'lari — tanlanmaganda ham chegarasi ko'rinib turadi */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {groups.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => toggleGroup(g.id)}
-                className="badge"
-                style={{
-                  cursor: 'pointer',
-                  background: form.groupIds.includes(g.id) ? 'var(--primary-soft)' : 'var(--surface-2)',
-                  color: form.groupIds.includes(g.id) ? 'var(--primary)' : 'var(--muted)',
-                  padding: '7px 12px',
-                  fontSize: 12.5,
-                  border: form.groupIds.includes(g.id) ? '1.5px solid var(--primary)' : '1.5px solid transparent',
-                }}
-              >
-                {g.name}
-              </button>
-            ))}
+            {groups.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{t('profile.noGroups')}</div>}
+            {groups.map((g) => {
+              const on = form.groupIds.includes(g.id);
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => toggleGroup(g.id)}
+                  className="badge"
+                  aria-pressed={on}
+                  style={{
+                    cursor: 'pointer',
+                    background: on ? 'var(--primary-soft)' : 'var(--surface)',
+                    color: on ? 'var(--primary)' : 'var(--muted)',
+                    padding: '7px 12px',
+                    minHeight: 32,
+                    fontSize: 12.5,
+                    border: on ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+                  }}
+                >
+                  {g.name}
+                </button>
+              );
+            })}
           </div>
         </Field>
         <Button className="full" loading={busy} onClick={saveEdit}>{t('common.save')}</Button>
       </Sheet>
+
+      {/* Coin berish / olish */}
+      <CoinSheet
+        open={coinOpen}
+        user={data}
+        canTake={me?.role !== 'TEACHER'}
+        onClose={() => setCoinOpen(false)}
+        onDone={() => {
+          invalidate(`/staff/users/${id}`);
+          invalidate('/staff/users');
+        }}
+      />
 
       {/* To'lov qo'shish */}
       <Sheet open={payOpen} onClose={() => setPayOpen(false)} title={`${t('cashP.addForStudent')}: ${data.full_name}`}>

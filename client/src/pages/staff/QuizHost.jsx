@@ -146,12 +146,13 @@ export default function QuizHost() {
             </div>
           ))}
         </Card>
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => navigate('/staff/quizzes')}>
-            <ListChecks size={16} className="mr-1.5" /> {t('quizzesP.backToQuizzes')}
+        {/* Mobil: tugmalar ustma-ust (yonma-yon sig'maydi) */}
+        <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+          <Button variant="outline" className="w-full sm:flex-1 min-w-0" onClick={() => navigate('/staff/quizzes')}>
+            <ListChecks size={16} className="mr-1.5 shrink-0" /> <span className="truncate">{t('quizzesP.backToQuizzes')}</span>
           </Button>
-          <Button className="flex-1" onClick={resetAll}>
-            <RefreshCw size={16} className="mr-1.5" /> {t('hostP.newSession')}
+          <Button className="w-full sm:flex-1 min-w-0" onClick={resetAll}>
+            <RefreshCw size={16} className="mr-1.5 shrink-0" /> <span className="truncate">{t('hostP.newSession')}</span>
           </Button>
         </div>
       </div>
@@ -166,10 +167,10 @@ export default function QuizHost() {
       <>
         <TopBar title={t('hostP.title')} back />
         <div className="page-staff pt-4 space-y-3.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">{session.quizName} — {t('hostP.question')} {question.index + 1}</h2>
-          <Button variant="outline" size="sm" onClick={endSession} disabled={busy}>
-            <Flag size={16} className="mr-1" /> {t('hostP.end')}
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-bold min-w-0 truncate">{session.quizName} — {t('hostP.question')} {question.index + 1}</h2>
+          <Button variant="outline" size="sm" className="shrink-0" onClick={endSession} disabled={busy}>
+            <Flag size={16} className="mr-1" /> <span className="hidden sm:inline">{t('hostP.end')}</span>
           </Button>
         </div>
 
@@ -292,10 +293,10 @@ export default function QuizHost() {
     <>
       <TopBar title={t('hostP.title')} back />
     <div className="page-staff pt-4 space-y-3.5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">{t('hostP.selectQuiz')}</h2>
-        <Button variant="outline" size="sm" onClick={() => navigate('/staff/quizzes')}>
-          <ListChecks size={16} className="mr-1" /> {t('quizzesP.backToQuizzes')}
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xl font-bold min-w-0 truncate">{t('hostP.selectQuiz')}</h2>
+        <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/staff/quizzes')}>
+          <ListChecks size={16} className="mr-1" /> <span className="hidden sm:inline">{t('quizzesP.backToQuizzes')}</span>
         </Button>
       </div>
 

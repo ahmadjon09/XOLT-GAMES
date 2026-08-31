@@ -1,21 +1,28 @@
 // DEMO PREVIEW SERVER — DB'siz lokal demo (PostgreSQL kerak emas)
 // Ishga tushirish: node --import ./preview/register-loader.mjs preview/server.mjs
 // - client/dist statik beriladi (VITE_API_URL same-origin qilib build qilingan)
-// - /api/auth/login, /api/auth/me, /api/user/* — demo ma'lumotlar
-// - Socket.IO: HAQIQIY o'yin handlerlari (math, ttt, chess, shashka/checkers)
+// - /api/* — preview/mock-api.mjs dagi to'liq demo ma'lumotlar (student + admin panel)
+// - Socket.IO: HAQIQIY o'yin handlerlari (math, ttt, chess, shashka/checkers, race)
 //   prisma stub orqali (preview/stub-prisma.mjs)
+//
+// Demo hisoblar:
+//   Admin     +998901234567 / admin123
+//   Kassir    +998901234568 / cashier123
+//   O'qituvchi +998901234569 / teacher123
+//   O'quvchi   istalgan raqam (masalan 901111111 / 1234)
 import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import jwt from 'jsonwebtoken';
 import { Server } from 'socket.io';
-import { findOrCreateByPhone, getUser } from './stub-prisma.mjs';
+import { mockApi } from './mock-api.mjs';
 
 const JWT_SECRET = 'preview-demo-secret';
 const PORT = Number(process.env.PORT || 4173);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(__dirname, '..', 'client', 'dist');
+const UPLOADS = path.join(__dirname, '..', 'server', 'uploads');
 
 // Haqiqiy o'yin handlerlari (prisma stub bilan — loader orqali almashtiriladi)
 const { setupMathGame } = await import('../server/src/socket/mathGame.js');
@@ -36,66 +43,77 @@ const MIME = {
   '.ico': 'image/x-icon', '.webp': 'image/webp', '.woff2': 'font/woff2', '.map': 'application/json',
 };
 
-const ok = (data) => JSON.stringify({ success: true, data });
+const ok = (data, meta) => JSON.stringify(meta ? { success: true, data, meta } : { success: true, data });
 const err = (code, message) => JSON.stringify({ success: false, error: { code, message } });
 
-const server = http.createServer((req, res) => {
+const readBody = (req) =>
+  new Promise((resolve) => {
+    let body = '';
+    req.on('data', (c) => { body += c; if (body.length > 2e6) req.destroy(); });
+    req.on('end', () => {
+      try { resolve(body ? JSON.parse(body) : {}); } catch { resolve({}); }
+    });
+  });
+
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
   // ---- API ----
   if (url.pathname.startsWith('/api/')) {
-    const send404 = () => { res.statusCode = 404; res.end(err('NOT_FOUND', 'Demo serverda yo‘q: ' + url.pathname)); };
-
-    if (url.pathname === '/api/auth/login' && req.method === 'POST') {
-      let body = '';
-      req.on('data', (c) => { body += c; });
-      req.on('end', () => {
-        try {
-          const { phone } = JSON.parse(body || '{}');
-          if (!phone) { res.statusCode = 400; return res.end(err('PHONE_REQUIRED', 'Telefon kerak')); }
-          const user = findOrCreateByPhone(String(phone).trim());
-          const token = jwt.sign({ id: user.id, kind: 'user', role: 'STUDENT', full_name: user.full_name }, JWT_SECRET, { expiresIn: '30d' });
-          res.end(ok({ token, profile: { ...user } }));
-        } catch (e) {
-          res.statusCode = 400;
-          res.end(err('BAD_REQUEST', String(e.message)));
-        }
-      });
-      return;
-    }
-
-    const auth = () => {
+    const headerToken = () => {
       const h = req.headers.authorization || '';
-      const token = h.startsWith('Bearer ') ? h.slice(7) : null;
-      try { return jwt.verify(token, JWT_SECRET); } catch { return null; }
+      if (!h.startsWith('Bearer ')) return null;
+      try { return jwt.verify(h.slice(7), JWT_SECRET); } catch { return null; }
     };
 
-    if (url.pathname === '/api/auth/me') {
-      const dec = auth();
-      const u = dec && getUser(dec.id);
-      if (!u) { res.statusCode = 401; return res.end(err('UNAUTHORIZED', 'Token yaroqsiz')); }
-      return res.end(ok({ ...u }));
-    }
-    if (url.pathname === '/api/user/groups') return res.end(ok([]));
-    if (url.pathname === '/api/user/group-ranking') return res.end(ok([]));
+    let body = {};
+    if (req.method !== 'GET' && req.method !== 'HEAD') body = await readBody(req);
+
     if (url.pathname === '/api/games/lobby') {
-      return res.end(ok([
-        ...getMathLobbyRooms(),
-        ...getTicTacToeLobbyRooms(),
-        ...getChessLobbyRooms(),
-        ...getCheckersLobbyRooms(),
-        ...getRaceLobbyRooms(),
-      ].sort((a, b) => b.createdAt - a.createdAt)));
+      return res.end(
+        ok([
+          ...getMathLobbyRooms(),
+          ...getTicTacToeLobbyRooms(),
+          ...getChessLobbyRooms(),
+          ...getCheckersLobbyRooms(),
+          ...getRaceLobbyRooms(),
+        ].sort((a, b) => b.createdAt - a.createdAt))
+      );
     }
-    return send404();
+
+    const out = mockApi({
+      method: req.method,
+      path: url.pathname,
+      query: url.searchParams,
+      body,
+      auth: headerToken(),
+      JWT_SECRET,
+      jwt,
+      uploadsDir: UPLOADS,
+    });
+
+    if (!out) {
+      res.statusCode = 404;
+      return res.end(err('NOT_FOUND', 'Demo serverda yo‘q: ' + url.pathname));
+    }
+    if (out.error) {
+      res.statusCode = out.status || 400;
+      return res.end(err(out.error.code, out.error.message));
+    }
+    res.statusCode = out.status || 200;
+    return res.end(ok(out.data, out.meta));
   }
 
   // ---- Statik (client/dist) ----
   let filePath = path.join(DIST, url.pathname === '/' ? 'index.html' : url.pathname);
   if (!filePath.startsWith(DIST)) { res.statusCode = 403; return res.end(err('FORBIDDEN', '')); }
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-    filePath = path.join(DIST, 'index.html'); // SPA fallback
+    if (fs.existsSync(path.join(UPLOADS, path.basename(url.pathname)))) {
+      filePath = path.join(UPLOADS, path.basename(url.pathname));
+    } else {
+      filePath = path.join(DIST, 'index.html'); // SPA fallback
+    }
   }
   const ext = path.extname(filePath);
   res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
@@ -146,6 +164,6 @@ setupRaceGame(io);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`[preview] Demo server: http://0.0.0.0:${PORT} (DB'siz, xotira rejimi)`);
-  console.log('[preview] Login: istalgan telefon raqami + parol (masalan: 901234567 / 12345)');
-  console.log('[preview] Ikki brauzer varag\'ida har xil raqam bilan kirsangiz — bir-biringiz bilan o\'ynaysiz');
+  console.log('[preview] Admin: 901234567 / admin123 • Kassir: 901234568 • O‘qituvchi: 901234569');
+  console.log('[preview] O‘quvchi: istalgan raqam (masalan 901111111)');
 });

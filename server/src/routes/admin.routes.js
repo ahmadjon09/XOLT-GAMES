@@ -203,6 +203,95 @@ router.get(
   })
 );
 
+// ============ COIN BERISH / OLISH ============
+// GET /api/staff/users/:id/coins - oxirgi coin operatsiyalari
+router.get(
+  '/users/:id/coins',
+  asyncH(async (req, res) => {
+    if (!['ADMIN', 'CASHIER', 'TEACHER'].includes(req.user.role)) throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+
+    const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, coin: true } });
+    if (!user) throw new ApiError(404, 'NOT_FOUND', "O'quvchi topilmadi");
+
+    const rows = await prisma.coinTransaction.findMany({
+      where: { userId: user.id },
+      include: { staff: { select: { id: true, full_name: true, role: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    });
+
+    return ok(
+      res,
+      rows.map((r) => ({
+        id: r.id,
+        amount: r.amount,
+        balance: r.balance,
+        note: r.note,
+        staffName: r.staff?.full_name || null,
+        staffRole: r.staff?.role || null,
+        createdAt: r.createdAt,
+      })),
+      { coin: user.coin }
+    );
+  })
+);
+
+// POST /api/staff/users/:id/coins - coin qo'shish (+) yoki olish (-)
+// body: { amount: number (0 dan farqli), note?: string }
+// Ruxsat: ADMIN va CASHIER — istalgan yo'nalishda;
+//         TEACHER — faqat o'z guruhidagi o'quvchiga va faqat qo'shish (+).
+router.post(
+  '/users/:id/coins',
+  asyncH(async (req, res) => {
+    if (!['ADMIN', 'CASHIER', 'TEACHER'].includes(req.user.role)) throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+
+    const schema = z.object({
+      amount: z.number().int('Coin butun son bo\'lishi kerak').min(-100000).max(100000),
+      note: z.string().max(200).optional().nullable(),
+    });
+    const data = schema.parse(req.body);
+    if (!data.amount) throw new ApiError(400, 'VALIDATION_ERROR', "Miqdor 0 dan farqli bo'lishi kerak");
+
+    const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, coin: true, full_name: true } });
+    if (!user) throw new ApiError(404, 'NOT_FOUND', "O'quvchi topilmadi");
+
+    // O'qituvchi faqat o'z guruhidagi o'quvchiga coin BERA oladi (ololmaydi)
+    if (req.user.role === 'TEACHER') {
+      if (data.amount < 0) throw new ApiError(403, 'AUTH_FORBIDDEN', "O'qituvchi coin ololmaydi");
+      const mine = await prisma.group.findMany({ where: { teacherId: req.user.id }, select: { id: true } });
+      const member = await prisma.groupMember.findFirst({
+        where: { userId: user.id, groupId: { in: mine.map((g) => g.id) } },
+      });
+      if (!member) throw new ApiError(403, 'AUTH_FORBIDDEN', "Bu o'quvchi sizning guruhingizda emas");
+    }
+
+    const before = user.coin;
+    const after = Math.max(0, before + data.amount);
+    const delta = after - before;
+
+    const [tx] = await prisma.$transaction([
+      prisma.coinTransaction.create({
+        data: {
+          userId: user.id,
+          amount: delta,
+          balance: after,
+          note: data.note || null,
+          staffId: req.user.id,
+        },
+      }),
+      prisma.user.update({ where: { id: user.id }, data: { coin: after } }),
+    ]);
+
+    await cacheDelPrefix('xolt:stats');
+
+    return ok(
+      res,
+      { id: tx.id, coin: after, delta },
+      { message: delta >= 0 ? 'Coin qo\'shildi' : 'Coin olindi' }
+    );
+  })
+);
+
 // PATCH /api/staff/users/:id - yangilash (guruhlar almashadi)
 router.patch(
   '/users/:id',

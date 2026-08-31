@@ -6,10 +6,12 @@ import { Users, Plus, Pencil, Trash2, ChevronRight, RefreshCw } from 'lucide-rea
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGetMeta, useGet, useInvalidate } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import {
   Card, Button, Input, Field, EmptyState, Avatar, AnimatedName,
   Sheet, ConfirmDialog, Badge, PageHeader, IconButton, SearchInput, PhoneInput, Pagination, SkeletonRow,
 } from '../../components/ui.jsx';
+import CoinSheet, { CoinButton } from '../../components/CoinSheet.jsx';
 import { fmtNum, fmtPhone } from '../../utils/format.js';
 import { TopBar } from '../../layouts/Layouts.jsx';
 
@@ -25,6 +27,7 @@ export default function AdminUsers() {
   const [form, setForm] = useState({ full_name: '', phone: '', password: '', username: '', groupIds: [] });
   const [busy, setBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [coinTarget, setCoinTarget] = useState(null);
 
   // SWR cache (search/page o'zgarsa yangi key)
   const { data: userPage, isLoading, error } = useGetMeta(
@@ -34,6 +37,7 @@ export default function AdminUsers() {
   const meta = userPage?.meta || { total: 0 };
 
   const { data: groups } = useGet('/staff/groups', { fallbackData: [] });
+  const { user: me } = useAuth();
 
   const refresh = () => {
     invalidate(`/staff/users?search=${encodeURIComponent(search)}&page=${page}&limit=20`);
@@ -172,10 +176,15 @@ export default function AdminUsers() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Badge color="neutral">{fmtNum(u.coin)}</Badge>
-                <IconButton icon={Pencil} label={t('common.edit')} onClick={() => openEdit(u)} disabled={busy} />
-                <IconButton icon={Trash2} label={t('common.delete')} danger onClick={() => setDeleteTarget(u)} disabled={busy} />
+              <div className="flex items-center gap-1 shrink-0">
+                <Badge color="warn">{fmtNum(u.coin)}</Badge>
+                <CoinButton
+                  title={t('coins.manage')}
+                  onClick={(e) => { e.stopPropagation(); setCoinTarget(u); }}
+                  disabled={busy}
+                />
+                <IconButton icon={Pencil} label={t('common.edit')} onClick={(e) => { e.stopPropagation(); openEdit(u); }} disabled={busy} />
+                <IconButton icon={Trash2} label={t('common.delete')} danger onClick={(e) => { e.stopPropagation(); setDeleteTarget(u); }} disabled={busy} />
                 <ChevronRight size={18} className="text-muted shrink-0" />
               </div>
             </div>
@@ -223,28 +232,45 @@ export default function AdminUsers() {
           />
         </Field>
         <Field label={t('usersP.assignGroups')}>
+          {/* Guruh tanlash "chip"lari — tanlanmaganida ham CHEGARASI ko'rinadi
+              (oldingi `border-transparent` mobil/desktopda chegara yo'qdek ko'rinardi) */}
           <div className="flex flex-wrap gap-2">
-            {groups.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => toggleGroup(g.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border-2 ${
-                  form.groupIds.includes(g.id)
-                    ? 'bg-primary-soft text-primary border-primary'
-                    : 'bg-surface-2 text-muted border-transparent hover:bg-surface-3'
-                } ${busy ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                disabled={busy}
-              >
-                {g.name}
-              </button>
-            ))}
+            {groups.length === 0 && (
+              <div className="text-[12.5px] text-muted">{t('profile.noGroups')}</div>
+            )}
+            {groups.map((g) => {
+              const on = form.groupIds.includes(g.id);
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => toggleGroup(g.id)}
+                  className={`min-h-[34px] px-3 py-1.5 rounded-full text-xs font-bold transition-all border-2 ${
+                    on
+                      ? 'bg-primary-soft text-primary border-primary'
+                      : 'bg-surface text-muted border-border hover:border-primary/45 hover:text-primary hover:bg-primary-soft/50'
+                  } ${busy ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  disabled={busy}
+                  aria-pressed={on}
+                >
+                  {g.name}
+                </button>
+              );
+            })}
           </div>
         </Field>
         <Button className="w-full" loading={busy} onClick={save} disabled={busy}>
           {t('common.save')}
         </Button>
       </Sheet>
+
+      <CoinSheet
+        open={!!coinTarget}
+        user={coinTarget}
+        canTake={me?.role !== 'TEACHER'}
+        onClose={() => setCoinTarget(null)}
+        onDone={() => refresh()}
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}
