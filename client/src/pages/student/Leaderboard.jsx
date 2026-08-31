@@ -120,44 +120,47 @@ export default function Leaderboard() {
   const rest = leaderboard.slice(3);
 
   const PodiumCard = ({ item, rank, size = 'md' }) => {
-    const avatarSize = size === 'lg' ? 100 : 78;
-    const Icon = rank === 1 ? FaCrown : FaMedal;
+    const big = size === 'lg';
     return (
       <div
         onClick={() => item?.id && navigate(`/staff/users/${item.id}`)}
-        className={`flex flex-col cursor-pointer items-center ${rank === 1 ? 'z-10' : ''}`}
+        className={`flex flex-col cursor-pointer items-center w-full min-w-0 ${rank === 1 ? 'z-10' : ''}`}
       >
         <div
-          className={`relative w-[168px] sm:w-[220px] bg-white rounded-2xl border-2 p-4 flex flex-col items-center shadow-xl transform transition-all duration-300 hover:scale-105 hover:shadow-2xl bg-gradient-to-br ${medalGrad[rank]}`}
+          className={`relative w-full min-w-0 bg-white rounded-2xl border-2 p-2.5 sm:p-4 flex flex-col items-center shadow-xl transform transition-all duration-300 hover:scale-105 hover:shadow-2xl bg-gradient-to-br ${medalGrad[rank]}`}
         >
+          {/* Bezak lentasi — kenglik kartaga nisbatan, mobilda ham sig'adi */}
           <div
             aria-hidden="true"
-            className="absolute -top-10 left-1/2 -translate-x-1/2 w-[320px] h-[100px] pointer-events-none bg-contain bg-center bg-no-repeat"
+            className="absolute -top-7 sm:-top-10 left-1/2 -translate-x-1/2 w-[150%] max-w-[320px] h-[70px] sm:h-[100px] pointer-events-none bg-contain bg-center bg-no-repeat"
             style={{ backgroundImage: `url(${ggTop})` }}
           />
-          <div className="mt-8 mb-2">
+          <div className="mt-6 sm:mt-8 mb-1.5 sm:mb-2">
             {item?.currentFrame || item?.avatar ? (
-              <Avatar w={avatarSize} frame={item.currentFrame} avatar={item.avatar} />
+              <>
+                <span className="block sm:hidden"><Avatar w={big ? 64 : 52} frame={item.currentFrame} avatar={item.avatar} /></span>
+                <span className="hidden sm:block"><Avatar w={big ? 100 : 78} frame={item.currentFrame} avatar={item.avatar} /></span>
+              </>
             ) : (
-              <div className="w-[78px] h-[78px] rounded-xl bg-surface-3 flex items-center justify-center text-3xl" >?</div>
+              <div className="w-[52px] h-[52px] sm:w-[78px] sm:h-[78px] rounded-xl bg-surface-3 flex items-center justify-center text-3xl">?</div>
             )}
           </div>
-          <p className={`font-bold text-gray-800 ${size === 'lg' ? 'text-2xl' : 'text-xl'} mt-2 text-center truncate max-w-[160px]`}>
+          <p className={`font-bold text-gray-800 ${big ? 'text-[15px] sm:text-2xl' : 'text-[13px] sm:text-xl'} mt-1.5 sm:mt-2 text-center truncate w-full`}>
             {item ? <AnimatedName config={item.currentEffect?.config}>{item.full_name}</AnimatedName> : '...'}
           </p>
           {item?.username && (
-            <p className="text-gray-400 text-xs text-center truncate max-w-[160px] mt-1">@{item.username}</p>
+            <p className="hidden sm:block text-gray-400 text-xs text-center truncate w-full mt-1">@{item.username}</p>
           )}
-          {item?.group && <p className="text-xs text-primary mt-1 font-medium">{item.group.name}</p>}
-          <div className="mt-3 bg-gradient-to-r from-yellow-50 to-amber-50 px-4 py-2 rounded-full border border-yellow-200">
-            <p className="text-sm text-gray-800 font-bold flex items-center gap-1.5">
-              <FaTrophy className="text-yellow-500" size={14} />
-              {fmtNum(scoreOf(item, period))} {t('lb.points')}
+          {item?.group && <p className="hidden sm:block text-xs text-primary mt-1 font-medium truncate w-full">{item.group.name}</p>}
+          <div className="mt-2 sm:mt-3 bg-gradient-to-r from-yellow-50 to-amber-50 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full border border-yellow-200 w-full">
+            <p className="text-[11px] sm:text-sm text-gray-800 font-bold flex items-center justify-center gap-1 truncate">
+              <FaTrophy className="text-yellow-500 shrink-0" size={big ? 14 : 12} /> {fmtNum(scoreOf(item, period))}
+              <span className="hidden sm:inline">{t('lb.points')}</span>
             </p>
           </div>
-          <div className="relative w-full flex justify-center mt-2">
-            <h1 className="font-black text-gray-800 text-5xl absolute text-center drop-shadow-lg">{rank}</h1>
-            <div className="relative top-2 w-[280px] h-[64px] bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${medalImg[rank]})` }} />
+          <div className="relative w-full flex justify-center mt-1.5 sm:mt-2">
+            <h1 className="font-black text-gray-800 text-[28px] sm:text-5xl absolute text-center drop-shadow-lg">{rank}</h1>
+            <div className="relative top-1 sm:top-2 w-[105%] sm:w-[130%] max-w-[280px] h-[40px] sm:h-[64px] bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${medalImg[rank]})` }} />
           </div>
         </div>
       </div>
@@ -169,7 +172,7 @@ export default function Leaderboard() {
       <TopBar title={t('lb.title')} />
       <div className="page pt-4 space-y-[var(--gap)]">
         <div className="card">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 text-yellow-400 flex items-center justify-center">
               <Trophy />
@@ -179,8 +182,8 @@ export default function Leaderboard() {
               <p className="text-sm text-muted">{scope === 'group' ? t('lb.groupSub') : t('lb.top')}</p>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
-            <div className="segment">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto flex-wrap min-w-0">
+            <div className="segment min-w-0">
               <button
                 onClick={() => { setScope('global'); setPage(1); }}
                 className={scope === 'global' ? 'active' : ''}
@@ -196,7 +199,7 @@ export default function Leaderboard() {
                 <span>{t('lb.scopeGroup')}</span>
               </button>
             </div>
-            <div className="segment scroll">
+            <div className="segment scroll min-w-0 max-w-full">
               {PERIODS.map(({ key, labelKey, icon: Icon }) => (
                 <button
                   key={key}
@@ -260,7 +263,7 @@ export default function Leaderboard() {
                       {selectedGroup.groupName}{selectedGroup.teacher ? ` • ${selectedGroup.teacher}` : ''}
                     </p>
                   </div>
-                  <div className="ml-auto flex items-center gap-8">
+                  <div className="ml-auto flex items-center gap-5 sm:gap-8">
                     <div className="text-center">
                       <p className="text-xs text-gray-500 uppercase tracking-wide">{t('lb.myGroupRank')}</p>
                       <p className="text-2xl font-bold text-primary">#{selectedGroup.myRank}<span className="text-base text-gray-400">/{selectedGroup.membersCount}</span></p>
@@ -311,13 +314,13 @@ export default function Leaderboard() {
         <>
           {/* ===== UMUMIY REYTING ===== */}
           {topThree.length > 0 && (
-            <div className="card relative overflow-hidden p-6 sm:p-8 shadow-card-lg">
-              <div className="scale-[0.78] sm:scale-[0.9] md:scale-100 grid grid-cols-3 items-end max-w-3xl mx-auto pt-14 sm:pt-16">
-                <div className="flex justify-center order-1">{topThree[1] && <PodiumCard item={topThree[1]} rank={2} />}</div>
-                <div className="-mt-8 sm:-mt-10 md:-mt-14 -translate-y-3 sm:-translate-y-5 flex justify-center z-10 order-2">
+            <div className="card relative overflow-hidden p-3 sm:p-6 md:p-8 shadow-card-lg">
+              <div className="grid grid-cols-3 items-end gap-1.5 sm:gap-3 max-w-3xl mx-auto pt-9 sm:pt-14 md:pt-16">
+                <div className="flex justify-center order-1 min-w-0">{topThree[1] && <PodiumCard item={topThree[1]} rank={2} />}</div>
+                <div className="-mt-4 sm:-mt-10 md:-mt-14 flex justify-center z-10 order-2 min-w-0">
                   {topThree[0] && <PodiumCard item={topThree[0]} rank={1} size="lg" />}
                 </div>
-                <div className="flex justify-center order-3">{topThree[2] && <PodiumCard item={topThree[2]} rank={3} />}</div>
+                <div className="flex justify-center order-3 min-w-0">{topThree[2] && <PodiumCard item={topThree[2]} rank={3} />}</div>
               </div>
             </div>
           )}
@@ -337,7 +340,7 @@ export default function Leaderboard() {
                   </p>
                   {currentUser.username && <p className="text-sm text-gray-500">@{currentUser.username}</p>}
                 </div>
-                <div className="ml-auto flex items-center gap-8">
+                <div className="ml-auto flex items-center gap-5 sm:gap-8">
                   <div className="text-center">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">{t('lb.myRank')}</p>
                     <p className="text-2xl font-bold text-primary">#{currentUser.rank}</p>

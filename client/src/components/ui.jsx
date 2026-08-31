@@ -769,10 +769,10 @@ export function Podium({ players, coinMap }) {
     'h-[65px] bg-gradient-to-b from-[#f59e8b] to-[#c46a4a] animate-[growUp_.5s_ease_.2s_backwards]',
   ];
   return (
-    <div className="flex items-end justify-center gap-2.5">
+    <div className="flex items-end justify-center gap-2 sm:gap-2.5">
       {order.map((p, i) =>
         p ? (
-          <div key={i} className="flex flex-col items-center gap-1.5 w-[110px]">
+          <div key={i} className="flex flex-col items-center gap-1.5 flex-1 min-w-0 max-w-[110px]">
             <Avatar w={54} avatar={p.avatar} frame={p.currentFrame} />
             <div className="text-[12.5px] font-bold max-w-[100px] text-center truncate">
               {p.full_name}
@@ -783,7 +783,7 @@ export function Podium({ players, coinMap }) {
             </div>
           </div>
         ) : (
-          <div key={i} className="w-[110px]" />
+          <div key={i} className="flex-1 min-w-0 max-w-[110px]" />
         )
       )}
     </div>
@@ -824,39 +824,74 @@ export function Confetti({ count = 80 }) {
   );
 }
 
+// Bayroqlar — TASHQI SERVERGA MUROJAAT YO'Q (ilgari github.io dan yuklanar edi:
+// tarmoq sekin/yopiq bo'lsa bayroqlar chiqmasdi). Endi to'g'ridan-to'g'ri SVG.
+function FlagUz({ w = 20, h = 14 }) {
+  return (
+    <svg width={w} height={h} viewBox="0 0 30 20" style={{ borderRadius: 3, display: 'block' }} aria-hidden="true">
+      <rect width="30" height="20" fill="#0099b5" />
+      <rect y="6.8" width="30" height="6.4" fill="#fff" />
+      <rect y="13.4" width="30" height="6.6" fill="#1eb53a" />
+      <rect y="6.6" width="30" height="0.5" fill="#ce1126" />
+      <rect y="13.2" width="30" height="0.5" fill="#ce1126" />
+      <path d="M8.4 2.6a3 3 0 1 0 0 4.2 2.4 2.4 0 1 1 0-4.2Z" fill="#fff" />
+      <circle cx="14.1" cy="3.1" r="0.9" fill="#fff" />
+      <circle cx="16.2" cy="4.3" r="0.9" fill="#fff" />
+      <circle cx="14.1" cy="5.5" r="0.9" fill="#fff" />
+    </svg>
+  );
+}
+
+function FlagRu({ w = 20, h = 14 }) {
+  return (
+    <svg width={w} height={h} viewBox="0 0 30 20" style={{ borderRadius: 3, display: 'block' }} aria-hidden="true">
+      <rect width="30" height="20" fill="#fff" />
+      <rect y="6.7" width="30" height="6.6" fill="#0039a6" />
+      <rect y="13.3" width="30" height="6.7" fill="#d52b1e" />
+    </svg>
+  );
+}
+
+function FlagGb({ w = 20, h = 14 }) {
+  return (
+    <svg width={w} height={h} viewBox="0 0 30 20" style={{ borderRadius: 3, display: 'block' }} aria-hidden="true">
+      <rect width="30" height="20" fill="#012169" />
+      <path d="M0 0l30 20M30 0L0 20" stroke="#fff" strokeWidth="4" />
+      <path d="M0 0l30 20M30 0L0 20" stroke="#C8102E" strokeWidth="2" />
+      <path d="M15 0v20M0 10h30" stroke="#fff" strokeWidth="6" />
+      <path d="M15 0v20M0 10h30" stroke="#C8102E" strokeWidth="3.4" />
+    </svg>
+  );
+}
+
 export function LangSwitcher({ compact, dark }) {
   const { i18n } = useTranslation();
   const langs = [
-    { code: 'uz', label: "O'zbek", flag: FLAG_DATA.uz },
-    { code: 'ru', label: 'Русский', flag: FLAG_DATA.ru },
-    { code: 'en', label: 'English', flag: FLAG_DATA.en },
+    { code: 'uz', label: "O'zbek", Flag: FlagUz },
+    { code: 'ru', label: 'Русский', Flag: FlagRu },
+    { code: 'en', label: 'English', Flag: FlagGb },
   ];
   const base = dark
     ? 'text-white/80 hover:bg-white/10'
     : 'text-muted hover:bg-surface-2';
   const active = dark ? 'bg-white/20 text-white' : 'lang-active';
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       {langs.map((l) => (
         <button
           key={l.code}
           title={l.label}
-          className={`flex items-center gap-1.5 rounded-[11px] px-2 py-1.5 text-[12px] font-bold transition-all ${i18n.language === l.code ? active : base}`}
+          /* min-h-[34px] — barmoq bilan bosish uchun yetarli maydon */
+          className={`flex items-center justify-center gap-1.5 rounded-[11px] px-2 min-h-[34px] text-[12px] font-bold transition-all ${i18n.language === l.code ? active : base}`}
           onClick={() => setLang(l.code)}
         >
-          <img src={l.flag} alt={l.label} className="w-[20px] h-[14px] rounded-[3px] object-cover" />
+          <l.Flag w={20} h={14} />
           {!compact && l.code.toUpperCase()}
         </button>
       ))}
     </div>
   );
 }
-
-const FLAG_DATA = {
-  uz: "https://purecatamphetamine.github.io/country-flag-icons/3x2/UZ.svg",
-  ru: "https://purecatamphetamine.github.io/country-flag-icons/3x2/RU.svg",
-  en: "https://purecatamphetamine.github.io/country-flag-icons/3x2/GB.svg",
-};
 
 export function PlayerCard({ player, side, you, youLabel, turn, showCoins, disconnected, children }) {
   const isLeft = side !== 'right';
@@ -971,14 +1006,20 @@ export function GameVisibilityToggle({ value, onChange, disabled }) {
 
 export function Toggle({ checked, onChange, disabled }) {
   return (
+    // Tashqi tugma 40px balandlikda — barmoq bilan bosish oson (ichidagi
+    // 46x27 "track" vizual jihatdan avvalgidek qoladi)
     <button
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={cx('w-[46px] h-[27px] rounded-full relative transition-colors duration-200 shrink-0', checked ? 'bg-primary' : 'bg-surface-3')}
+      className={cx('h-[40px] px-1 flex items-center shrink-0', disabled ? 'opacity-50 cursor-not-allowed' : '')}
     >
       <span
-        className={cx('absolute top-[3px] w-[21px] h-[21px] rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.18)] transition-all duration-200', checked ? 'left-[22px]' : 'left-[3px]')}
-      />
+        className={cx('relative w-[46px] h-[27px] rounded-full transition-colors duration-200 block', checked ? 'bg-primary' : 'bg-surface-3')}
+      >
+        <span
+          className={cx('absolute top-[3px] w-[21px] h-[21px] rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.18)] transition-all duration-200', checked ? 'left-[22px]' : 'left-[3px]')}
+        />
+      </span>
     </button>
   );
 }

@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
-  KeyRound, QrCode, Flag, Users, Trophy, Car, MapPin, Play, Maximize, Minimize, Zap, Timer,
+  KeyRound, QrCode, Flag, Users, Trophy, Car, MapPin, Play, Maximize, Minimize, Zap, Timer, Coins,
 } from 'lucide-react';
 import { useSocket } from '../../context/SocketContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -22,41 +22,9 @@ import { initAudio, sounds } from '../../utils/sound.js';
 
 const PHASE = { ENTER: 'enter', LOBBY: 'lobby', PLAYING: 'playing', RESULTS: 'results' };
 
-// Yo'llar (server bilan mos): uzunlik (m), yo'laklar, to'siq zichligi
-const TRACKS = {
-  city: { length: 1200, lanes: 3, density: 1.0 },
-  desert: { length: 2000, lanes: 3, density: 0.75 },
-  mountain: { length: 3000, lanes: 4, density: 1.25 },
-};
+import { createRaceEngine, RACE_TRACKS, PLAYER_COLORS } from '../../games/raceEngine.js';
 
-const PLAYER_COLORS = ['#641ca8', '#dc2626', '#0284c7', '#16a34a'];
-
-// Deterministik PRNG (seed) — hamma o'yinchida bir xil to'siqlar
-function mulberry32(a) {
-  return function () {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// To'siqlar ro'yxati (har 8 metrda bitta ehtimol)
-const SEG = 8;
-function buildObstacles(seed, track) {
-  const cfg = TRACKS[track] || TRACKS.city;
-  const rnd = mulberry32(seed >>> 0);
-  const list = [];
-  const n = Math.ceil((cfg.length + 40) / SEG);
-  for (let i = 4; i < n; i++) {
-    if (rnd() < 0.3 * cfg.density) {
-      list.push({ at: i * SEG, lane: Math.floor(rnd() * cfg.lanes), kind: rnd() < 0.7 ? 'cone' : 'barrier' });
-    } else {
-      rnd(); rnd(); // ketma-ketlik saqlansin
-    }
-  }
-  return list;
-}
+const TRACKS = RACE_TRACKS; // server bilan mos: length / lanes
 
 const fmtMs = (ms) => {
   const s = ms / 1000;
@@ -85,7 +53,8 @@ export default function Race() {
 
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
-  const gameRef = useRef(null); // o'yin holati (loop uchun)
+  const engineRef = useRef(null); // poyga dvigateli (pseudo-3D)
+  const lastRun = useRef({ coins: 0, crashes: 0, topSpeed: 0, bestCombo: 0 });
   const [raceHud, setRaceHud] = useState({ speed: 0, distance: 0, position: 1, total: 1, finished: false });
 
   const cfg = TRACKS[session?.track || track] || TRACKS.city;
@@ -134,9 +103,11 @@ export default function Race() {
   useEffect(() => {
     if (!socket) return;
 
-    const onHosted = ({ code, players }) => {
+    const onHosted = ({ code, players, seed, hostId }) => {
       initAudio(); sounds.join();
-      setSession({ code, track, status: 'waiting', seed: null, players: players || [] });
+      // MUHIM: xona yaratgan o'zimiz — hostId va seed ni saqlash kerak
+      // (aks holda "Poygani boshlash" tugmasi chiqmasdi va to'siqlar farq qilardi)
+      setSession({ code, track, status: 'waiting', seed: seed ?? null, hostId: hostId || myId, players: players || [] });
       setPhase(PHASE.LOBBY);
     };
     const onJoined = ({ session: s }) => {
@@ -230,301 +201,71 @@ export default function Race() {
     if (m) { setJoinCode(m[0].toUpperCase()); socket.emit('race:join', { code: m[0] }); }
   };
 
-  // ============ O'yin loop ============
-  const myLaneIdx = session ? Math.max(0, (session.players || []).findIndex((p) => p.userId === myId)) : 0;
-
+  // ============ O'yin dvigateli (pseudo-3D) ===========
   useEffect(() => {
     if (phase !== PHASE.PLAYING || !session) return;
     const cv = canvasRef.current;
     if (!cv) return;
-    const ctx = cv.getContext('2d');
-    const cfgL = TRACKS[session.track] || TRACKS.city;
-    const obstacles = buildObstacles(session.seed, session.track);
-    const lanes = cfgL.lanes;
 
-    const g = {
-      d: 0, v: 0, lane: myLaneIdx, x: myLaneIdx, ghost: 0, hitIdx: new Set(),
-      finished: false, finishTime: null, startAt: session.startedAt || Date.now() + 3000,
-      crashed: 0, brake: false,
-    };
-    gameRef.current = g;
+    const engine = createRaceEngine({
+      canvas: cv,
+      trackKey: session.track || 'city',
+      seed: session.seed ?? 1,
+      myLane: Math.max(0, (session.players || []).findIndex((p) => p.userId === myId)),
+      players: session.players || [],
+      startAt: session.startedAt || Date.now() + 3000,
+      sounds,
+      onHud: (h) => {
+        setRaceHud(h);
+        setCountdown(h.countdown ?? null);
+      },
+      onProgress: (d) => socket.emit('race:progress', { distance: d }),
+      onFinish: ({ timeMs, coins, crashes, topSpeed, bestCombo }) => {
+        setRaceHud((h) => ({ ...h, finished: true, coins, crashes }));
+        lastRun.current = { coins, crashes, topSpeed, bestCombo };
+        socket.emit('race:finish', { distance: TRACKS[session.track]?.length || 0, coins, crashes });
+        void timeMs;
+      },
+    });
+    engineRef.current = engine;
 
     // Klaviatura
     const onKey = (e) => {
       if (e.repeat) return;
-      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') steer(-1);
-      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') steer(1);
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') engine.steer(-1);
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') engine.steer(1);
     };
     window.addEventListener('keydown', onKey);
 
-    const steer = (dir) => {
-      const gg = gameRef.current;
-      if (!gg || gg.finished) return;
-      const nl = Math.max(0, Math.min(lanes - 1, gg.lane + dir));
-      if (nl !== gg.lane) { gg.lane = nl; sounds.tap(); }
-    };
     // Svayp (canvas ustida)
     let swipeX = null;
     const onPtrDown = (e) => { swipeX = e.clientX; };
     const onPtrUp = (e) => {
       if (swipeX === null) return;
       const dx = e.clientX - swipeX;
-      if (Math.abs(dx) > 24) steer(dx > 0 ? 1 : -1);
+      if (Math.abs(dx) > 24) engine.steer(dx > 0 ? 1 : -1);
       swipeX = null;
     };
     cv.addEventListener('pointerdown', onPtrDown);
     cv.addEventListener('pointerup', onPtrUp);
-    // Ekrandagi tugmalar (React ref orqali)
-    window.__raceSteer = steer;
-
-    // O'lcham
-    const resize = () => {
-      const r = cv.getBoundingClientRect();
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      cv.width = Math.max(1, Math.floor(r.width * dpr));
-      cv.height = Math.max(1, Math.floor(r.height * dpr));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(cv);
-
-    // Progress yuborish (5 marta/sek)
-    let lastSend = 0;
-    let lastHud = 0;
-    let raf, last = performance.now();
-
-    const vmax = 58 + 6 * (1 - cfgL.density); // zich yo'l biroz sekinroq
-    const ACC = 26;
-
-    const loop = (now) => {
-      raf = requestAnimationFrame(loop);
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-      const W = cv.clientWidth, H = cv.clientHeight;
-
-      // Countdown
-      const pre = g.startAt - Date.now();
-      const cd = pre > 3000 ? 3 : pre > 2000 ? 2 : pre > 1000 ? 1 : pre > 0 ? 'GO!' : null;
-      setCountdown((c) => (c !== cd ? cd : c));
-
-      if (pre <= 0 && !g.finished) {
-        if (pre > -900 && !g.went) { g.went = true; sounds.go(); }
-        // Tezlik
-        if (!g.brake) g.v = Math.min(vmax, g.v + ACC * dt);
-        else { g.v = Math.max(0, g.v - 70 * dt); if (g.v <= 0.1) g.brake = false; }
-        g.d += g.v * dt;
-        g.ghost = Math.max(0, g.ghost - dt);
-
-        // To'qnashuv
-        if (g.ghost <= 0) {
-          for (let i = 0; i < obstacles.length; i++) {
-            if (g.hitIdx.has(i)) continue;
-            const o = obstacles[i];
-            if (o.at > g.d + 3) break;
-            if (Math.abs(o.at - g.d) < 2.2 && o.lane === g.lane) {
-              g.hitIdx.add(i);
-              g.ghost = 1.0;
-              g.v = Math.max(8, g.v * 0.35);
-              g.crashed += 1;
-              sounds.wrong();
-              break;
-            }
-          }
-        }
-
-        // Finish
-        if (g.d >= cfgL.length && !g.finished) {
-          g.finished = true;
-          g.finishTime = Date.now() - g.startAt;
-          sounds.fanfare();
-          socket.emit('race:finish', { distance: g.d });
-        }
-
-        // Serverga progress
-        if (now - lastSend > 200 && !g.finished) {
-          lastSend = now;
-          socket.emit('race:progress', { distance: g.d });
-        }
-      }
-
-      // Silliq yo'lak o'tish
-      g.x += (g.lane - g.x) * Math.min(1, dt * 12);
-
-      // ===== RENDER =====
-      const roadW = Math.min(W * 0.86, 460);
-      const roadX = (W - roadW) / 2;
-      const laneW = roadW / lanes;
-      const pxPerM = Math.max(2.2, H / 95); // ekranda ~95 metr ko'rinadi
-      const carY = H * 0.78;
-
-      // Chetlar (trek mavzusi)
-      const theme = session.track === 'desert'
-        ? { side: '#ead9ae', line: '#d9c48f' }
-        : session.track === 'mountain'
-        ? { side: '#cfd8cc', line: '#b9c6b6' }
-        : { side: '#8ecf7a', line: '#7ab868' };
-      ctx.fillStyle = theme.side;
-      ctx.fillRect(0, 0, W, H);
-
-      // Yo'l
-      ctx.fillStyle = '#4b4859';
-      ctx.fillRect(roadX, 0, roadW, H);
-      ctx.fillStyle = 'rgba(255,255,255,.9)';
-      ctx.fillRect(roadX, 0, 4, H);
-      ctx.fillRect(roadX + roadW - 4, 0, 4, H);
-
-      // Yo'lak chiziqlari (harakat: d bo'yicha siljiydi)
-      ctx.strokeStyle = 'rgba(255,255,255,.55)';
-      ctx.lineWidth = 4;
-      ctx.setLineDash([18, 26]);
-      ctx.lineDashOffset = (g.d * pxPerM) % 44;
-      for (let i = 1; i < lanes; i++) {
-        const x = roadX + i * laneW;
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-      }
-      ctx.setLineDash([]);
-
-      // Yon chiziq bezaklari (harakat hissi)
-      ctx.fillStyle = theme.line;
-      const sideOff = (g.d * pxPerM) % 80;
-      for (let y = -80 + sideOff; y < H; y += 80) {
-        ctx.fillRect(roadX - 16, y, 10, 34);
-        ctx.fillRect(roadX + roadW + 6, y, 10, 34);
-      }
-
-      const laneCenter = (l) => roadX + (l + 0.5) * laneW;
-
-      // To'siqlar
-      const carW = Math.min(laneW * 0.62, 46);
-      const carH = carW * 1.75;
-      for (const o of obstacles) {
-        const rel = (o.at - g.d) * pxPerM;
-        const y = carY - rel;
-        if (y < -60 || y > H + 60) continue;
-        const x = laneCenter(o.lane) - carW * 0.35;
-        if (o.kind === 'cone') {
-          ctx.fillStyle = '#f97316';
-          ctx.beginPath();
-          ctx.moveTo(x + carW * 0.35, y - 14);
-          ctx.lineTo(x - 4, y + 12);
-          ctx.lineTo(x + carW * 0.7 + 4, y + 12);
-          ctx.closePath(); ctx.fill();
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(x + 2, y - 2, carW * 0.7 - 4, 4);
-        } else {
-          ctx.fillStyle = '#dc2626';
-          ctx.fillRect(x - 6, y - 12, carW * 0.7 + 12, 26);
-          ctx.fillStyle = '#fff';
-          for (let s = 0; s < 3; s++) ctx.fillRect(x - 4 + s * (carW * 0.26), y - 10 + s * 8, 10, 8);
-        }
-      }
-
-      // Finish chizig'i
-      const finY = carY - (cfgL.length - g.d) * pxPerM;
-      if (finY > -80 && finY < H + 80) {
-        for (let i = 0; i < Math.ceil(roadW / 22); i++) {
-          ctx.fillStyle = i % 2 ? '#111' : '#fff';
-          ctx.fillRect(roadX + i * 22, finY - 10, 22, 20);
-        }
-      }
-
-      // Raqib mashinalari (ulardan 95m ichida bo'lsa)
-      const drawCar = (cx, cy, color, label, ghost) => {
-        ctx.save();
-        if (ghost) ctx.globalAlpha = 0.45 + 0.3 * Math.sin(Date.now() / 90);
-        ctx.fillStyle = 'rgba(0,0,0,.25)';
-        ctx.beginPath(); ctx.ellipse(cx, cy + carH * 0.42, carW * 0.52, 8, 0, 0, Math.PI * 2); ctx.fill();
-        // g'ildiraklar
-        ctx.fillStyle = '#151321';
-        ctx.fillRect(cx - carW * 0.56, cy - carH * 0.34, 7, carH * 0.24);
-        ctx.fillRect(cx + carW * 0.56 - 7, cy - carH * 0.34, 7, carH * 0.24);
-        ctx.fillRect(cx - carW * 0.56, cy + carH * 0.12, 7, carH * 0.24);
-        ctx.fillRect(cx + carW * 0.56 - 7, cy + carH * 0.12, 7, carH * 0.24);
-        // kuzov
-        ctx.fillStyle = color;
-        roundRect(ctx, cx - carW / 2, cy - carH / 2, carW, carH, 10); ctx.fill();
-        // oynalar
-        ctx.fillStyle = 'rgba(255,255,255,.85)';
-        roundRect(ctx, cx - carW * 0.30, cy - carH * 0.30, carW * 0.60, carH * 0.22, 5); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,.65)';
-        roundRect(ctx, cx - carW * 0.28, cy + carH * 0.10, carW * 0.56, carH * 0.16, 4); ctx.fill();
-        // faralar
-        ctx.fillStyle = '#fde68a';
-        ctx.fillRect(cx - carW * 0.42, cy + carH * 0.5 - 5, 9, 4);
-        ctx.fillRect(cx + carW * 0.42 - 9, cy + carH * 0.5 - 5, 9, 4);
-        if (label) {
-          ctx.globalAlpha = 1;
-          ctx.font = 'bold 11px system-ui, sans-serif';
-          ctx.textAlign = 'center';
-          const tw = ctx.measureText(label).width + 12;
-          ctx.fillStyle = 'rgba(15,10,35,.75)';
-          roundRect(ctx, cx - tw / 2, cy - carH / 2 - 22, tw, 17, 8); ctx.fill();
-          ctx.fillStyle = '#fff';
-          ctx.fillText(label, cx, cy - carH / 2 - 10);
-        }
-        ctx.restore();
-      };
-
-      (session.players || []).forEach((p) => {
-        if (p.userId === myId) return;
-        const pd = oppProgressRef.current[p.userId] || 0;
-        const rel = (pd - g.d) * pxPerM;
-        const oy = carY - rel;
-        if (oy < -80 || oy > H + 80) return;
-        drawCar(laneCenter(p.lane ?? 0), oy, PLAYER_COLORS[(p.lane ?? 0) % 4], (p.full_name || '').split(' ')[0], false);
-      });
-
-      // Mening mashinam
-      drawCar(laneCenter(g.x), carY, PLAYER_COLORS[myLaneIdx % 4], null, g.ghost > 0);
-
-      // HUD (canvas ichida)
-      ctx.fillStyle = 'rgba(15,10,35,.72)';
-      roundRect(ctx, 10, 10, 148, 54, 12); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = '900 26px system-ui, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(`${Math.round(g.v * 3.6)}`, 20, 40);
-      ctx.font = 'bold 11px system-ui, sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,.7)';
-      ctx.fillText('km/h', 22, 56);
-      // progress chizig'i
-      const pw = W - 20;
-      ctx.fillStyle = 'rgba(15,10,35,.55)';
-      roundRect(ctx, 10, H - 18, pw, 8, 4); ctx.fill();
-      const prog = Math.min(1, g.d / cfgL.length);
-      const grd = ctx.createLinearGradient(10, 0, pw, 0);
-      grd.addColorStop(0, '#641ca8'); grd.addColorStop(1, '#fdc700');
-      ctx.fillStyle = grd;
-      roundRect(ctx, 10, H - 18, Math.max(8, pw * prog), 8, 4); ctx.fill();
-
-      // HUD state (4 marta/sek)
-      if (now - lastHud > 250) {
-        lastHud = now;
-        const others = Object.entries(oppProgressRef.current).filter(([id]) => id !== myId);
-        const ahead = others.filter(([, dd]) => dd > g.d).length;
-        setRaceHud({
-          speed: Math.round(g.v * 3.6),
-          distance: Math.round(g.d),
-          position: ahead + 1,
-          total: others.length + 1,
-          finished: g.finished,
-          crashed: g.crashed,
-        });
-      }
-    };
-    raf = requestAnimationFrame(loop);
+    // Ekrandagi tugmalar uchun
+    window.__raceSteer = (d) => engine.steer(d);
 
     return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
+      engine.stop();
       window.removeEventListener('keydown', onKey);
       cv.removeEventListener('pointerdown', onPtrDown);
       cv.removeEventListener('pointerup', onPtrUp);
       window.__raceSteer = null;
+      engineRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, session?.code, session?.startedAt]);
+
+  // Raqiblar progressini dvigatelga uzatish
+  useEffect(() => {
+    engineRef.current?.setOpponents(oppProgress);
+  }, [oppProgress]);
 
   // oppProgress'ni loop ichida yangi o'qish uchun ref
   const oppProgressRef = useRef({});
@@ -579,9 +320,14 @@ export default function Race() {
                     {p.timeMs ? fmtMs(p.timeMs) : `${p.progress} m`}
                   </div>
                 </div>
-                {p.coins > 0 && (
-                  <span className="badge warn">+{p.coins} {t('common.coins')}</span>
-                )}
+                <div className="text-right shrink-0">
+                  {p.coins > 0 && (
+                    <span className="badge warn">+{p.coins} {t('common.coins')}</span>
+                  )}
+                  {p.pickups > 0 && (
+                    <div className="text-[11px] text-muted mt-0.5">{t('race.pickups')}: {p.pickups}</div>
+                  )}
+                </div>
               </div>
             ))}
           </Card>
@@ -630,6 +376,15 @@ export default function Race() {
                 <span className="ds">{Math.round((p.dist / cfg.length) * 100)}%</span>
               </div>
             ))}
+            {/* Yig'ilgan coinlar va to'qnashuvlar */}
+            <div className="race-standing" style={{ background: 'rgba(15,10,35,.72)' }}>
+              <span className="rk" style={{ color: '#fdc700' }}>X</span>
+              <span className="nm">{t('race.coinsCollected')}</span>
+              <span className="ds">{raceHud.coins || 0}</span>
+            </div>
+            {raceHud.nitro && (
+              <div className="race-standing race-nitro">{t('race.nitro')}</div>
+            )}
           </div>
 
           {/* Countdown */}
@@ -747,7 +502,7 @@ export default function Race() {
                         <span className="badge neutral">{tr.length} m</span>
                       </div>
                       <div className="text-[12px] text-muted mt-1">
-                        {t(`race.track_${key}_desc`)} • {tr.lanes} {t('race.lanes')} • {tr.density >= 1 ? t('race.dense') : tr.density >= 0.8 ? t('race.medium') : t('race.easy')}
+                        {t(`race.track_${key}_desc`)} • {tr.lanes} {t('race.lanes')} • {t(`race.${tr.level === 'dense' ? 'dense' : tr.level === 'medium' ? 'medium' : 'easy'}`)}
                       </div>
                     </button>
                   );
@@ -769,6 +524,14 @@ export default function Race() {
             </Button>
             <div className="text-[11.5px] text-muted mt-2 text-center">
               {t('race.freeHint')} • {t('race.controlsHint')}
+            </div>
+            <div className="mt-2.5 grid gap-1.5 text-[11.5px]">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-[12px] bg-accent-soft text-[#9a6d00] font-bold">
+                <Coins size={14} /> {t('race.hintCoins')}
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-[12px] bg-info-soft text-[var(--color-info)] font-bold">
+                <Zap size={14} /> {t('race.hintNitro')}
+              </div>
             </div>
           </Card>
 

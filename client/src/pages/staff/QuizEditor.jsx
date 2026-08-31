@@ -173,7 +173,7 @@ export default function QuizEditor() {
           <div className="flex items-center justify-between">
             <span className="font-bold">{t('quizzesP.questionNumber')} {qi + 1}</span>
             {questions.length > 1 && (
-              <button className="text-danger hover:bg-danger-soft p-1 rounded" onClick={() => removeQuestion(qi)} disabled={busy}>
+              <button className="text-danger hover:bg-danger-soft w-9 h-9 min-w-[36px] flex items-center justify-center rounded-[10px] shrink-0" onClick={() => removeQuestion(qi)} disabled={busy}>
                 <Trash2 size={16} />
               </button>
             )}
@@ -222,7 +222,7 @@ export default function QuizEditor() {
                   disabled={busy}
                 />
                 {q.variants.length > 2 && (
-                  <button className="text-danger hover:bg-danger-soft p-1 rounded" onClick={() => removeVariant(qi, vi)} disabled={busy}>
+                  <button className="text-danger hover:bg-danger-soft w-9 h-9 min-w-[36px] flex items-center justify-center rounded-[10px] shrink-0" onClick={() => removeVariant(qi, vi)} disabled={busy}>
                     <X size={16} />
                   </button>
                 )}

@@ -28,6 +28,11 @@ const TRACKS = {
   mountain: { length: 3000, lanes: 4, density: 1.25 },
 };
 
+// Yo'lda yig'ilishi mumkin bo'lgan coinlar chegarasi (anti-cheat)
+const PICKUP_CAP = 60;
+// Yakkaxon mashg'ulot uchun kichik rag'bat (farming bo'lmasligi uchun cheklangan)
+const soloCoins = (pickups) => Math.min(10, Math.floor((pickups || 0) / 4));
+
 // Mukofotlar (2+ o'yinchi bo'lsa): coin / ball
 const REWARDS = [
   { coin: 15, score: 15 },
@@ -113,10 +118,11 @@ async function finishRace(io, s) {
     if (multi) {
       const updates = ranked.map((p, i) => {
         const r = REWARDS[i] || { coin: 0, score: 0 };
+        const gain = r.coin + (p.pickups || 0);
         return prisma.user.update({
           where: { id: p.id },
           data: {
-            coin: { increment: r.coin },
+            coin: { increment: gain },
             score: { increment: r.score },
             week_score: { increment: r.score },
             month_score: { increment: r.score },
@@ -138,6 +144,17 @@ async function finishRace(io, s) {
       });
     }
 
+    // Yakkaxon mashg'ulot: yig'ilgan coinlarning kichik qismi beriladi
+    if (!multi) {
+      const soloUpdates = ranked
+        .filter((p) => soloCoins(p.pickups || 0) > 0)
+        .map((p) => prisma.user.update({
+          where: { id: p.id },
+          data: { coin: { increment: soloCoins(p.pickups || 0) } },
+        }).catch((e) => console.error(`[race:${s.code}] coin xatosi:`, e.message)));
+      await Promise.all(soloUpdates);
+    }
+
     s.players.forEach((p) => {
       if (userGameMap.get(p.id)?.id === s.code) userGameMap.delete(p.id);
     });
@@ -152,8 +169,10 @@ async function finishRace(io, s) {
         rank: i + 1,
         progress: Math.round(p.progress || 0),
         timeMs: p.finishedAt ? p.finishedAt - s.startedAt : null,
-        coins: multi ? (REWARDS[i] || { coin: 0 }).coin : 0,
+        coins: multi ? (REWARDS[i] || { coin: 0 }).coin + (p.pickups || 0) : soloCoins(p.pickups || 0),
         points: multi ? (REWARDS[i] || { score: 0 }).score : 0,
+        pickups: p.pickups || 0,
+        crashes: p.crashes || 0,
       })),
       track: s.track,
     });
@@ -275,7 +294,15 @@ export function setupRaceGame(io) {
         registerGame(userId, 'race', code);
         userSocketMap.set(userId, socket.id);
         socket.join(code);
-        socket.emit('race:hosted', { code, track: tr, players: sanitizeSession(sessions.get(code)).players });
+        // seed ham yuboriladi — aks holda xost boshqacha to'siqlar ko'rardi
+        const st = sessions.get(code);
+        socket.emit('race:hosted', {
+          code,
+          track: tr,
+          seed: st.seed,
+          hostId: userId,
+          players: sanitizeSession(st).players,
+        });
       } catch (err) {
         console.error('race:host error:', err);
         emitError(socket, 'HOST_FAILED', 'Xona yaratishda xatolik');
@@ -357,7 +384,7 @@ export function setupRaceGame(io) {
     // Finish
     socket.on('race:finish', (payload) => {
       try {
-        const { distance } = payload || {};
+        const { distance, coins, crashes } = payload || {};
         const entry = userGameMap.get(userId);
         if (!entry || entry.type !== 'race') return;
         const s = sessions.get(entry.id);
@@ -367,6 +394,9 @@ export function setupRaceGame(io) {
         const now = Date.now();
         p.finishedAt = Math.max(now, s.startedAt || now);
         p.progress = (TRACKS[s.track] || TRACKS.city).length;
+        // Yo'lda yig'ilgan coinlar (cheklov bilan — anti-cheat)
+        p.pickups = Math.max(0, Math.min(PICKUP_CAP, Number(coins) || 0));
+        p.crashes = Math.max(0, Math.min(999, Number(crashes) || 0));
         if (!s.firstFinishAt) s.firstFinishAt = now;
         s.lastActivity = now;
         io.to(s.code).emit('race:player_finish', { userId, timeMs: p.finishedAt - (s.startedAt || now) });

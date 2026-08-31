@@ -86,7 +86,7 @@ export default function QuizzesList() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-[14.5px] truncate">{q.name}</div>
-                <div className="text-[12.5px] text-muted mt-0.5">
+                <div className="text-[12.5px] text-muted mt-0.5 truncate">
                   {q.questionsCount} {t('quizzesP.questionCount')} • {fmtDate(q.createdAt)}
                 </div>
               </div>

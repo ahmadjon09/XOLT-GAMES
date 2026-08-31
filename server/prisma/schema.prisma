@@ -46,6 +46,7 @@ model User {
   payments        Payment[]
   attendances     Attendance[]
   typingRecords   TypingRecord[]
+  coinTransactions CoinTransaction[]
 
   // Kim tomonidan yaratilgan (admin yoki kassir)
   createdById     String?
@@ -72,6 +73,7 @@ model Staff {
   codeQuestions CodeQuestion[]
   payments    Payment[] // kassir tomonidan qo'shilgan to'lovlar
   attendances Attendance[] // o'qituvchi tomonidan qo'yilgan davomatlar
+  coinTransactions CoinTransaction[] // admin/kassir tomonidan berilgan yoki olingan coinlar
   createdById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -297,6 +299,23 @@ model CodeQuestion {
   createdAt   DateTime @default(now())
 
   @@index([category])
+}
+
+// ============ COIN OPERATSIYALARI (admin kassir/o'qituvchi) ============
+// amount > 0 → coin qo'shildi, amount < 0 → coin olindi
+model CoinTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int      // + (berildi) yoki - (olindi)
+  balance   Int      // operatsiyadan keyingi balans
+  note      String?
+  staffId   String?
+  staff     Staff?   @relation(fields: [staffId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 // ============ O'YIN TARIXI (admin statistikasi uchun) ============

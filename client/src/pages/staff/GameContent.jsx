@@ -101,7 +101,7 @@ export function TypingTexts() {
           <Card style={{ padding: '4px 14px' }}>
             {texts.map((tx) => (
               <div key={tx.id} className="row-item">
-                <div style={{ width: 40, height: 40, borderRadius: 13, background: 'var(--primary-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'var(--primary)', flexShrink: 0, textTransform: 'uppercase' }}>
+                <div style={{ minWidth: 40, height: 36, padding: '0 8px', borderRadius: 11, background: 'var(--primary-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'var(--primary)', flexShrink: 0, textTransform: 'uppercase' }}>
                   {tx.lang}
                 </div>
                 <div className="grow">
@@ -227,7 +227,7 @@ export function CodeQuestions() {
             <button
               onClick={() => setCatFilter('all')}
               className="badge"
-              style={{ cursor: 'pointer', background: catFilter === 'all' ? 'var(--primary-soft)' : 'var(--surface-2)', color: catFilter === 'all' ? 'var(--primary)' : 'var(--muted)', padding: '8px 14px', border: catFilter === 'all' ? '1.5px solid var(--primary)' : '1.5px solid transparent' }}
+              style={{ cursor: 'pointer', background: catFilter === 'all' ? 'var(--primary-soft)' : 'var(--surface-2)', color: catFilter === 'all' ? 'var(--primary)' : 'var(--muted)', padding: '8px 14px', minHeight: 34, flexShrink: 0, whiteSpace: 'nowrap', border: catFilter === 'all' ? '1.5px solid var(--primary)' : '1.5px solid var(--border)' }}
             >
               {t('common.all')}
             </button>
@@ -236,7 +236,7 @@ export function CodeQuestions() {
                 key={c}
                 onClick={() => setCatFilter(c)}
                 className="badge"
-                style={{ cursor: 'pointer', background: catFilter === c ? 'var(--primary-soft)' : 'var(--surface-2)', color: catFilter === c ? 'var(--primary)' : 'var(--muted)', padding: '8px 14px', fontSize: 12.5, textTransform: 'uppercase', border: catFilter === c ? '1.5px solid var(--primary)' : '1.5px solid transparent' }}
+                style={{ cursor: 'pointer', background: catFilter === c ? 'var(--primary-soft)' : 'var(--surface-2)', color: catFilter === c ? 'var(--primary)' : 'var(--muted)', padding: '8px 14px', minHeight: 34, fontSize: 12.5, textTransform: 'uppercase', flexShrink: 0, whiteSpace: 'nowrap', border: catFilter === c ? '1.5px solid var(--primary)' : '1.5px solid var(--border)' }}
               >
                 {c}
               </button>
@@ -252,7 +252,7 @@ export function CodeQuestions() {
           <Card style={{ padding: '4px 14px' }}>
             {questions.map((q) => (
               <div key={q.id} className="row-item">
-                <div style={{ width: 40, height: 40, borderRadius: 13, background: '#f1ebfe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#8b5cf6', flexShrink: 0, textTransform: 'uppercase', fontSize: 11 }}>
+                <div style={{ minWidth: 42, height: 34, padding: '0 9px', borderRadius: 11, background: '#f1ebfe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#8b5cf6', flexShrink: 0, textTransform: 'uppercase', fontSize: 10.5 }}>
                   {q.category}
                 </div>
                 <div className="grow">

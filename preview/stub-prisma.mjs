@@ -1,9 +1,19 @@
 // DEMO STUB PRISMA — PostgreSQL'siz lokal demo uchun (preview/server.mjs bilan)
-// Faqat o'yin socketlari kerak qiladigan modellarni xotirada ushlab turadi.
-const users = new Map();
+// Foydalanuvchilar mock-api bilan UMUMIY (bitta db) — shunda demo login qilgan
+// o'yinchi socket o'yinlarida ham topiladi va coin/ballari bir joyda yangilanadi.
+import { db } from './mock-api.mjs';
+
+const users = new Map(); // id -> user (db.users bilan sinxron)
+
+const syncFrom = () => {
+  db.users.forEach((u) => { if (!users.has(u.id)) users.set(u.id, u); });
+};
 
 const seed = (u) => {
-  if (!users.has(u.id)) users.set(u.id, { week_score: 0, month_score: 0, currentFrame: null, currentEffect: null, avatar: null, ...u });
+  if (!users.has(u.id)) {
+    users.set(u.id, { week_score: 0, month_score: 0, currentFrame: null, currentEffect: null, avatar: null, ...u });
+    if (!db.users.some((x) => x.id === u.id)) db.users.push(users.get(u.id));
+  }
   return users.get(u.id);
 };
 
@@ -34,7 +44,11 @@ const updateUser = async (id, data) => {
 
 export const prisma = {
   user: {
-    findUnique: async ({ where: { id } }) => (users.has(id) ? { ...users.get(id) } : null),
+    findUnique: async ({ where: { id } }) => {
+      syncFrom();
+      return users.has(id) ? { ...users.get(id) } : null;
+    },
+    findMany: async () => { syncFrom(); return db.users.map((u) => ({ ...u })); },
     update: ({ where: { id }, data }) => updateUser(id, data),
   },
   gameRecord: {
@@ -66,6 +80,7 @@ export const prisma = {
 };
 
 export function findOrCreateByPhone(phone) {
+  syncFrom();
   for (const u of users.values()) if (u.phone === phone) return u;
   const id = 'u_' + Math.random().toString(36).slice(2, 10);
   return seed({
