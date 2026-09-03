@@ -9,6 +9,7 @@ import { setupCodeBattle } from './codeBattle.js';
 import { setupChessGame } from './chessGame.js';
 import { setupCheckersGame } from './checkersGame.js';
 import { setupRaceGame } from './raceGame.js';
+import { setupRace3D, RACE3D_REALTIME_EVENTS } from './race3d.js';
 
 export function setupSocket(httpServer, corsOrigins) {
   const io = new Server(httpServer, {
@@ -28,7 +29,9 @@ export function setupSocket(httpServer, corsOrigins) {
   io.use(checkConnectionLimit);
 
   io.on('connection', (socket) => {
-    registerEventRateLimit(socket);
+    // Real-time poyga event'lari (r3b) umumiy limiterga kirmaydi: xona ichida
+    // aniqroq himoya (input rate + strike/kick) bor.
+    registerEventRateLimit(socket, { exemptEvents: RACE3D_REALTIME_EVENTS });
 
     // PING - frontend ulanganligini tekshiradi
     socket.on('ping', (cb) => {
@@ -45,6 +48,8 @@ export function setupSocket(httpServer, corsOrigins) {
   setupChessGame(io);
   setupCheckersGame(io);
   setupRaceGame(io);
+  // 3D poyga (server-avtoritar, binary protokol) — alohida modul
+  setupRace3D(io);
 
   return io;
 }

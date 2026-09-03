@@ -62,13 +62,18 @@ export function checkConnectionLimit(socket, next) {
 }
 
 // Har bir socket uchun event hisoblagich - limit oshsa uziladi
-export function registerEventRateLimit(socket) {
+export function registerEventRateLimit(socket, opts = {}) {
+  // Real-time o'yinlar (masalan 3D poyga) o'zining aniqroq limitiga ega —
+  // ularning har-tick event'lari bu hisobga kiritilmaydi (aks holda o'yinchi
+  // poyga o'rtasida uzilib qoladi).
+  const exempt = opts.exemptEvents || null;
   let count = 0;
   const resetTimer = setInterval(() => {
     count = 0;
   }, 10_000);
 
-  socket.onAny(() => {
+  socket.onAny((event) => {
+    if (exempt && exempt.has(event)) return;
     count += 1;
     if (count > EVENT_LIMIT) {
       socket.emit('error', { code: 'EVENT_RATE_LIMITED', message: 'Juda ko\'p so\'rov yuborildi' });
