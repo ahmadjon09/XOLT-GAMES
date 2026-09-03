@@ -1,0 +1,30 @@
+// Cloudflare Workers konfiguratsiyasi — faqat frontend (SPA) shu yerdan deploy qilinadi.
+// Backend (server/ — Express + Socket.IO + Prisma) Workers'da ishlamaydi, uni alohida
+// Node server sifatida deploy qiling (qarang SERVER.md → 12. Deployment checklist).
+//
+// Ushbu fayl bo'lmasa `wrangler deploy` avtomatik "autoconfig" ustasini ishga tushiradi va
+// vite.config.js ni o'zi o'zgartirmoqchi bo'ladi — bu esa import.meta tufayli xato beradi.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Workers dashboarddagi Worker nomi bilan bir xil bo'lsin
+  "name": "xolt-games",
+  "compatibility_date": "2026-08-31",
+
+  // `wrangler deploy` dan oldin avtomatik bajariladigan build
+  // (vite build → dist/)
+  "build": {
+    "command": "npm run build"
+  },
+
+  "assets": {
+    // vite build natijasi
+    "directory": "./dist",
+    // BrowserRouter: noma'lum path (masalan /login) index.html ga qaytarilsin
+    "not_found_handling": "single-page-application"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}
