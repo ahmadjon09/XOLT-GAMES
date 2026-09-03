@@ -1,12 +1,25 @@
 // Vite sozlamalari - API va socket'ga proxy orqali ulanish
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
+// Monorepo: packages/ papkasi client/ dan tashqarida.
+// `@race/*` alias orqali ulanadi (nisbiy ../../../.. zanjirlari o'rniga).
+const packagesRoot = fileURLToPath(new URL('../packages', import.meta.url));
+const repoRoot = fileURLToPath(new URL('..', import.meta.url));
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@race': packagesRoot,
+    },
+  },
   server: {
     host: '0.0.0.0',
+    // packages/ papkasi loyiha ildizidan tashqarida — Vite ruxsat berishi kerak
+    fs: { allow: [repoRoot] },
     port: 5173,
     allowedHosts: true,
     proxy: {
@@ -29,6 +42,8 @@ export default defineConfig({
           charts: ['recharts'],
           qr: ['html5-qrcode', 'qrcode.react'],
           vendor: ['react', 'react-dom', 'react-router-dom', 'socket.io-client', 'i18next', 'react-i18next', 'lucide-react'],
+          // Three.js alohida chunk — poyga sahifasigacha yuklanmaydi
+          three: ['three'],
         },
       },
     },
