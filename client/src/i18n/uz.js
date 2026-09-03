@@ -127,6 +127,8 @@ export const uz = {
     checkersDesc: 'Klassik shashka: olish majburiy, damka bor',
     raceTitle: 'Poyga',
     raceDesc: "2D poyga: yo'l tanlang, to'siqdan qoching",
+    race3dTitle: '3D Poyga',
+    race3dDesc: "To'liq 3D poyga: fizika serverda, 16 o'yinchigacha",
     mathDesc: '1v1 hisob-kitob poygasi, coin tikib o\'ynang',
     quizTitle: 'Viktorina',
     quizDesc: 'O\'qituvchingiz tuzgan savollarga javob bering',
@@ -992,6 +994,11 @@ export const uz = {
     result_draw30: '30 yurish harakatsiz — durrang',
     result_resign: 'Raqib chiqib ketdi',
     result_timeout: "Vaqt tugadi",
+  },
+  race3d: {
+    title: '3D Poyga',
+    subtitle: "Server-avtoritar fizika, client bashorati va silliq interpolyatsiya bilan to'liq 3D poyga.",
+    controls: "Boshqaruv: W/\u2191 gaz, S/\u2193 tormoz, A/D yoki \u2190/\u2192 rul, Space qo'l tormozi, Shift drift, E/F nitro, R respawn.",
   },
   race: {
     title: 'Poyga',

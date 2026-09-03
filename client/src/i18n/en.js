@@ -127,6 +127,8 @@ export const en = {
     checkersDesc: 'Classic checkers: forced captures, kings',
     raceTitle: 'Racing',
     raceDesc: '2D racing: pick a track, dodge obstacles',
+    race3dTitle: '3D Racing',
+    race3dDesc: 'Full 3D multiplayer racing with server-side physics',
     mathDesc: '1v1 calculation race, play for coins',
     quizTitle: 'Quiz',
     quizDesc: 'Answer questions created by your teacher',
@@ -992,6 +994,11 @@ export const en = {
     result_draw30: '30 moves without progress — draw',
     result_resign: 'Opponent left',
     result_timeout: 'Time out',
+  },
+  race3d: {
+    title: '3D Race',
+    subtitle: 'Server-authoritative physics, client prediction and smooth interpolation.',
+    controls: 'Controls: W/\u2191 gas, S/\u2193 brake, A/D or \u2190/\u2192 steer, Space handbrake, Shift drift, E/F nitro, R respawn.',
   },
   race: {
     title: 'Racing',

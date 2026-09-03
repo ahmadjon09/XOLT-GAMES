@@ -1,4 +1,5 @@
 // App - router va himoyalangan sahifalar
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import { PageLoader } from './components/ui.jsx';
@@ -23,6 +24,9 @@ import CodeBattle from './pages/games/CodeBattle.jsx';
 import Chess from './pages/games/Chess.jsx';
 import Checkers from './pages/games/Checkers.jsx';
 import Race from './pages/games/Race.jsx';
+// 3D poyga: Three.js (~480 KB) FAQAT shu sahifa ochilganda yuklanadi
+// (lazy + alohida chunk) — boshqa sahifalar tezligi o'zgarmaydi.
+const Race3D = lazy(() => import('./pages/games/Race3D.jsx'));
 import { TypingTexts, CodeQuestions } from './pages/staff/GameContent.jsx';
 
 import StaffHome from './pages/staff/StaffHome.jsx';
@@ -148,6 +152,21 @@ export default function App() {
           element={
             <Guard kind="user">
               <Race />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/game/race3d"
+          element={
+            <Guard kind="user">
+              <Suspense fallback={
+                <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <PageLoader />
+                </div>
+              }>
+                <Race3D />
+              </Suspense>
             </Guard>
           }
         />

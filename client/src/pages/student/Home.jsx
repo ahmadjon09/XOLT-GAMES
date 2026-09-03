@@ -34,6 +34,7 @@ export default function Home() {
     { key: 'chess', to: '/game/chess', icon: Swords, title: t('home.chessTitle'), desc: t('home.chessDesc'), tag: '1v1' },
     { key: 'checkers', to: '/game/checkers', icon: Disc3, title: t('home.checkersTitle'), desc: t('home.checkersDesc'), tag: '1v1' },
     { key: 'race', to: '/game/race', icon: Car, title: t('home.raceTitle'), desc: t('home.raceDesc'), tag: '4P' },
+    { key: 'race3d', to: '/game/race3d', icon: Car, title: t('home.race3dTitle'), desc: t('home.race3dDesc'), tag: '3D' },
     { key: 'quiz', to: '/quiz/join', icon: ListChecks, title: t('home.quizTitle'), desc: t('home.quizDesc'), tag: 'LIVE' },
     { key: 'typerace', to: '/game/typerace', icon: Keyboard, title: t('home.typingTitle'), desc: t('home.typingDesc'), tag: '10P' },
     { key: 'code', to: '/game/codebattle', icon: Code2, title: t('home.codeTitle'), desc: t('home.codeDesc'), tag: '10P' },
