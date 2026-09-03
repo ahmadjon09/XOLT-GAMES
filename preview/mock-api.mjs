@@ -371,6 +371,38 @@ export function mockApi({ method, path, query, body, auth, JWT_SECRET, jwt, uplo
     );
   }
 
+  // GET /user/attendance?groupId=xxx — guruh bo'yicha davomat tarixi
+  // (server/src/routes/user.routes.js /attendance bilan bir xil shakl)
+  if (p === '/user/attendance') {
+    if (!auth || auth.kind !== 'user') return E(403, 'AUTH_FORBIDDEN', 'Ruxsat yo‘q');
+    const groupId = String(query.get('groupId') || '');
+    if (!groupId) return E(400, 'VALIDATION_ERROR', 'groupId kerak');
+    const member = db.members.find((m) => m.userId === auth.id && m.groupId === groupId);
+    if (!member) return E(403, 'NOT_IN_GROUP', "Siz bu guruhga a'zo emassiz");
+    const group = findGroup(groupId);
+    const teacher = group && findStaff(group.teacherId);
+    const records = db.attendance
+      .filter((a) => a.userId === auth.id && a.groupId === groupId)
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+    const days = [];
+    for (let i = 29; i >= 0; i--) {
+      const key = new Date(Date.now() - i * day).toISOString().slice(0, 10);
+      const rec = records.find((r) => r.date === key);
+      days.push({ date: key, status: rec ? rec.status : null });
+    }
+    return R({
+      group: group ? { id: group.id, name: group.name, teacher: teacher ? teacher.full_name : null } : null,
+      summary: {
+        present: records.filter((r) => r.status === 'present').length,
+        absent: records.filter((r) => r.status === 'absent').length,
+        late: records.filter((r) => r.status === 'late').length,
+        total: records.length,
+      },
+      days,
+      records: records.slice(0, 60),
+    });
+  }
+
   if (p === '/user/group-ranking') {
     if (!auth || auth.kind !== 'user') return R([]);
     const mine = db.members.filter((m) => m.userId === auth.id);

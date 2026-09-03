@@ -426,15 +426,15 @@ export default function UserDetails() {
                             title={c.rec ? `${c.key}: ${t(`attendance.${c.rec.status}`)}` : c.key}
                             style={{
                               aspectRatio: '1', borderRadius: 9,
-                              background: c.rec ? statusMeta[c.rec.status].bg : 'var(--surface-3)',
-                              color: c.rec ? statusMeta[c.rec.status].color : 'var(--muted)',
+                              background: c.rec ? (statusMeta[c.rec.status]?.bg || 'var(--surface-3)') : 'var(--surface-3)',
+                              color: c.rec ? (statusMeta[c.rec.status]?.color || 'var(--muted)') : 'var(--muted)',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               fontSize: 12, fontWeight: 700,
                               opacity: c.day === new Date().getDate() ? 1 : c.rec ? 1 : 0.55,
                               boxShadow: c.day === new Date().getDate() && !c.rec ? 'inset 0 0 0 2px var(--primary)' : undefined,
                             }}
                           >
-                            {c.rec ? statusMeta[c.rec.status].ch : c.day}
+                            {c.rec ? (statusMeta[c.rec.status]?.ch || '·') : c.day}
                           </div>
                         )
                       )}
