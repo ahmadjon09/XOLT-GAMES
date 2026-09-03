@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --port 5100",
     "build": "vite build",
+    "build:prod": "VITE_API_URL=https://api.v2.xolt.uz vite build",
     "preview": "vite preview --port 4173",
     "deploy": "wrangler deploy"
   },

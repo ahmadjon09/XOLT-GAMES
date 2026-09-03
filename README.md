@@ -165,9 +165,10 @@ npm run deploy                                   # haqiqiy deploy
 - API manzili build paytida belgilanadi: `client/src/api/api.js` → `VITE_API_URL`.
   **Default = same-origin (bo'sh)** — lokal `npm run client` (vite proxy),
   `npm run preview` (demo server) va nginx — hammasi qo'shimcha sozlamasiz ishlaydi.
-  **Cloudflare'ga deploy qilishda** API server'ga yo'naltirish kerak:
-  `VITE_API_URL=https://api.v2.xolt.uz npm run deploy`
-  (yoki boshqa backend bo'lsa o'sha URL bilan).
+  **Cloudflare Workers'da** client va API alohida hostda — shuning uchun
+  `wrangler.jsonc` avtomatik `npm run build:prod` ni ishlatadi
+  (`VITE_API_URL=https://api.v2.xolt.uz` bilan). Boshqa API bo'lsa
+  `client/package.json` dagi `build:prod` script'dagi URL'ni o'zgartiring.
 
 Agar loyihangiz **Pages** bo'lsa (Workers emas), deploy buyrug'i boshqacha:
 `npx wrangler pages deploy dist --project-name=<loyiha-nomi>`.

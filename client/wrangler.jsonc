@@ -12,9 +12,12 @@
   "compatibility_date": "2026-08-31",
 
   // `wrangler deploy` dan oldin avtomatik bajariladigan build
-  // (vite build → dist/)
+  // (vite build → dist/).
+  // MUHIM: production Workers'da client va API alohida — shuning uchun
+  // `build:prod` ishlatiladi (VITE_API_URL=https://api.v2.xolt.uz bilan).
+  // Odatiy `build` same-origin bo'lib, faqat lokal/preview/nginx uchun.
   "build": {
-    "command": "npm run build"
+    "command": "npm run build:prod"
   },
 
   "assets": {
