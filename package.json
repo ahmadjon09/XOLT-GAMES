@@ -13,7 +13,7 @@
     "race:load": "node scripts/race-loadtest.mjs",
     "client": "npm --prefix client run dev",
     "server": "npm --prefix server run dev",
-    "preview": "node --import ./preview/register-loader.mjs preview/server.mjs"
+    "preview": "node preview/ensure-dist.mjs && node --import ./preview/register-loader.mjs preview/server.mjs"
   },
   "devDependencies": {
     "jsonwebtoken": "^9.0.3",

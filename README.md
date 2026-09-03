@@ -162,9 +162,12 @@ npm run deploy                                   # haqiqiy deploy
 - `wrangler.jsonc` dagi `name` Workers dashboarddagi Worker nomi bilan bir xil bo'lsin.
 - `assets.not_found_handling: "single-page-application"` — BrowserRouter uchun zarur
   (`/login` kabi path'lar `index.html` ga qaytariladi).
-- API manzili build paytida belgilanadi: `client/src/api/api.js` → `VITE_API_URL`
-  (default `https://api.v2.xolt.uz`). Boshqa backend kerak bo'lsa Cloudflare'da
-  `VITE_API_URL` build env o'zgaruvchisini o'rnating.
+- API manzili build paytida belgilanadi: `client/src/api/api.js` → `VITE_API_URL`.
+  **Default = same-origin (bo'sh)** — lokal `npm run client` (vite proxy),
+  `npm run preview` (demo server) va nginx — hammasi qo'shimcha sozlamasiz ishlaydi.
+  **Cloudflare'ga deploy qilishda** API server'ga yo'naltirish kerak:
+  `VITE_API_URL=https://api.v2.xolt.uz npm run deploy`
+  (yoki boshqa backend bo'lsa o'sha URL bilan).
 
 Agar loyihangiz **Pages** bo'lsa (Workers emas), deploy buyrug'i boshqacha:
 `npx wrangler pages deploy dist --project-name=<loyiha-nomi>`.

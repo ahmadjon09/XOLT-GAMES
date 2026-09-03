@@ -16,6 +16,7 @@ const gameMeta = {
   chess: { color: '#b45309', bg: '#fdf3d7' },
   checkers: { color: '#dc2626', bg: '#fdeaea' },
   race: { color: '#0d9488', bg: '#d9f4f0' },
+  race3d: { color: '#4338ca', bg: '#e8ebfd' },
   typerace: { color: '#0284c7', bg: '#e4f4fd' },
   code: { color: '#7c3aed', bg: '#f3eefe' },
   ttt: { color: '#16a34a', bg: '#e6f7ec' },
@@ -95,7 +96,8 @@ export default function Home() {
         </div>
         <AutoGrid col={260}>
           {games.map((g) => {
-            const meta = gameMeta[g.key];
+            // Fallback: yangi o'yin qo'shilganda meta yo'q bo'lsa app'ni tushirmaslik
+            const meta = gameMeta[g.key] || { color: 'var(--color-primary)', bg: 'var(--color-primary-soft)' };
             return (
               <Link key={g.key} to={g.to} className="block h-full">
                 <Card tap className="h-full flex flex-col gap-3.5">
