@@ -134,6 +134,41 @@ cd client && npm run build   # dist/ papkasiga
 # nginx konfig: nginx/xolt-games.conf ni moslang va ulang
 ```
 
+### 4. Cloudflare Workers deploy (faqat frontend)
+
+Frontend — sof SPA, shuning uchun uni Cloudflare Workers (Static Assets) ga deploy qilish mumkin.
+Backend (`server/` — Express + Socket.IO + Prisma) Workers'da ishlamaydi, uni alohida Node
+server sifatida deploy qiling (qarang `SERVER.md` → 12. Deployment checklist).
+
+Konfiguratsiya `client/wrangler.jsonc` faylida. U bo'lmasa `wrangler deploy` avtomatik
+sozlash ustasini ishga tushiradi va `vite.config.js` ni o'zi o'zgartirmoqchi bo'lib xato beradi.
+
+Cloudflare dashboard (Workers & Pages → Builds) sozlamalari:
+
+| Sozlama | Qiymat |
+|---|---|
+| Root directory | `client` |
+| Build command | *(bo'sh qoldiring — `wrangler.jsonc` o'zi `npm run build` ni chaqiradi)* |
+| Deploy command | `npx wrangler deploy` |
+
+Lokaldan sinash:
+
+```bash
+cd client
+npm run build && npx wrangler deploy --dry-run   # tekshirish (upload qilmaydi)
+npm run deploy                                   # haqiqiy deploy
+```
+
+- `wrangler.jsonc` dagi `name` Workers dashboarddagi Worker nomi bilan bir xil bo'lsin.
+- `assets.not_found_handling: "single-page-application"` — BrowserRouter uchun zarur
+  (`/login` kabi path'lar `index.html` ga qaytariladi).
+- API manzili build paytida belgilanadi: `client/src/api/api.js` → `VITE_API_URL`
+  (default `https://api.v2.xolt.uz`). Boshqa backend kerak bo'lsa Cloudflare'da
+  `VITE_API_URL` build env o'zgaruvchisini o'rnating.
+
+Agar loyihangiz **Pages** bo'lsa (Workers emas), deploy buyrug'i boshqacha:
+`npx wrangler pages deploy dist --project-name=<loyiha-nomi>`.
+
 ## Demo hisoblar
 
 | Rol | Telefon | Parol |
