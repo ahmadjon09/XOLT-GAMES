@@ -30,6 +30,9 @@ const { setupTicTacToe } = await import('../server/src/socket/tictactoe.js');
 const { setupChessGame } = await import('../server/src/socket/chessGame.js');
 const { setupCheckersGame } = await import('../server/src/socket/checkersGame.js');
 const { setupRaceGame } = await import('../server/src/socket/raceGame.js');
+// 3D poyga (server-avtoritar, binary protokol) — xuddi production'dagi modul
+const { setupRace3D } = await import('../server/src/socket/race3d.js');
+const { RACE3D_REALTIME_EVENTS } = await import('../server/src/socket/race3d.js');
 const { socketAuthenticate, checkConnectionLimit, registerEventRateLimit } = await import('../server/src/socket/shared.js');
 const { getMathLobbyRooms } = await import('../server/src/socket/mathGame.js');
 const { getTicTacToeLobbyRooms } = await import('../server/src/socket/tictactoe.js');
@@ -108,16 +111,26 @@ const server = http.createServer(async (req, res) => {
   // ---- Statik (client/dist) ----
   let filePath = path.join(DIST, url.pathname === '/' ? 'index.html' : url.pathname);
   if (!filePath.startsWith(DIST)) { res.statusCode = 403; return res.end(err('FORBIDDEN', '')); }
-  if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-    if (fs.existsSync(path.join(UPLOADS, path.basename(url.pathname)))) {
-      filePath = path.join(UPLOADS, path.basename(url.pathname));
+  const isFile = (p) => fs.existsSync(p) && fs.statSync(p).isFile();
+  if (!isFile(filePath)) {
+    const name = path.basename(url.pathname);
+    const uploadPath = name ? path.join(UPLOADS, name) : '';
+    if (uploadPath && isFile(uploadPath)) {
+      filePath = uploadPath;
     } else {
       filePath = path.join(DIST, 'index.html'); // SPA fallback
     }
   }
+  // MUHIM: katalogni o'qishga urinish serverni qulatardi (EISDIR) — himoya.
+  if (!isFile(filePath)) {
+    res.statusCode = 500;
+    return res.end(err('DIST_NOT_BUILT', "client/dist topilmadi — avval: cd client && npm run build"));
+  }
   const ext = path.extname(filePath);
   res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
-  fs.createReadStream(filePath).pipe(res);
+  const stream = fs.createReadStream(filePath);
+  stream.on('error', () => { res.statusCode = 500; res.end(err('READ_ERROR', '')); });
+  stream.pipe(res);
 });
 
 // ---- Socket.IO (haqiqiy handlerlar) ----
@@ -152,7 +165,7 @@ io.use((socket, next) => {
 });
 io.use(checkConnectionLimit);
 io.on('connection', (socket) => {
-  registerEventRateLimit(socket);
+  registerEventRateLimit(socket, { exemptEvents: RACE3D_REALTIME_EVENTS });
   socket.on('ping', (cb) => { if (typeof cb === 'function') cb({ ok: true, t: Date.now() }); });
 });
 
@@ -161,6 +174,7 @@ setupTicTacToe(io);
 setupChessGame(io);
 setupCheckersGame(io);
 setupRaceGame(io);
+setupRace3D(io);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`[preview] Demo server: http://0.0.0.0:${PORT} (DB'siz, xotira rejimi)`);
