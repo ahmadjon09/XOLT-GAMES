@@ -4,13 +4,11 @@
   "version": "1.0.0",
   "description": "XOLT Games — platform + 3D multiplayer racing subsystem (server authoritative)",
   "type": "module",
-  "engines": {
-    "node": ">=22.6.0"
-  },
   "scripts": {
+    "build": "npm --prefix client run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"tests/*.test.ts\"",
-    "test:race": "node --test tests/race/",
+    "test:race": "node --test tests/protocol.test.ts tests/determinism.test.ts tests/collision.test.ts tests/netcode.test.ts tests/server-room.test.ts",
     "race:sim": "node scripts/race-headless.mjs",
     "race:load": "node scripts/race-loadtest.mjs",
     "client": "npm --prefix client run dev",
