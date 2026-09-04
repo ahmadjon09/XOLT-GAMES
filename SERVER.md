@@ -163,7 +163,58 @@ O'yin holatlari (games Map) hozir har node'da alohida. Redis adapter bilan
 saqlanadi. Katta hajmda o'yin holatini Redis'ga ko'chirish yoki sticky sessions yetarli
 (nginx ip_hash bilan bir user doim bir node'ga tushadi).
 
-## 8. Monitoring
+## 8. Sig'im qo'riqchisi — "server band" (crash o'rniga)
+
+Server RAM/CPU ko'tara olmaydigan holatga yaqinlashganda Node process OOM bilan
+**crash** bo'lardi va HAMMA foydalanuvchi birdan uzilardi. Endi o'rnatilgan
+himoya bor (`server/src/utils/capacity.js`):
+
+| Daraja | Qachon | Nima bo'ladi |
+|---|---|---|
+| `ok` | RAM < 75%, event loop < 150 ms | Hammasi normal |
+| `warn` | RAM ≥ 75% yoki loop ≥ 150 ms | **Faqat eng og'ir o'yin — 3D poyga** yangi xona ochmaydi. Qolgan o'yinlar ishlaydi |
+| `busy` | RAM ≥ 88%, loop ≥ 400 ms, socket/xona limiti | **Hech qanday yangi o'yin ochilmaydi**: client'ga `SERVER_BUSY` javobi. Ketayotgan o'yinlar to'xtatilmaydi |
+
+Qanday ishlaydi:
+
+1. **O'lchash** — har 1 s da: `rss`/cgroup RAM limiti, V8 heap, event loop kechikishi,
+   socket soni, aktiv xona soni. Docker/PaaS'da cgroup limiti avtomatik aniqlanadi
+   (`/sys/fs/cgroup/memory.max`), kerak bo'lsa `SERVER_MEM_LIMIT_MB` bilan qo'lda beriladi.
+2. **Socket qo'riqchisi** (`socket/capacityGuard.js`) — `*:create`, `*:host`, `*:join`,
+   `r3:c` kabi og'ir event'lar handler'ga YETIB BORMAYDI: client darhol
+   `{ ok:false, error:'SERVER_BUSY' }` ack + `server:busy` event oladi.
+   O'yin ichidagi trafik (yurish, javob, poyga inputlari) **bloklanmaydi**.
+3. **HTTP qo'riqchisi** (`middleware/capacity.js`) — `busy` holatida `/api/*` og'ir
+   so'rovlari `503 SERVER_BUSY` qaytaradi. `/health`, `/auth/login`, `/auth/me` doim ochiq.
+4. **Yukni kamaytirish (load shedding)** — bosim ostida bo'sh/tugagan 3D poyga xonalari
+   darhol yopiladi, `--expose-gc` bo'lsa GC chaqiriladi.
+5. **Crash himoyasi** — `uncaughtException` / `unhandledRejection` log qilinadi,
+   process **o'chmaydi**; har bir o'yin moduli alohida `try/catch` bilan ulanadi,
+   3D poyga moduli yuklanmasa faqat o'sha o'yin o'chadi (server ishlashda davom etadi).
+
+Frontend buni ko'rsatadi: `GET /api/health` + `server:status`/`server:busy` socket
+event'lari orqali. Bosh sahifada o'yin kartalari "Server band" bo'lib o'chadi,
+3D poyga sahifasida sariq banner chiqadi — foydalanuvchi "TIMEOUT" o'rniga aniq
+sabab ko'radi.
+
+```bash
+# Holatni ko'rish
+curl -s https://api.v2.xolt.uz/api/health | jq
+# {"success":true,"data":{"level":"ok","busy":false,"memoryPct":41,"activeGames":3,...}}
+
+# Sun'iy "band" rejimda sinash (chegarani 0 ga tushirish)
+CAP_MEM_BUSY_PCT=0.0001 npm --prefix server start
+```
+
+Sozlamalar `server/.env.example` da: `SERVER_MEM_LIMIT_MB`, `CAP_MEM_WARN_PCT`,
+`CAP_MEM_BUSY_PCT`, `CAP_LOOP_LAG_*`, `CAP_MAX_SOCKETS`, `CAP_MAX_ACTIVE_GAMES`,
+`CAP_RACE3D_ROOM_MB`, `RACE_DB_TIMEOUT_MS`.
+
+> Muhim: `pm2` da `max_memory_restart: '1G'` qo'yilsa, u qo'riqchi chegarasidan
+> YUQORI bo'lishi kerak — aks holda process qayta ishga tushib, qo'riqchi
+> foydasi ko'rinmaydi.
+
+## 9. Monitoring
 
 ```bash
 # PM2 monitoring
@@ -181,7 +232,7 @@ Sentry.init({ dsn: process.env.SENTRY_DSN });
 
 **Uptime monitor**: UptimeRobot / HetrixTools — `/health` endpoint'ini 1 daqiqada tekshiradi.
 
-## 9. Ma'lumotlar bazasi backup
+## 10. Ma'lumotlar bazasi backup
 
 ```bash
 # Har kechada backup (cron)
@@ -190,7 +241,7 @@ Sentry.init({ dsn: process.env.SENTRY_DSN });
 find /backups -name '*.dump' -mtime +7 -delete
 ```
 
-## 10. Tezlikni sinash
+## 11. Tezlikni sinash
 
 ```bash
 # REST
@@ -209,7 +260,7 @@ artillery run socket-test.yml
 | Yuzaki yuk (page load) | < 2s |
 | Uptime | 99.9% |
 
-## 11. Xavfsizlik checklist
+## 12. Xavfsizlik checklist
 
 - [x] JWT + bcrypt, email yo'q (telefon login)
 - [x] Role access: user faqat o'z data; teacher faqat o'z guruhlari; admin hamma
@@ -222,7 +273,7 @@ artillery run socket-test.yml
 - [ ] `JWT_SECRET` — uzun tasodifiy string (32+ belgi)
 - [ ] `IMGBB_API_KEY` — imgbb.com dan oling
 
-## 12. Deployment checklist
+## 13. Deployment checklist
 
 1. `npm install --omit=dev` server'da
 2. `npx prisma migrate deploy`
@@ -233,7 +284,7 @@ artillery run socket-test.yml
 7. `/health` tekshirish
 8. `.env` barcha kalitlar bilan (JWT_SECRET almashtiring!)
 
-## 13. Xato bo'lsa
+## 14. Xato bo'lsa
 
 ```bash
 pm2 logs xolt-api --lines 100

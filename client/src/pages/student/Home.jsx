@@ -3,12 +3,18 @@ import { useTranslation } from 'react-i18next';
 import {
   Calculator, ListChecks, Grid3x3, Keyboard, Code2, Trophy,
   CalendarCheck2, Wallet, ChevronRight, QrCode, KeyRound, User, Users, Swords, Coins, Disc3, Car,
+  ServerCrash,
 } from 'lucide-react';
 import { useGet } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useServerStatus } from '../../context/ServerStatusContext.jsx';
 import { AutoGrid, Card, CoinBadge, EmptyState } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { fmtNum } from '../../utils/format.js';
+
+// Eng ko'p resurs talab qiladigan o'yinlar — server yuki oshganda BIRINCHI
+// bo'lib yopiladi (qolganlari ishlashda davom etadi).
+const HEAVY_GAMES = new Set(['race3d']);
 
 const gameMeta = {
   math: { color: '#5b21b6', bg: '#f0eafd' },
@@ -25,6 +31,8 @@ const gameMeta = {
 export default function Home() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  // Server RAM/yuk holati: band bo'lsa o'yinlar ochilmaydi (crash o'rniga ogohlantirish)
+  const server = useServerStatus();
   const { data: groups } = useGet('/user/groups', { fallbackData: null });
   // Guruh ichidagi reytingim (birinchi guruh bo'yicha)
   const { data: groupRank } = useGet('/user/group-ranking', { fallbackData: [] });
@@ -90,6 +98,23 @@ export default function Home() {
       </AutoGrid>
 
       {/* O'yinlar */}
+      {server.heavyBlocked ? (
+        <Card className="flex items-start gap-3" style={{ borderColor: 'rgba(234,179,8,.4)', background: 'rgba(234,179,8,.08)' }}>
+          <ServerCrash size={20} className="mt-0.5 shrink-0" style={{ color: '#b45309' }} />
+          <div className="min-w-0">
+            <div className="font-extrabold text-[15px]">
+              {server.busy ? t('server.busyTitle', 'Server band') : t('server.heavyTitle', 'Server yuki yuqori')}
+            </div>
+            <div className="text-[13px] text-muted mt-0.5">
+              {server.busy
+                ? t('server.busyDesc', 'Hozir yangi o‘yin ochib bo‘lmaydi. Bir necha daqiqadan so‘ng qayta urinib ko‘ring.')
+                : t('server.heavyDesc', '3D poyga vaqtincha yopiq (xotira tejash uchun). Boshqa o‘yinlar ishlayapti.')}
+              {server.memoryPct ? ` — RAM ${server.memoryPct}%` : ''}
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
       <section>
         <div className="section-title">
           <div className="t">{t('home.gamesTitle')}</div>
@@ -98,27 +123,46 @@ export default function Home() {
           {games.map((g) => {
             // Fallback: yangi o'yin qo'shilganda meta yo'q bo'lsa app'ni tushirmaslik
             const meta = gameMeta[g.key] || { color: 'var(--color-primary)', bg: 'var(--color-primary-soft)' };
+            // Server band — hech qanday yangi o'yin ochilmaydi.
+            // Yuk yuqori (warn) — faqat ENG OG'IR o'yin (3D poyga) yopiladi.
+            const blocked = server.busy || (server.heavyBlocked && HEAVY_GAMES.has(g.key));
+
+            const body = (
+              <Card tap={!blocked} className={`h-full flex flex-col gap-3.5${blocked ? ' opacity-60' : ''}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div
+                    className="w-14 h-14 flex items-center justify-center shrink-0"
+                    style={{ background: meta.bg, borderRadius: 'var(--r-md)' }}
+                  >
+                    <g.icon size={27} color={meta.color} strokeWidth={2.1} />
+                  </div>
+                  <span className={`badge ${blocked ? 'warn' : 'primary'}`}>
+                    {blocked ? t('server.busyBadge', 'Server band') : g.tag}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold text-[16px] tracking-tight truncate">{g.title}</div>
+                  <div className="text-[13px] text-muted mt-1 leading-snug">{g.desc}</div>
+                </div>
+                <div className={`flex items-center gap-1 text-[13px] font-bold ${blocked ? 'text-muted' : 'text-primary'}`}>
+                  {blocked ? t('server.tryLater', 'Keyinroq urinib ko‘ring') : t('home.playNow')}
+                  {blocked ? null : <ChevronRight size={16} />}
+                </div>
+              </Card>
+            );
+
+            // Bloklangan o'yin ochilmaydi: Link o'rniga oddiy div (bosilmaydi)
+            if (blocked) {
+              return (
+                <div key={g.key} className="block h-full cursor-not-allowed" aria-disabled="true">
+                  {body}
+                </div>
+              );
+            }
+
             return (
               <Link key={g.key} to={g.to} className="block h-full">
-                <Card tap className="h-full flex flex-col gap-3.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div
-                      className="w-14 h-14 flex items-center justify-center shrink-0"
-                      style={{ background: meta.bg, borderRadius: 'var(--r-md)' }}
-                    >
-                      <g.icon size={27} color={meta.color} strokeWidth={2.1} />
-                    </div>
-                    <span className="badge primary">{g.tag}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-extrabold text-[16px] tracking-tight truncate">{g.title}</div>
-                    <div className="text-[13px] text-muted mt-1 leading-snug">{g.desc}</div>
-                  </div>
-                  <div className="flex items-center gap-1 text-[13px] font-bold text-primary">
-                    {t('home.playNow')}
-                    <ChevronRight size={16} />
-                  </div>
-                </Card>
+                {body}
               </Link>
             );
           })}

@@ -874,7 +874,18 @@ export const uz = {
     disconnected: 'Uzilish yuz berdi. Qayta ulanmoqda...',
     reconnecting: 'Qayta ulanmoqda...',
   },
+  server: {
+    busyTitle: 'Server band',
+    busyDesc: 'Hozir yangi o‘yin ochib bo‘lmaydi. Bir necha daqiqadan so‘ng qayta urinib ko‘ring.',
+    heavyTitle: 'Server yuki yuqori',
+    heavyDesc: '3D poyga vaqtincha yopiq (xotira tejash uchun). Boshqa o‘yinlar ishlayapti.',
+    busyBadge: 'Server band',
+    tryLater: 'Keyinroq urinib ko‘ring',
+    slow: 'Server javob bermadi — qayta urinib ko‘ring',
+  },
   errors: {
+    SERVER_BUSY: 'Server band — biroz kutib, qayta urinib ko\'ring',
+    SERVER_SLOW: 'Server javob bermadi — qayta urinib ko\'ring',
     INVALID_CREDENTIALS: 'Telefon yoki parol noto\'g\'ri',
     ACCOUNT_DISABLED: 'Hisob faolshtirilgan',
     INSUFFICIENT_COINS: 'Yetarli coin yo\'q',

@@ -874,7 +874,18 @@ export const en = {
     disconnected: 'Connection lost. Reconnecting...',
     reconnecting: 'Reconnecting...',
   },
+  server: {
+    busyTitle: 'Server is busy',
+    busyDesc: 'New games cannot be started right now. Please try again in a few minutes.',
+    heavyTitle: 'High server load',
+    heavyDesc: '3D race is temporarily disabled (to save memory). Other games still work.',
+    busyBadge: 'Server busy',
+    tryLater: 'Try again later',
+    slow: 'The server did not respond — please try again',
+  },
   errors: {
+    SERVER_BUSY: 'Server is busy — please try again shortly',
+    SERVER_SLOW: 'The server did not respond — please try again',
     INVALID_CREDENTIALS: 'Wrong phone or password',
     ACCOUNT_DISABLED: 'Account is disabled',
     INSUFFICIENT_COINS: 'Not enough coins',

@@ -202,6 +202,22 @@ cd server && node scripts/test-games.mjs
 - Avatar va savol rasmlari react-easy-crop bilan kesiladi (doira/kvadrat, zoom)
 - Zod validatsiya barcha kirishlarda
 
+## Barqarorlik — "server band" rejimi (crash himoyasi)
+
+Server RAM/CPU chegarasiga yaqinlashganda process **crash bo'lmaydi**, balki
+yangi yuklama rad etiladi:
+
+- RAM ≥ 75% → eng og'ir o'yin (**3D poyga**) yangi xona ochmaydi
+- RAM ≥ 88% (yoki event loop ≥ 400 ms) → **hech qanday yangi o'yin ochilmaydi**,
+  client `SERVER_BUSY` javobini oladi va UI'da "Server band" ko'rinadi
+- Ketayotgan o'yinlar to'xtatilmaydi; bo'sh/tugagan xonalar darhol tozalanadi
+- `uncaughtException` / `unhandledRejection` serverni o'chirmaydi
+- 3D poyga so'rovlari **har doim javob oladi** (DB sekin bo'lsa ham) — avvalgi
+  "TIMEOUT" xatosi shu bilan yo'q qilindi
+
+Holatni ko'rish: `GET /api/health` → `{ level: 'ok' | 'warn' | 'busy', memoryPct, activeGames }`.
+Batafsil: [SERVER.md, 8-bo'lim](SERVER.md).
+
 ## Muhim env o'zgaruvchilari
 
 | O'zgaruvchi | Tavsif |
@@ -215,3 +231,7 @@ cd server && node scripts/test-games.mjs
 | `MAX_UPLOAD_MB` | Maksimal fayl hajmi (default 5MB) |
 | `IMGBB_API_KEY` | imgbb.com API kaliti — o'rnatilsa barcha rasmlar (avatar, savol rasmlari) imgbb.com ga yuklanadi, aks holda lokal saqlanadi |
 | `FRONTEND_URL` | QR kodlarda ishlatiladigan frontend manzili |
+| `SERVER_MEM_LIMIT_MB` | RAM chegarasi (bo'sh bo'lsa cgroup/tizimdan avtomatik) |
+| `CAP_MEM_WARN_PCT` / `CAP_MEM_BUSY_PCT` | "yuk yuqori" / "server band" chegaralari (default 75 / 88) |
+| `CAP_MAX_ACTIVE_GAMES` | Bir vaqtdagi maksimal o'yin xonalari (default 500) |
+| `RACE_DB_TIMEOUT_MS` | 3D poygada DB javobini kutish limiti (default 1500 ms) |

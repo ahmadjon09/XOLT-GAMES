@@ -31,6 +31,13 @@ import {
 } from '../../../packages/game-config/src/index.ts';
 import { validateJoinRoom, validateEnvelope } from '../../../packages/protocol/src/index.ts';
 import { raceDeps } from './race3d.deps.js';
+import {
+  checkCapacity,
+  affordableRace3DRooms,
+  registerShedder,
+  registerLoadSource,
+  getCapacity,
+} from '../utils/capacity.js';
 
 // DB bo'lmasa ishlatiladigan zaxira (player ma'lumoti — JWT'dan, statistika — yo'q)
 const noop = () => {};
@@ -53,6 +60,26 @@ const MAX_ROOMS = Math.max(1, Number(process.env.RACE_MAX_ROOMS || 200));
 const CREATE_LIMIT_PER_MIN = Math.max(1, Number(process.env.RACE_CREATE_LIMIT_PER_MIN || 10));
 const FINISHED_CLEANUP_MS = Number(process.env.RACE_FINISHED_CLEANUP_MS || 60_000);
 const CODE_TTL_MS = Number(process.env.RACE_CODE_TTL_MS || 6 * 60 * 60 * 1000);
+// DB so'rovi shuncha ms ichida javob bermasa — JWT ma'lumoti bilan davom etamiz.
+// Sabab: sekin/uzilgan DB tufayli client "TIMEOUT" ko'rishi MUMKIN EMAS.
+const DB_TIMEOUT_MS = Math.max(200, Number(process.env.RACE_DB_TIMEOUT_MS || 1500));
+
+/** Promise'ni vaqt bilan cheklash — hech qachon "osilib" qolmaydi. */
+function withTimeout(promise, ms, fallback = null) {
+  return new Promise((resolve) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      resolve(fallback);
+    }, ms);
+    if (typeof timer.unref === 'function') timer.unref();
+    Promise.resolve(promise).then(
+      (v) => { if (!done) { done = true; clearTimeout(timer); resolve(v); } },
+      () => { if (!done) { done = true; clearTimeout(timer); resolve(fallback); } },
+    );
+  });
+}
 
 // Socket.IO event nomlari (qisqa — har paketda ~14 bayt tejaydi)
 const EVT = {
@@ -155,7 +182,22 @@ class Race3DManager {
 
   // ------------------------------------------------------------------ ROOMS
   createRoom({ trackKey, seed, maxPlayers, laps }) {
+    // 1) Qat'iy limit (.env)
     if (this.rooms.size >= MAX_ROOMS) return { error: 'ROOM_LIMIT' };
+
+    // 2) Server sig'imi: RAM/event-loop bosimida yangi xona OCHILMAYDI.
+    //    Bu OOM crash'ning oldini oladi — server "band" deb javob beradi,
+    //    ketayotgan poygalar esa buzilmaydi.
+    const verdict = checkCapacity('race3d');
+    if (!verdict.ok) {
+      return { error: 'SERVER_BUSY', reason: verdict.reason, message: verdict.message, retryAfterMs: verdict.retryAfterMs };
+    }
+
+    // 3) Xotiraga qarab hisoblangan dinamik limit (kichik VPS'da avtomatik kamayadi)
+    if (this.rooms.size >= affordableRace3DRooms(MAX_ROOMS)) {
+      return { error: 'SERVER_BUSY', reason: 'MEMORY', message: 'Server xotirasi to‘lgan — biroz kutib turing' };
+    }
+
     const key = TRACKS[trackKey] ? trackKey : DEFAULT_TRACK;
     let code = newCode();
     let guard = 0;
@@ -179,7 +221,9 @@ class Race3DManager {
     };
 
     const transport = this.makeTransport(handle);
-    const room = new RaceRoom(
+    let room;
+    try {
+      room = new RaceRoom(
       code,
       key,
       seedNum,
@@ -210,6 +254,12 @@ class Race3DManager {
         },
       },
     );
+    } catch (err) {
+      // Xona qurilmadi (masalan trek konfiguratsiyasi buzuq / xotira yetmadi):
+      // server yiqilmaydi, client tushunarli xato oladi.
+      console.error(`[race3d] xona yaratib bo'lmadi (${code}):`, err?.message || err);
+      return { error: 'ROOM_CREATE_FAILED', message: 'Xona yaratilmadi — keyinroq urinib ko‘ring' };
+    }
     handle.room = room;
     this.rooms.set(code, handle);
     return { handle };
@@ -306,7 +356,13 @@ class Race3DManager {
 
     let full = null;
     try {
-      full = await S.fetchFullUser(user.id);
+      // DB sekin bo'lsa (yoki umuman javob bermasa) — 1.5 s dan keyin JWT
+      // ma'lumoti bilan davom etamiz. Aks holda ack kechikib, client'da
+      // "TIMEOUT" chiqardi (aynan shu xato haqida shikoyat bo'lgan).
+      full = await withTimeout(S.fetchFullUser(user.id), DB_TIMEOUT_MS, null);
+      if (!full) {
+        console.warn(`[race3d] fetchFullUser sekin/yo'q (${DB_TIMEOUT_MS} ms) — JWT ma'lumoti ishlatildi`);
+      }
     } catch (err) {
       console.warn('[race3d] fetchFullUser failed', err?.message);
     }
@@ -440,6 +496,7 @@ class Race3DManager {
       snapshotRate: cfg.snapshotRate,
       loopMs: LOOP_MS,
       loops: this.tickCount,
+      capacity: getCapacity(),
       rooms,
     };
   }
@@ -505,9 +562,59 @@ export function setupRace3D(io, opts = {}) {
   const manager = new Race3DManager(io, opts);
   manager.start();
 
+  // --- Sig'im monitoriga ulanish ---
+  // 1) Aktiv xona soni (umumiy yuk hisobiga qo'shiladi)
+  registerLoadSource('race3d', () => manager.rooms.size);
+  // 2) Bosim ostida yukni kamaytirish: bo'sh va tugagan xonalar DARHOL yopiladi.
+  //    Bu OOM'gacha bo'lgan oxirgi imkoniyat — server crash bo'lmaydi.
+  registerShedder('race3d', () => {
+    const now = manager.now();
+    for (const [code, h] of manager.rooms) {
+      const room = h.room;
+      if (!room) { manager.rooms.delete(code); continue; }
+      if (room.status === 'finished' || room.isEmpty || room.connectedCount === 0) {
+        manager.destroyRoom(code, 'memory_pressure');
+      }
+    }
+  });
+
+  /**
+   * Har qanday handler'ni "javobsiz qolmaydigan" qilib o'raydi.
+   *
+   * NIMA UCHUN: ilgari handler ichida kutilmagan xato (yoki sekin DB) bo'lsa,
+   * ack umuman chaqirilmasdi va client 8 soniyadan keyin "TIMEOUT" ko'rsatardi.
+   * Endi HAR DOIM javob boradi — xato bo'lsa ham tushunarli kod bilan.
+   */
+  const safeAck = (name, fn) => async (rawPayload, ack) => {
+    let answered = false;
+    const reply = (payload) => {
+      if (answered) return;
+      answered = true;
+      manager.reply(ack, payload);
+    };
+    // Qo'shimcha himoya: 7 s ichida javob bo'lmasa — o'zimiz javob beramiz
+    const watchdog = setTimeout(() => {
+      if (answered) return;
+      console.warn(`[race3d] "${name}" javob bermadi — SERVER_SLOW qaytarildi`);
+      reply({ ok: false, error: 'SERVER_SLOW', message: 'Server javob bermadi — qayta urinib ko‘ring' });
+    }, 7000);
+    if (typeof watchdog.unref === 'function') watchdog.unref();
+
+    try {
+      await fn(rawPayload, reply);
+    } catch (err) {
+      console.error(`[race3d] "${name}" handler xatosi:`, err?.stack || err?.message || err);
+      reply({ ok: false, error: 'SERVER_ERROR', message: 'Serverda xatolik — qayta urinib ko‘ring' });
+    } finally {
+      clearTimeout(watchdog);
+      // Handler javob bermay tugagan bo'lsa ham client kutib qolmasin
+      reply({ ok: false, error: 'NO_RESPONSE', message: 'Server javob bermadi' });
+    }
+  };
+
   io.on('connection', (socket) => {
     // --- Xona yaratish ---
-    socket.on(EVT.create, async (rawPayload, ack) => {
+    socket.on(EVT.create, safeAck('create', async (rawPayload, reply) => {
       const p = validateEnvelope(rawPayload) ?? {};
       const ip = socket.handshake.address || 'unknown';
 
@@ -515,7 +622,7 @@ export function setupRace3D(io, opts = {}) {
       const now = manager.now();
       const arr = (manager.createLog.get(ip) || []).filter((t) => now - t < 60_000);
       if (arr.length >= CREATE_LIMIT_PER_MIN) {
-        return manager.reply(ack, { ok: false, error: 'CREATE_RATE_LIMITED' });
+        return reply({ ok: false, error: 'CREATE_RATE_LIMITED' });
       }
       arr.push(now);
       manager.createLog.set(ip, arr);
@@ -526,33 +633,47 @@ export function setupRace3D(io, opts = {}) {
         maxPlayers: p.maxPlayers,
         laps: p.laps,
       });
-      if (created.error) return manager.reply(ack, { ok: false, error: created.error });
+      if (created.error) {
+        return reply({
+          ok: false,
+          error: created.error,
+          reason: created.reason,
+          message: created.message,
+          retryAfterMs: created.retryAfterMs,
+        });
+      }
 
       // Yaratuvchi darhol qo'shiladi
-      await manager.join(socket, { roomCode: created.handle.code, spectate: false, protocolVersion: PROTOCOL_VERSION }, ack);
+      await manager.join(
+        socket,
+        { roomCode: created.handle.code, spectate: false, protocolVersion: PROTOCOL_VERSION },
+        reply,
+      );
       return undefined;
-    });
+    }));
 
     // --- Xonaga qo'shilish ---
-    socket.on(EVT.join, async (rawPayload, ack) => {
-      await manager.join(socket, rawPayload, ack);
-    });
+    socket.on(EVT.join, safeAck('join', async (rawPayload, reply) => {
+      await manager.join(socket, rawPayload, reply);
+    }));
 
     // --- Chiqish ---
-    socket.on(EVT.leave, () => manager.leave(socket));
+    socket.on(EVT.leave, () => {
+      try { manager.leave(socket); } catch (err) { console.error('[race3d] leave xatosi:', err?.message || err); }
+    });
 
     // --- Start (faqat host) ---
-    socket.on(EVT.start, (rawPayload, ack) => {
+    socket.on(EVT.start, safeAck('start', async (rawPayload, reply) => {
       const info = socket.data.race3d;
-      if (!info) return manager.reply(ack, { ok: false, error: 'NOT_IN_ROOM' });
+      if (!info) return reply({ ok: false, error: 'NOT_IN_ROOM' });
       const handle = manager.rooms.get(info.code);
-      if (!handle) return manager.reply(ack, { ok: false, error: 'ROOM_NOT_FOUND' });
+      if (!handle) return reply({ ok: false, error: 'ROOM_NOT_FOUND' });
       if (handle.hostUserId !== String(socket.data.user?.id)) {
-        return manager.reply(ack, { ok: false, error: 'NOT_HOST' });
+        return reply({ ok: false, error: 'NOT_HOST' });
       }
-      if (handle.room.status !== 'waiting') return manager.reply(ack, { ok: false, error: 'ALREADY_STARTED' });
+      if (handle.room.status !== 'waiting') return reply({ ok: false, error: 'ALREADY_STARTED' });
       if (handle.room.playerCount < ROOM.minPlayers) {
-        return manager.reply(ack, { ok: false, error: 'NOT_ENOUGH_PLAYERS' });
+        return reply({ ok: false, error: 'NOT_ENOUGH_PLAYERS' });
       }
       const now = manager.now();
       handle.room.start(now);
@@ -563,34 +684,41 @@ export function setupRace3D(io, opts = {}) {
         startAtMs: now + handle.room.sim.raceStartMs - handle.room.sim.timeMs,
         serverTimeMs: now,
       });
-      return manager.reply(ack, { ok: true, started: true });
-    });
+      return reply({ ok: true, started: true });
+    }));
 
     // --- BINARY trafik (input / ack / ping) ---
     // Muhim: slot socket.data dan olinadi, paket ichidagi playerId
     // faqat TEKSHIRISH uchun (boshqa o'yinchi nomidan input yuborib bo'lmaydi).
     socket.on(EVT.bin, (data) => {
-      const info = socket.data.race3d;
-      if (!info) return;
-      const handle = manager.rooms.get(info.code);
-      if (!handle) return;
-      let bytes = data;
-      if (ArrayBuffer.isView(data)) bytes = data;
-      else if (data instanceof ArrayBuffer) bytes = new Uint8Array(data);
-      else if (Array.isArray(data)) bytes = new Uint8Array(data);
-      else return; // noto'g'ri tur — e'tiborsiz
-      handle.lastActivity = manager.now();
-      const err = handle.room.handleBinary(info.slot, bytes, manager.now());
-      if (err) {
-        // Juda tez-tez xato → client'ga ogohlantirish (flood himoyasi allaqachon room ichida)
-        if (err === 'BAD_VERSION' || err === 'BAD_ROOM' || err === 'KICKED') {
-          socket.emit(EVT.error, { code: err });
+      try {
+        const info = socket.data.race3d;
+        if (!info) return;
+        const handle = manager.rooms.get(info.code);
+        if (!handle) return;
+        let bytes = data;
+        if (ArrayBuffer.isView(data)) bytes = data;
+        else if (data instanceof ArrayBuffer) bytes = new Uint8Array(data);
+        else if (Array.isArray(data)) bytes = new Uint8Array(data);
+        else return; // noto'g'ri tur — e'tiborsiz
+        handle.lastActivity = manager.now();
+        const err = handle.room.handleBinary(info.slot, bytes, manager.now());
+        if (err) {
+          // Juda tez-tez xato → client'ga ogohlantirish (flood himoyasi allaqachon room ichida)
+          if (err === 'BAD_VERSION' || err === 'BAD_ROOM' || err === 'KICKED') {
+            socket.emit(EVT.error, { code: err });
+          }
         }
+      } catch (err) {
+        // Buzuq paket butun serverni yiqitmasin
+        console.error('[race3d] binary paket xatosi:', err?.message || err);
       }
     });
 
     // --- Uzilish ---
-    socket.on('disconnect', () => manager.leave(socket, true));
+    socket.on('disconnect', () => {
+      try { manager.leave(socket, true); } catch { /* noop */ }
+    });
   });
 
   return manager;
