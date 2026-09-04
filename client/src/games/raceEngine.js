@@ -215,6 +215,20 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+// ---------- Yordamchi: rangni yoritish / qoraytirish ----------
+// amt > 0 → oqqa, amt < 0 → qoraga aralashtiradi (3D yorug'lik hissi uchun).
+function shade(hex, amt) {
+  const h = String(hex).replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+  let r = (n >> 16) & 255, g2 = (n >> 8) & 255, b = n & 255;
+  const t = amt < 0 ? 0 : 255;
+  const p = Math.abs(amt);
+  r = Math.round(r + (t - r) * p);
+  g2 = Math.round(g2 + (t - g2) * p);
+  b = Math.round(b + (t - b) * p);
+  return `rgb(${r},${g2},${b})`;
+}
+
 // ---------- Asosiy dvigatel ----------
 export function createRaceEngine(opts) {
   const {
@@ -258,6 +272,12 @@ export function createRaceEngine(opts) {
     offroad: 0,
     slip: 0,
     dust: [],
+    camX: laneCenter(myLane),  // kamera yon o'rni — mashinaga KECHIKIB ergashadi
+    lat: 0,                    // yon siljish tezligi (kuzov qiyshayishi uchun)
+    camRoll: 0,                // kamera qiyshayishi (burilishda — kino effekti)
+    spin: 0,                   // g'ildirak aylanish burchagi (rad)
+    accel: 0,                  // tezlanish (burun ko'tarilishi uchun)
+    carScreen: null,           // mashinaning ekrandagi o'rni (chang/zarrachalar uchun)
     lastSend: 0,
     lastHud: 0,
     went: false,
@@ -265,10 +285,19 @@ export function createRaceEngine(opts) {
   };
 
   let opponents = {};   // { userId: distance }
+  const oppPrev = new Map();  // raqibning oldingi masofasi (tezligini bilish uchun)
+  const oppSpin = new Map();  // raqib g'ildiragining aylanish burchagi
   let raf = 0;
   let last = performance.now();
   let W = 0, H = 0;
   let lastHorizon = 0; // fon uchun ufq chizig'i (o'tgan kadrdan)
+  // Overscan: kamera burilishda (roll) biroz qiyshayadi — ekran chekkalarida
+  // bo'sh burchak qolmasligi uchun hamma fon/o't shu chegaradan tashqariga
+  // chiziladi.
+  let OVER = 40;
+  // Dinamik FOV: tezlikda ko'rish burchagi biroz kengayadi (tezlik hissi).
+  // project() va mashina perspektivasi SHU qiymatdan foydalanadi.
+  let camDepth = CAM_DEPTH;
   let rndStatic = mulberry32((seed ^ 0x9e3779b9) >>> 0);
 
   // ---------- O'lcham (ko'p piksel — lekin cheklangan) ----------
@@ -282,6 +311,7 @@ export function createRaceEngine(opts) {
     const h = Math.max(1, Math.floor(r.height * dpr));
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
     W = r.width; H = r.height;
+    OVER = Math.max(24, Math.max(W, H) * 0.07);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
 
@@ -300,7 +330,7 @@ export function createRaceEngine(opts) {
     p.camera.y = (p.world.y || 0) - camY;
     p.camera.z = (p.world.z || 0) - camZ;
     if (p.camera.z < 0.1) p.camera.z = 0.1;
-    p.screen.scale = CAM_DEPTH / p.camera.z;
+    p.screen.scale = camDepth / p.camera.z;
     p.screen.x = W / 2 + (p.screen.scale * p.camera.x * W) / 2;
     p.screen.y = H / 2 - (p.screen.scale * p.camera.y * H) / 2;
     p.screen.w = (p.screen.scale * ROAD_W * W) / 2;
@@ -316,7 +346,7 @@ export function createRaceEngine(opts) {
     grd.addColorStop(0.8, theme.sky[2]);
     grd.addColorStop(1, theme.sky[3]);
     ctx.fillStyle = grd;
-    ctx.fillRect(0, 0, W, Math.max(0, horizon + 2));
+    ctx.fillRect(-OVER, -OVER, W + OVER * 2, Math.max(0, horizon + 2 + OVER));
 
     // Quyosh / oy
     if (theme.sun) {
@@ -337,15 +367,15 @@ export function createRaceEngine(opts) {
     const layer = (amp, color, step, yOff) => {
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.moveTo(0, horizon + 2);
+      ctx.moveTo(-OVER, horizon + 2);
       const off = curveShift * 0.6;
-      for (let x = -step; x <= W + step; x += step) {
+      for (let x = -step - OVER; x <= W + step + OVER; x += step) {
         const n = Math.abs(Math.sin((x + off) * 0.013 + amp) * Math.cos((x + off) * 0.006));
         const hh = yOff + n * amp;
         ctx.lineTo(x, horizon + 2 - hh);
         ctx.lineTo(x + step / 2, horizon + 2 - hh * 0.72);
       }
-      ctx.lineTo(W, horizon + 2);
+      ctx.lineTo(W + OVER, horizon + 2);
       ctx.closePath();
       ctx.fill();
     };
@@ -361,7 +391,7 @@ export function createRaceEngine(opts) {
 
     // Yer (horizondan past)
     ctx.fillStyle = theme.horizon;
-    ctx.fillRect(0, horizon, W, H - horizon);
+    ctx.fillRect(-OVER, horizon, W + OVER * 2, H - horizon + OVER);
   };
 
   // ---------- Segment chizish ----------
@@ -378,8 +408,8 @@ export function createRaceEngine(opts) {
     const rumble = theme.rumble[seg.light ? 0 : 1];
     const road = theme.road[seg.light ? 0 : 1];
 
-    // O't / tuproq
-    drawPolygon(0, p1.y, W, p1.y, W, p2.y, 0, p2.y, grass);
+    // O't / tuproq (kamera qiyshayganda burchaklar bo'sh qolmasin — OVER)
+    drawPolygon(-OVER, p1.y, W + OVER, p1.y, W + OVER, p2.y, -OVER, p2.y, grass);
     // Yon chiziqlar (rumble)
     const r1 = Math.max(2, p1.w / 6), r2 = Math.max(2, p2.w / 6);
     drawPolygon(p1.x - p1.w - r1, p1.y, p1.x - p1.w, p1.y, p2.x - p2.w, p2.y, p2.x - p2.w - r2, p2.y, rumble);
@@ -419,9 +449,32 @@ export function createRaceEngine(opts) {
     // Tuman (uzoqlashganda)
     if (seg.fog < 1) {
       ctx.globalAlpha = 1 - seg.fog;
-      drawPolygon(0, p1.y, W, p1.y, W, p2.y, 0, p2.y, theme.fog);
+      drawPolygon(-OVER, p1.y, W + OVER, p1.y, W + OVER, p2.y, -OVER, p2.y, theme.fog);
       ctx.globalAlpha = 1;
     }
+  };
+
+  /**
+   * "Apron" — kameraga ENG yaqin segmentdan ekranning pastki chetigacha
+   * yo'lni davom ettirish.
+   *
+   * Segment uzunligi 8 m bo'lgani uchun kameraning oldidagi ~8 metr hech
+   * qachon chizilmasdi: ekranning pastki qismida yo'l tugab, fon rangi
+   * ko'rinardi va mashina "havoda" turganday tuyulardi. Bu yerda o'sha
+   * bo'shliq bir xil perspektiva bilan to'ldiriladi.
+   */
+  const drawApron = (seg, camXm) => {
+    const zN = Math.max(0.85, camDepth);        // proyeksiya tekisligiga yaqin nuqta
+    const sN = camDepth / zN;
+    const near = {
+      x: W / 2 + (sN * -camXm * W) / 2,
+      y: H / 2 + (sN * CAM_HEIGHT * H) / 2,
+      w: (sN * ROAD_W * W) / 2,
+      scale: sN,
+    };
+    const far = seg.p1.screen;
+    if (!(near.y > far.y)) return;
+    drawSegment({ p1: { screen: near }, p2: { screen: far }, light: seg.light, fog: 1 }, null);
   };
 
   // ---------- Buyum (sprite) chizish ----------
@@ -628,95 +681,312 @@ export function createRaceEngine(opts) {
   };
 
   // ---------- Mashina chizish (perspektiv) ----------
-  const drawCar = (cx, cy, scale, color, opts = {}) => {
-    const unit = (scale * W) / 2;
-    const w = Math.max(6, CAR_W * unit);
-    const h = w * 1.9;
-    const { tilted = 0, brake = false, nitro = false, ghost = false, label = null } = opts;
+  // ==========================================================================
+  // MASHINA — HAQIQIY 3D PERSPEKTIVA (chase view)
+  //
+  // MUAMMO (tuzatildi): avval mashina ekranga "yopishib" qolgan edi —
+  //   u har doim (W/2, H*0.845) nuqtaga chizilardi. Ya'ni yo'lakni
+  //   almashtirsangiz ham, tepalikka chiqsangiz ham mashina joyidan
+  //   qimirlamas, yassi sprite bo'lib turaverardi.
+  //
+  // YECHIM: mashina endi YO'L USTIDA turadi — uning ekrandagi o'rni
+  //   proyeksiyadan hisoblanadi (kamera yon tomonga kechikib ergashadi),
+  //   gavdasi esa ORQA va OLD kesimlarni TURLI masofada chizish orqali
+  //   hajmli ko'rinadi:
+  //     • old kesim kichikroq va ufqqa qarab siljigan (perspektiva)
+  //     • mashina markazdan chetda bo'lsa — yon paneli ochiladi
+  //     • burilishda kuzov qiyshayadi (roll), g'ildiraklar buriladi (yaw)
+  //     • g'ildiraklar tezlikka qarab aylanadi, ostida yumshoq soya bor
+  //
+  // @param cx      yerga tegish nuqtasining ekran X
+  // @param groundY yerga tegish nuqtasining ekran Y (yo'l sathi)
+  // @param zDist   kameragacha masofa (m) — perspektiva shundan hisoblanadi
+  // ==========================================================================
+  const CAR_LEN = 4.15;             // uzunlik (m)
+  const CAR_HALF = CAR_W / 2;
+
+  const drawCar = (cx, groundY, zDist, color, opts = {}) => {
+    const {
+      roll = 0, yaw = 0, brake = false, nitro = false, ghost = false,
+      label = null, spin = 0, squat = 0,
+    } = opts;
+
+    const z0 = Math.max(1.35, zDist);
+    const unit = ((camDepth / z0) * W) / 2;   // px/metr (orqa kesimda)
+    const carPx = CAR_W * unit;               // mashinaning ekrandagi kengligi
+    if (carPx < 2.5) return;                  // juda uzoq — chizishga arzimaydi
+    const detail = carPx > 26;                // uzoqdagi mashinalar soddaroq (LOD)
+    const HZ = H / 2;                         // ufq = proyeksiya markazi
+
+    // Lokal 3D nuqta → ekran (mx: o'ng, my: tepa, mz: oldinga — metrda)
+    // zP — kuzov ICHKI perspektivasi uchun "yumshatilgan" masofa: kamera
+    // burchagi 100° bo'lgani uchun mashina juda yaqin bo'lsa "baliq ko'zi"
+    // effekti chiqadi; 1.6 koeffitsiyenti buni tabiiy holga keltiradi.
+    const zP = z0 * 1.6;
+    const P = (mx, my, mz) => {
+      const k = zP / (zP + mz);
+      const sx = mx + yaw * (mz / CAR_LEN);          // old tomon burilishi
+      const sy = my - squat * (mz / CAR_LEN);        // tezlanishda burun ko'tarilishi
+      return {
+        x: W / 2 + k * (cx - W / 2) + sx * unit * k,
+        y: HZ + k * (groundY - HZ) - sy * unit * k,
+      };
+    };
+    const poly = (pts, fill, stroke) => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = Math.max(0.5, unit * 0.02); ctx.stroke(); }
+    };
+
+    // --- Kuzov o'lchamlari (metr) ---
+    const hw = CAR_HALF;              // yarim kenglik
+    const BOT = 0.30;                 // kuzov osti
+    const BELT = 0.80;                // oyna chetlari
+    const DECK = 0.86;                // bagaj qopqog'i
+    const ROOF = 1.18;                // tom
+    const NOSE = 0.82;                // kapot balandligi
+    const CAB_R = 1.20, CAB_F = 2.60; // salon (orqa/old)
+    const WR = 0.34, WW = 0.24;       // g'ildirak radiusi / eni
+    const AX_R = 0.80, AX_F = 3.22;   // o'qlar
+
+    const dark = shade(color, -0.55);
+    const side = shade(color, -0.3);
+    const top = shade(color, 0.12);
+    const glass = 'rgba(120,170,215,.72)';
 
     ctx.save();
-    if (ghost) ctx.globalAlpha = 0.45 + 0.3 * Math.sin(g.t * 14);
-    if (tilted) { ctx.translate(cx, cy); ctx.rotate(tilted); ctx.translate(-cx, -cy); }
+    if (ghost) ctx.globalAlpha = 0.42 + 0.3 * Math.sin(g.t * 14);
 
-    // Soya
-    ctx.fillStyle = 'rgba(0,0,0,.3)';
-    ctx.beginPath(); ctx.ellipse(cx, cy + h * 0.06, w * 0.55, h * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    // 1) SOYA (yumshoq, mashina ostida) — YERDA yotadi, shuning uchun kuzov
+    //    qiyshayishidan (roll) oldin chiziladi.
 
-    // G'ildiraklar
-    ctx.fillStyle = '#15131f';
-    const tw = Math.max(2, w * 0.13), th = Math.max(3, h * 0.2);
-    ctx.fillRect(cx - w * 0.52, cy - h * 0.30, tw, th);
-    ctx.fillRect(cx + w * 0.52 - tw, cy - h * 0.30, tw, th);
-    ctx.fillRect(cx - w * 0.54, cy + h * 0.14, tw, th);
-    ctx.fillRect(cx + w * 0.54 - tw, cy + h * 0.14, tw, th);
-
-    // Kuzov (gradient — hajm hissi)
-    const body = ctx.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0);
-    body.addColorStop(0, 'rgba(0,0,0,.45)');
-    body.addColorStop(0.25, color);
-    body.addColorStop(0.5, '#ffffff22');
-    body.addColorStop(0.75, color);
-    body.addColorStop(1, 'rgba(0,0,0,.45)');
-    ctx.fillStyle = body;
-    roundRect(ctx, cx - w / 2, cy - h * 0.5, w, h, Math.max(2, w * 0.16)); ctx.fill();
-
-    // Old oyna / salon
-    ctx.fillStyle = 'rgba(180,220,255,.85)';
-    roundRect(ctx, cx - w * 0.36, cy - h * 0.40, w * 0.72, h * 0.2, Math.max(1, w * 0.08)); ctx.fill();
-    ctx.fillStyle = 'rgba(120,170,220,.65)';
-    roundRect(ctx, cx - w * 0.34, cy - h * 0.16, w * 0.68, h * 0.14, Math.max(1, w * 0.06)); ctx.fill();
-    // Orqa oyna
-    ctx.fillStyle = 'rgba(90,120,160,.5)';
-    roundRect(ctx, cx - w * 0.3, cy + h * 0.06, w * 0.6, h * 0.1, Math.max(1, w * 0.05)); ctx.fill();
-
-    // Faralar
-    ctx.fillStyle = brake ? '#ff4d4d' : '#fff3c4';
-    ctx.fillRect(cx - w * 0.34, cy - h * 0.53, Math.max(2, w * 0.16), Math.max(1.5, h * 0.04));
-    ctx.fillRect(cx + w * 0.18, cy - h * 0.53, Math.max(2, w * 0.16), Math.max(1.5, h * 0.04));
-    // Orqa chiroqlar
-    ctx.fillStyle = brake ? '#ff2d2d' : '#b03030';
-    ctx.fillRect(cx - w * 0.34, cy + h * 0.46, Math.max(2, w * 0.16), Math.max(1.5, h * 0.05));
-    ctx.fillRect(cx + w * 0.18, cy + h * 0.46, Math.max(2, w * 0.16), Math.max(1.5, h * 0.05));
-
-    // Spoiler
-    ctx.fillStyle = 'rgba(0,0,0,.35)';
-    ctx.fillRect(cx - w * 0.4, cy + h * 0.4, w * 0.8, Math.max(1, h * 0.03));
-
-    // Nitro alangasi
-    if (nitro) {
-      const fl = ctx.createLinearGradient(cx, cy + h * 0.5, cx, cy + h * 1.5);
-      fl.addColorStop(0, 'rgba(255,220,120,.95)');
-      fl.addColorStop(0.5, 'rgba(255,120,40,.7)');
-      fl.addColorStop(1, 'rgba(255,60,0,0)');
-      ctx.fillStyle = fl;
-      const fw = w * (0.4 + 0.12 * Math.sin(g.t * 30));
+    {
+      const c = P(0, 0.02, CAR_LEN * 0.45);
+      const rx = hw * 1.5 * unit * (zP / (zP + CAR_LEN * 0.45));
+      ctx.save();
+      ctx.globalAlpha *= 0.5;
+      const sg = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, Math.max(2, rx));
+      sg.addColorStop(0, 'rgba(0,0,0,.85)');
+      sg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = sg;
       ctx.beginPath();
-      ctx.moveTo(cx - fw / 2, cy + h * 0.5);
-      ctx.lineTo(cx, cy + h * (1.1 + 0.25 * Math.sin(g.t * 40)));
-      ctx.lineTo(cx + fw / 2, cy + h * 0.5);
-      ctx.closePath(); ctx.fill();
+      ctx.ellipse(c.x, c.y, rx, Math.max(1.2, rx * 0.34), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
 
-    // Ism yorlig'i
-    if (label && w > 18) {
-      ctx.globalAlpha = ghost ? 0.5 : 0.9;
-      ctx.font = `bold ${Math.max(9, Math.min(12, w * 0.16))}px system-ui, sans-serif`;
+    // Kuzov qiyshayishi — yerga tegish nuqtasi atrofida (haqiqiy fizikadek)
+    if (roll) { ctx.translate(cx, groundY); ctx.rotate(roll); ctx.translate(-cx, -groundY); }
+
+    // 2) G'ILDIRAKLAR (avval oldingilari — ular uzoqroqda)
+    // Bitta g'ildirak: tashqi yuz + protektor bandi + aylanuvchi disk.
+    // Burilish (yaw) P() ichida mz ga qarab qo'llanadi — old g'ildiraklar
+    // avtomatik ravishda buriladi.
+    const wheel = (sgn, az) => {
+      const N = detail ? 9 : 6;
+      const outer = [];
+      const inner = [];
+      for (let i = 0; i < N; i++) {
+        const a = (i / N) * Math.PI * 2;
+        const dz = Math.cos(a) * WR, dy = WR + Math.sin(a) * WR;
+        outer.push(P(sgn * hw, dy, az + dz));
+        inner.push(P(sgn * (hw - WW), dy, az + dz));
+      }
+      poly(inner, '#0c0a11');
+      for (let i = 0; i < N; i++) poly([outer[i], outer[(i + 1) % N], inner[(i + 1) % N], inner[i]], '#1a1722');
+      poly(outer, '#141118');
+      // Disk + aylanuvchi shpitsalar (tezlik sezilsin)
+      const c0 = P(sgn * (hw + 0.005), WR, az);
+      const rr = WR * 0.5 * unit * (zP / (zP + az));
+      if (rr > 1.6) {
+        const rg = ctx.createRadialGradient(c0.x - rr * 0.35, c0.y - rr * 0.4, rr * 0.08, c0.x, c0.y, rr * 1.3);
+        rg.addColorStop(0, '#eef1f8');
+        rg.addColorStop(0.5, '#b3bacb');
+        rg.addColorStop(1, '#4e5364');
+        ctx.fillStyle = rg;
+      } else {
+        ctx.fillStyle = 'rgba(190,197,214,.9)';
+      }
+      ctx.beginPath(); ctx.arc(c0.x, c0.y, Math.max(0.8, rr), 0, Math.PI * 2); ctx.fill();
+      if (rr > 2.5) {
+        // Shpitsalar — spin bo'yicha aylanadi (tezlik sezilsin)
+        ctx.strokeStyle = 'rgba(32,33,44,.88)';
+        ctx.lineWidth = Math.max(0.6, rr * 0.17);
+        for (let i = 0; i < 5; i++) {
+          const a = spin + (i / 5) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(c0.x + Math.cos(a) * rr * 0.16, c0.y + Math.sin(a) * rr * 0.16);
+          ctx.lineTo(c0.x + Math.cos(a) * rr * 0.88, c0.y + Math.sin(a) * rr * 0.88);
+          ctx.stroke();
+        }
+        // Stupitsa
+        ctx.fillStyle = '#23252f';
+        ctx.beginPath(); ctx.arc(c0.x, c0.y, rr * 0.24, 0, Math.PI * 2); ctx.fill();
+        // Tormoz cho'g'i
+        if (brake) {
+          ctx.globalAlpha = 0.45;
+          ctx.fillStyle = '#ff7a3c';
+          ctx.beginPath(); ctx.arc(c0.x, c0.y, rr * 0.7, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+    };
+    // Kamera mashinaning qaysi YONini ko'rayotgani: mashina ekran markazidan
+    // chetda bo'lsa (yo'lak almashtirish, burilish) uzoq tomondagi orqa
+    // g'ildirak kuzov ORTIDA qolishi kerak — aks holda u kuzov ustida
+    // "suzib" ko'rinadi.
+    const off = (cx - W / 2) / (W / 2);
+    const nearSide = off <= 0 ? 1 : -1;
+    const flank = Math.abs(off) > 0.06;
+    wheel(-1, AX_F);
+    wheel(1, AX_F);
+    if (flank) wheel(-nearSide, AX_R);
+
+    // 3) YON PANELLAR — mashina markazdan chetda bo'lsa o'zi ochiladi
+    for (const sgn of [-1, 1]) {
+      poly([
+        P(sgn * hw, BOT, 0.12),
+        P(sgn * hw, DECK, 0.12),
+        P(sgn * hw * 0.94, NOSE, CAR_LEN - 0.15),
+        P(sgn * hw * 0.94, BOT + 0.06, CAR_LEN - 0.15),
+      ], side);
+      // Salon yon oynasi
+      if (detail) poly([
+        P(sgn * hw * 0.88, BELT, CAB_R + 0.15),
+        P(sgn * hw * 0.8, ROOF - 0.04, CAB_R + 0.75),
+        P(sgn * hw * 0.8, ROOF - 0.04, CAB_F - 0.55),
+        P(sgn * hw * 0.88, BELT, CAB_F - 0.05),
+      ], 'rgba(30,45,70,.75)');
+    }
+
+    // 4) USTKI YUZALAR: kapot → oyna → tom → orqa oyna → bagaj
+    poly([ // kapot
+      P(-hw * 0.94, NOSE, CAR_LEN - 0.15), P(hw * 0.94, NOSE, CAR_LEN - 0.15),
+      P(hw * 0.9, BELT + 0.04, CAB_F), P(-hw * 0.9, BELT + 0.04, CAB_F),
+    ], shade(color, 0.02));
+    poly([ // old oyna (uzoqda — kichik ko'rinadi)
+      P(-hw * 0.9, BELT + 0.04, CAB_F), P(hw * 0.9, BELT + 0.04, CAB_F),
+      P(hw * 0.8, ROOF, CAB_F - 0.55), P(-hw * 0.8, ROOF, CAB_F - 0.55),
+    ], 'rgba(150,195,235,.55)');
+    poly([ // tom
+      P(-hw * 0.8, ROOF, CAB_F - 0.55), P(hw * 0.8, ROOF, CAB_F - 0.55),
+      P(hw * 0.82, ROOF, CAB_R + 0.75), P(-hw * 0.82, ROOF, CAB_R + 0.75),
+    ], top);
+    poly([ // orqa oyna (eng ko'rinadigan shisha)
+      P(-hw * 0.82, ROOF, CAB_R + 0.75), P(hw * 0.82, ROOF, CAB_R + 0.75),
+      P(hw * 0.88, BELT, CAB_R), P(-hw * 0.88, BELT, CAB_R),
+    ], glass);
+    poly([ // bagaj qopqog'i
+      P(-hw * 0.88, BELT, CAB_R), P(hw * 0.88, BELT, CAB_R),
+      P(hw * 0.96, DECK, 0.12), P(-hw * 0.96, DECK, 0.12),
+    ], shade(color, 0.06));
+
+    // 5) ORQA YUZA (kameraga eng yaqin — shuning uchun eng batafsil)
+    const rl = P(-hw, BOT, 0.05), rr2 = P(hw, BOT, 0.05);
+    const tl = P(-hw * 0.96, DECK, 0.05), tr = P(hw * 0.96, DECK, 0.05);
+    const bodyGrad = ctx.createLinearGradient(rl.x, 0, rr2.x, 0);
+    bodyGrad.addColorStop(0, dark);
+    bodyGrad.addColorStop(0.35, color);
+    bodyGrad.addColorStop(0.52, shade(color, 0.3));
+    bodyGrad.addColorStop(0.7, color);
+    bodyGrad.addColorStop(1, dark);
+    poly([rl, tl, tr, rr2], bodyGrad);
+
+    // Orqa chiroqlar (tormozda yonadi)
+    const lampY0 = 0.60, lampY1 = 0.75;
+    for (const sgn of [-1, 1]) {
+      const a = P(sgn * 0.94, lampY1, 0.02), b = P(sgn * 0.3, lampY1, 0.02);
+      const c = P(sgn * 0.3, lampY0, 0.02), d = P(sgn * 0.94, lampY0, 0.02);
+      poly([a, b, c, d], brake ? '#ff3b30' : '#8e1f24');
+    }
+    if (brake) {
+      ctx.save();
+      ctx.globalAlpha *= 0.5;
+      ctx.fillStyle = '#ff5b4a';
+      const gl = P(0, 0.68, 0.02);
+      const gr = hw * 1.15 * unit;
+      const rg = ctx.createRadialGradient(gl.x, gl.y, 0, gl.x, gl.y, Math.max(3, gr));
+      rg.addColorStop(0, 'rgba(255,70,50,.75)');
+      rg.addColorStop(1, 'rgba(255,70,50,0)');
+      ctx.fillStyle = rg;
+      ctx.beginPath(); ctx.ellipse(gl.x, gl.y, gr, gr * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    // Raqam belgisi + diffuzor + chiqaruvchi quvurlar (faqat yaqinda)
+    if (detail) {
+      poly([P(-0.34, 0.44, 0.02), P(0.34, 0.44, 0.02), P(0.34, 0.56, 0.02), P(-0.34, 0.56, 0.02)], 'rgba(235,238,245,.9)');
+      poly([P(-hw * 0.92, BOT, 0.02), P(hw * 0.92, BOT, 0.02), P(hw * 0.86, BOT + 0.14, 0.02), P(-hw * 0.86, BOT + 0.14, 0.02)], '#191722');
+      for (const sgn of [-1, 1]) {
+        const e = P(sgn * 0.5, BOT + 0.06, 0.0);
+        const er = Math.max(0.8, 0.09 * unit);
+        ctx.fillStyle = '#2b2b33';
+        ctx.beginPath(); ctx.ellipse(e.x, e.y, er, er * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Spoyler (qanot + ikki oyoq)
+    poly([P(-hw * 0.9, 1.02, 0.28), P(hw * 0.9, 1.02, 0.28), P(hw * 0.9, 1.08, 0.5), P(-hw * 0.9, 1.08, 0.5)], shade(color, -0.42));
+    if (detail) {
+      for (const sgn of [-1, 1]) {
+        poly([P(sgn * hw * 0.66, DECK, 0.35), P(sgn * hw * 0.74, DECK, 0.35), P(sgn * hw * 0.74, 1.02, 0.35), P(sgn * hw * 0.66, 1.02, 0.35)], shade(color, -0.5));
+      }
+    }
+
+    // 6) Orqa g'ildiraklar (kameraga eng yaqin — eng oxirida)
+    if (!flank) wheel(-nearSide, AX_R);
+    wheel(nearSide, AX_R);
+
+    // 7) NITRO alangasi (quvurlardan kameraga qarab kattalashadi)
+    if (nitro) {
+      for (const sgn of [-1, 1]) {
+        const o = P(sgn * 0.5, BOT + 0.06, 0);
+        const len = 0.9 + 0.35 * Math.sin(g.t * 34 + sgn);
+        const tip = P(sgn * 0.5, BOT + 0.02, -len);
+        const fl = ctx.createLinearGradient(o.x, o.y, tip.x, tip.y);
+        fl.addColorStop(0, 'rgba(255,245,200,.95)');
+        fl.addColorStop(0.45, 'rgba(255,150,50,.75)');
+        fl.addColorStop(1, 'rgba(255,60,0,0)');
+        ctx.fillStyle = fl;
+        const wq = Math.max(1.5, 0.16 * unit);
+        ctx.beginPath();
+        ctx.moveTo(o.x - wq, o.y);
+        ctx.lineTo(tip.x, tip.y);
+        ctx.lineTo(o.x + wq, o.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // 8) Ism yorlig'i (raqiblar uchun) — tom ustida "suzadi"
+    if (label && CAR_W * unit > 18) {
+      const lp = P(0, ROOF + 0.75, CAR_LEN * 0.4);
+      ctx.globalAlpha = ghost ? 0.5 : 0.92;
+      ctx.font = `bold ${Math.max(9, Math.min(13, unit * 0.16))}px system-ui, sans-serif`;
       ctx.textAlign = 'center';
       const tw2 = ctx.measureText(label).width + 10;
+      const th2 = Math.max(13, unit * 0.2);
       ctx.fillStyle = 'rgba(10,6,25,.72)';
-      roundRect(ctx, cx - tw2 / 2, cy - h * 0.5 - Math.max(14, h * 0.34), tw2, Math.max(13, h * 0.2), 6); ctx.fill();
+      roundRect(ctx, lp.x - tw2 / 2, lp.y - th2, tw2, th2, 6); ctx.fill();
       ctx.fillStyle = '#fff';
-      ctx.fillText(label, cx, cy - h * 0.5 - Math.max(4, h * 0.21));
+      ctx.fillText(label, lp.x, lp.y - th2 * 0.25);
     }
+
     ctx.restore();
   };
 
+
   // ---------- Zarrachalar (chang / uchqun) ----------
   const spawnDust = (n, strong) => {
+    // Zarrachalar mashinaning HAQIQIY ekrandagi o'rnidan uchadi
+    // (avval ekran markaziga qotirilgan edi — mashina chetga o'tsa ham
+    //  chang o'rtada chiqaverardi).
+    const cs = g.carScreen || { x: W / 2, y: H * 0.86, w: W * 0.16 };
     for (let i = 0; i < n; i++) {
       g.dust.push({
-        x: W / 2 + (Math.random() - 0.5) * W * 0.3,
-        y: H * 0.86 + (Math.random() - 0.5) * 10,
+        x: cs.x + (Math.random() - 0.5) * cs.w * 1.6,
+        y: cs.y + (Math.random() - 0.5) * 8,
         vx: (Math.random() - 0.5) * 260,
         vy: -Math.random() * (strong ? 220 : 90) - 20,
         r: 2 + Math.random() * (strong ? 7 : 4),
@@ -739,10 +1009,21 @@ export function createRaceEngine(opts) {
     ctx.globalAlpha = 1;
   };
 
+  /** Kamera qiyshayishini qo'llash — fon va yo'l BIR XIL burchakda og'adi. */
+  const applyCamRoll = () => {
+    if (!g.camRoll) return;
+    ctx.translate(W / 2, H * 0.92);
+    ctx.rotate(g.camRoll);
+    ctx.translate(-W / 2, -H * 0.92);
+  };
+
   // ---------- Tezlik chiziqlari ----------
   const drawSpeedLines = (intensity) => {
     if (intensity <= 0.02) return;
-    const cx = W / 2, cy = H * 0.52;
+    // Chiziqlar YO'QOLISH NUQTASIDAN (ufq) chiqadi — tunnel effekti,
+    // mashina chetga o'tsa chiziqlar ham u tomonga egiladi.
+    const cx = lerp(W / 2, g.carScreen?.x ?? W / 2, 0.35);
+    const cy = clamp(lastHorizon, H * 0.18, H * 0.62);
     ctx.save();
     ctx.strokeStyle = g.nitro > 0 ? 'rgba(120,220,255,.55)' : 'rgba(255,255,255,.28)';
     ctx.lineWidth = 2;
@@ -896,9 +1177,29 @@ export function createRaceEngine(opts) {
     const targetX = laneCenter(g.lane);
     const curSeg = findSegment(g.pos + PLAYER_Z);
     const speedPct = clamp(g.v / 58, 0, 1.4);
+    const prevX = g.x;
+    const prevV = g.v;
     g.x += (targetX - g.x) * Math.min(1, dt * 7);
     if (pre <= 0) g.x -= curSeg.curve * speedPct * dt * 0.42; // markazdan qochish kuchi
     g.x = clamp(g.x, -1.25, 1.25);
+
+    // KAMERA mashinaga KECHIKIB ergashadi.
+    // Aynan shu narsa mashinani "ekranga yopishib qolish"dan qutqaradi:
+    // yo'lak almashtirilganda mashina ekranda chapga/o'ngga siljiydi va
+    // kamera uni ohista quvib yetadi (Mario Kart / OutRun uslubi).
+    g.camX += (g.x - g.camX) * Math.min(1, dt * 5.2);
+    // Burilishda kamera biroz ichkariga qaraydi (yo'l egriligiga ergashish)
+    if (pre <= 0) g.camX += curSeg.curve * speedPct * dt * 0.10;
+    // Mashina ekrandan chiqib ketmasligi uchun kechikish chegaralanadi
+    // (ko'rinishda ~ekran kengligining 15% i — sezilarli, lekin xavfsiz)
+    g.camX = clamp(g.camX, g.x - 0.2, g.x + 0.2);
+    g.camX = clamp(g.camX, -1.35, 1.35);
+
+    // G'ildiraklar aylanishi va tezlanish (burunni ko'tarish) uchun
+    g.spin += (g.v / 0.34) * dt;                    // rad
+    const accelNow = (g.v - prevV) / Math.max(0.001, dt);
+    g.accel += (accelNow - g.accel) * Math.min(1, dt * 6);
+    g.lat = (g.x - prevX) / Math.max(0.001, dt);    // yon siljish tezligi
 
     // Ghost (to'qnashuvdan keyin immunitet)
     if (g.ghost > 0) g.ghost = Math.max(0, g.ghost - dt);
@@ -966,12 +1267,21 @@ export function createRaceEngine(opts) {
       onFinish?.({ timeMs: g.finishTime, coins: g.coins, crashes: g.crashes, topSpeed: Math.round(g.topSpeed * 3.6), bestCombo: g.bestCombo });
     }
 
+    // --- Kamera qiyshayishi: burilishda butun dunyo biroz og'adi (3D his) ---
+    const rollTarget = clamp(-(g.curveShift || 0) * 0.0011 - g.lat * 0.004, -0.035, 0.035);
+    g.camRoll += (rollTarget - g.camRoll) * Math.min(1, dt * 4);
+
+    // --- Dinamik FOV: tezlikda ko'rish burchagi kengayadi (tezlik hissi) ---
+    const fovTarget = CAM_DEPTH * (1 - 0.055 * clamp(g.v / 58, 0, 1) - (g.nitro > 0 ? 0.05 : 0));
+    camDepth += (fovTarget - camDepth) * Math.min(1, dt * 3);
+
     // --- RENDER ---
     // 1) Fon (osmon, quyosh, tog'lar) — o'tgan kadrdagi ufq bo'yicha
     ctx.save();
     if (g.shake > 0) {
       ctx.translate((Math.random() - 0.5) * 14 * g.shake, (Math.random() - 0.5) * 10 * g.shake);
     }
+    applyCamRoll();
     drawBackground(lastHorizon, g.curveShift || 0);
     ctx.restore();
 
@@ -981,8 +1291,13 @@ export function createRaceEngine(opts) {
     const playerSegment = findSegment(g.pos + PLAYER_Z);
     const playerPercent = ((g.pos + PLAYER_Z) % SEG_M) / SEG_M;
     const playerY = lerp(playerSegment.p1.world.y, playerSegment.p2.world.y, playerPercent);
-    const camX = g.x * ROAD_W;
-    const camY = playerY + CAM_HEIGHT;
+    // Kamera balandligi KAMERA turgan nuqtadagi yo'l bo'yicha olinadi
+    // (avval mashina nuqtasi olinardi — shuning uchun tepaliklarda mashina
+    //  ekranda mutlaqo qimirlamasdi). Endi mashina do'ngliklarda ko'tarilib
+    //  tushadi — bu 3D hissini kuchaytiradi.
+    const camRoadY = lerp(baseSegment.p1.world.y, baseSegment.p2.world.y, basePercent);
+    const camX = g.camX * ROAD_W;
+    const camY = camRoadY + CAM_HEIGHT;
     const camZ = g.pos;
     const segLen = segments.length;
 
@@ -990,8 +1305,10 @@ export function createRaceEngine(opts) {
     if (g.shake > 0) {
       ctx.translate((Math.random() - 0.5) * 14 * g.shake, (Math.random() - 0.5) * 10 * g.shake);
     }
+    applyCamRoll();
 
     let maxy = H;
+    let apronDone = false;
     let x = 0;
     let dx = -(baseSegment.curve * basePercent);
     let curveShift = 0;
@@ -1010,8 +1327,10 @@ export function createRaceEngine(opts) {
       curveShift += seg.curve * (1 - n / DRAW_DIST);
 
       seg.clip = maxy;
-      seg.visible = !(seg.p1.camera.z <= CAM_DEPTH || seg.p2.screen.y >= seg.p1.screen.y || seg.p2.screen.y >= maxy);
+      seg.visible = !(seg.p1.camera.z <= camDepth || seg.p2.screen.y >= seg.p1.screen.y || seg.p2.screen.y >= maxy);
       if (!seg.visible) continue;
+      // Eng yaqin ko'ringan segmentdan oldin — pastki bo'shliqni to'ldiramiz
+      if (!apronDone) { drawApron(seg, camX - (x - (dx - seg.curve))); apronDone = true; }
       drawSegment(seg, null);
       maxy = seg.p2.screen.y;
     }
@@ -1032,30 +1351,52 @@ export function createRaceEngine(opts) {
         if (d < zStart || d >= zStart + SEG_M) return;
         const laneX = opponentLane.get(uid) ?? 0;
         const rel = d - camZ;
-        if (rel <= 0.5) return;
-        const scale = CAM_DEPTH / rel;
+        if (rel <= 1.2) return;
+        // Yerga tegish nuqtasi — yo'lning SHU segmentdagi ekran o'rni
+        // (egrilik hisobga olingan), hajm esa drawCar ichida masofadan.
         const sx = seg.p1.screen.x + (seg.p1.screen.scale * laneX * ROAD_W * W) / 2;
         const sy = seg.p1.screen.y;
         const pi = players.findIndex((p) => p.userId === uid);
-        drawCar(sx, sy, scale, PLAYER_COLORS[(pi + 4) % 4], {
+        const prevD = oppPrev.get(uid);
+        oppPrev.set(uid, d);
+        const oppV = prevD == null ? g.v : clamp((d - prevD) / Math.max(0.001, dt), 0, 90);
+        const oSpin = (oppSpin.get(uid) || 0) + (oppV / 0.34) * dt;
+        oppSpin.set(uid, oSpin % (Math.PI * 2));
+        drawCar(sx, sy, rel, PLAYER_COLORS[(pi + 4) % 4], {
+          spin: oSpin,
+          roll: clamp(-seg.curve * 0.02, -0.08, 0.08),
+          yaw: clamp(-seg.curve * 0.06, -0.3, 0.3),
           label: rel < 70 ? ((players[pi]?.full_name || '').split(' ')[0] || null) : null,
         });
       });
     }
 
-    // 4) Mening mashinam (kamera doim orqasidan — ekran markazida)
-    drawCar(
-      W / 2,
-      H * 0.845 + Math.sin(g.t * 22) * (g.offroad > 0.3 ? 2.4 : 0.6),
-      CAM_DEPTH / PLAYER_Z,
-      PLAYER_COLORS[myLane % 4],
-      {
-        tilted: clamp((g.x - targetX) * 0.08 + curSeg.curve * 0.012 * speedPct, -0.16, 0.16),
-        brake: g.offroad > 0.3 || g.ghost > 0,
-        nitro: g.nitro > 0,
-        ghost: g.ghost > 0,
-      }
-    );
+    // 4) MENING MASHINAM — endi ekranga yopishmaydi, YO'L USTIDA turadi.
+    //    Ekrandagi o'rni to'liq proyeksiyadan hisoblanadi:
+    //      • yon o'rni  = mashina bilan kamera orasidagi farq (kamera kechikadi)
+    //      • balandligi = mashina turgan joydagi yo'l sathi (tepalikda ko'tariladi)
+    const carScale = camDepth / PLAYER_Z;
+    // Yo'l 5 m oldinda egrilik tufayli biroz siljiydi — mashina yo'lakda
+    // qolishi uchun shu siljish ham qo'shiladi.
+    const curveAtCar = -(baseSegment.curve * basePercent) * (PLAYER_Z / SEG_M);
+    const carRelX = (g.x - g.camX) * ROAD_W + curveAtCar;       // kameradan o'ngga (m)
+    const carScreenX = W / 2 + (carScale * carRelX * W) / 2;
+    const engineShake = Math.sin(g.t * 22) * (g.offroad > 0.3 ? 2.4 : 0.6);
+    const carGroundY = H / 2 - (carScale * (playerY - camY) * H) / 2 + engineShake;
+    g.carScreen = { x: carScreenX, y: carGroundY, w: CAR_W * ((carScale * W) / 2) };
+
+    drawCar(carScreenX, carGroundY, PLAYER_Z, PLAYER_COLORS[myLane % 4], {
+      // Kuzov qiyshayishi: yon siljish + yo'l egriligi (markazdan qochish kuchi)
+      roll: clamp(-g.lat * 0.032 - curSeg.curve * 0.012 * speedPct, -0.10, 0.10),
+      // G'ildiraklar burilishi: qayerga ketayotganiga qarab
+      yaw: clamp((targetX - g.x) * 0.8 - curSeg.curve * 0.04 * speedPct, -0.30, 0.30),
+      // Tezlanishda burun ko'tariladi, tormozda cho'kadi
+      squat: clamp(g.accel * 0.012, -0.1, 0.1),
+      spin: g.spin,
+      brake: g.offroad > 0.3 || g.ghost > 0,
+      nitro: g.nitro > 0,
+      ghost: g.ghost > 0,
+    });
 
     // 5) Effektlar
     drawDust(dt);
@@ -1066,7 +1407,7 @@ export function createRaceEngine(opts) {
     vg.addColorStop(0, 'rgba(0,0,0,0)');
     vg.addColorStop(1, 'rgba(0,0,0,.42)');
     ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(-OVER, -OVER, W + OVER * 2, H + OVER * 2);
     ctx.restore();
 
     // 6) HUD (silkinishsiz)

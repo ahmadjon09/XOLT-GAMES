@@ -34,6 +34,10 @@ const { setupRaceGame } = await import('../server/src/socket/raceGame.js');
 const { setupRace3D } = await import('../server/src/socket/race3d.js');
 const { RACE3D_REALTIME_EVENTS } = await import('../server/src/socket/race3d.js');
 const { socketAuthenticate, checkConnectionLimit, registerEventRateLimit } = await import('../server/src/socket/shared.js');
+// Sig'im qo'riqchisi (RAM to'lganda yangi o'yin ochilmaydi) — production bilan bir xil
+const { attachCapacityGuard } = await import('../server/src/socket/capacityGuard.js');
+const { startCapacityMonitor, setSocketCounter } = await import('../server/src/utils/capacity.js');
+const { capacitySummary } = await import('../server/src/middleware/capacity.js');
 const { getMathLobbyRooms } = await import('../server/src/socket/mathGame.js');
 const { getTicTacToeLobbyRooms } = await import('../server/src/socket/tictactoe.js');
 const { getChessLobbyRooms } = await import('../server/src/socket/chessGame.js');
@@ -72,6 +76,10 @@ const server = http.createServer(async (req, res) => {
 
     let body = {};
     if (req.method !== 'GET' && req.method !== 'HEAD') body = await readBody(req);
+
+    if (url.pathname === '/api/health') {
+      return res.end(ok(capacitySummary()));
+    }
 
     if (url.pathname === '/api/games/lobby') {
       return res.end(
@@ -164,9 +172,13 @@ io.use((socket, next) => {
   }
 });
 io.use(checkConnectionLimit);
+startCapacityMonitor();
+setSocketCounter(() => io.engine?.clientsCount ?? 0);
 io.on('connection', (socket) => {
+  attachCapacityGuard(socket);
   registerEventRateLimit(socket, { exemptEvents: RACE3D_REALTIME_EVENTS });
   socket.on('ping', (cb) => { if (typeof cb === 'function') cb({ ok: true, t: Date.now() }); });
+  socket.on('server:status', (cb) => { if (typeof cb === 'function') cb(capacitySummary()); });
 });
 
 setupMathGame(io);

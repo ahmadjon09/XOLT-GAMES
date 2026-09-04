@@ -29,6 +29,18 @@ export const EVT = {
 };
 
 export const ERROR_TEXT = {
+  // Server sig'imi / ishonchlilik
+  SERVER_BUSY: 'Server hozir band — biroz kutib, qayta urinib ko‘ring',
+  SERVER_SLOW: 'Server javob bermadi (yuk yuqori) — qayta urinib ko‘ring',
+  SERVER_ERROR: 'Serverda xatolik — qayta urinib ko‘ring',
+  RACE_UNAVAILABLE: '3D poyga vaqtincha ishlamayapti — keyinroq urinib ko‘ring',
+  ROOM_CREATE_FAILED: 'Xona yaratilmadi — keyinroq urinib ko‘ring',
+  TIMEOUT: 'Server javob bermadi — internetni tekshiring yoki qayta urining',
+  NO_RESPONSE: 'Server javob bermadi — qayta urinib ko‘ring',
+  NO_CONNECTION: 'Serverga ulanish yo‘q — qayta ulanmoqda...',
+  EMIT_FAILED: 'So‘rov yuborilmadi — qayta urinib ko‘ring',
+  AUTH_REQUIRED: 'Avval tizimga kiring',
+  BAD_PAYLOAD: 'So‘rov noto‘g‘ri — sahifani yangilang',
   ROOM_NOT_FOUND: 'Xona topilmadi',
   ROOM_FULL: 'Xona to‘la',
   ROOM_LIMIT: 'Serverda juda ko‘p xona, keyinroq urinib ko‘ring',
@@ -103,21 +115,21 @@ export class RaceNet {
   };
 
   /** Xona yaratish va o'zi qo'shilish. */
-  create(payload, timeoutMs = 8000) {
+  create(payload, timeoutMs = 15000) {
     return this._emit(EVT.create, payload, timeoutMs).then((res) => {
       if (res?.ok) this.joined = res;
       return res;
     });
   }
 
-  join(payload, timeoutMs = 8000) {
+  join(payload, timeoutMs = 15000) {
     return this._emit(EVT.join, payload, timeoutMs).then((res) => {
       if (res?.ok) this.joined = res;
       return res;
     });
   }
 
-  start(timeoutMs = 6000) {
+  start(timeoutMs = 12000) {
     return this._emit(EVT.start, {}, timeoutMs);
   }
 

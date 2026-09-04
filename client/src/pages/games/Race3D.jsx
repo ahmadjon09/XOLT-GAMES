@@ -13,9 +13,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Play, Users, Trophy, ArrowLeft, Gauge } from 'lucide-react';
+import { Play, Users, Trophy, ArrowLeft, Gauge, ServerCrash } from 'lucide-react';
 
 import { useSocket } from '../../context/SocketContext.jsx';
+import { useServerStatus } from '../../context/ServerStatusContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { Button, Card, Input, Field, QRCode, Confetti, Avatar } from '../../components/ui.jsx';
@@ -44,6 +45,7 @@ const TRACK_LIST = Object.keys(TRACKS).map((k) => ({
 export default function Race3D() {
   const { t } = useTranslation();
   const { socket, connected } = useSocket();
+  const server = useServerStatus();
   const { user } = useAuth();
   const toast = useToast();
   const [params] = useSearchParams();
@@ -111,11 +113,16 @@ export default function Race3D() {
   // ------------------------------------------------------------------ XONA
   const handleResponse = useCallback((res) => {
     if (!res || !res.ok) {
-      toast?.error?.(ERROR_TEXT[res?.error] || res?.error || 'Xatolik');
+      // Server band bo'lsa — UI ni darhol yangilaymiz (tugmalar o'chadi)
+      if (res?.error === 'SERVER_BUSY' || res?.error === 'ROOM_LIMIT' || res?.error === 'SERVER_SLOW') {
+        server.refresh?.();
+      }
+      // Matn tanlash tartibi: tanish kod → serverdan kelgan tushuntirish → xom kod
+      toast?.error?.(ERROR_TEXT[res?.error] || res?.message || res?.error || 'Xatolik');
       return null;
     }
     return res;
-  }, [toast]);
+  }, [toast, server]);
 
   const createRoom = useCallback(async () => {
     if (!netRef.current || busy) return;
@@ -387,8 +394,30 @@ export default function Race3D() {
                   </div>
                 </div>
 
+                {server.heavyBlocked ? (
+                  <div
+                    className="flex items-start gap-3 rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-200"
+                    role="status"
+                  >
+                    <ServerCrash size={18} className="mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-semibold">
+                        {server.busy
+                          ? t('server.busyTitle', 'Server band')
+                          : t('server.heavyTitle', 'Server yuki yuqori')}
+                      </div>
+                      <div className="text-xs opacity-90">
+                        {server.busy
+                          ? t('server.busyDesc', 'Hozir yangi o‘yin ochib bo‘lmaydi. Bir necha daqiqadan so‘ng qayta urinib ko‘ring.')
+                          : t('server.heavyDesc', '3D poyga vaqtincha yopiq (xotira tejash uchun). Boshqa o‘yinlar ishlayapti.')}
+                        {server.memoryPct ? ` — RAM ${server.memoryPct}%` : ''}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Button onClick={createRoom} disabled={!connected || busy} className="w-full">
+                  <Button onClick={createRoom} disabled={!connected || busy || server.heavyBlocked} className="w-full">
                     <Play size={16} /> {t('race.create', 'Xona yaratish')}
                   </Button>
                   <div className="flex gap-2">
@@ -399,7 +428,7 @@ export default function Race3D() {
                       className="text-center font-mono tracking-widest"
                       maxLength={6}
                     />
-                    <Button variant="secondary" onClick={() => joinRoom(code)} disabled={!connected || busy || code.length !== 6}>
+                    <Button variant="secondary" onClick={() => joinRoom(code)} disabled={!connected || busy || server.busy || code.length !== 6}>
                       {t('race.join', 'Qo‘shilish')}
                     </Button>
                   </div>

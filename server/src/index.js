@@ -10,6 +10,8 @@ import { env } from './config/env.js';
 import { prisma } from './prisma/client.js';
 import { initCache } from './cache/index.js';
 import { globalLimiter } from './middleware/rateLimit.js';
+import { capacityGuard, capacitySummary } from './middleware/capacity.js';
+import { startCapacityMonitor, getCapacity, LEVEL } from './utils/capacity.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { setupSocket } from './socket/index.js';
 import { setupSwagger } from './swagger.js';
@@ -51,6 +53,12 @@ app.use(compression()); // gzip - tezlik
 // Umumiy rate limit (DDoS himoya)
 app.use('/api', globalLimiter);
 
+// Server sig'imi (RAM/CPU) qo'riqchisi:
+// RAM to'lib qolganda yangi og'ir so'rovlar 503 SERVER_BUSY oladi —
+// process OOM bilan crash bo'lmaydi, ishlayotgan sessiyalar saqlanadi.
+startCapacityMonitor();
+app.use('/api', capacityGuard());
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
@@ -63,12 +71,25 @@ app.use('/uploads', express.static(uploadDir, { maxAge: '7d', immutable: false }
 
 // ============ ROUTES ============
 
-app.get('/health', (req, res) => res.json({ ok: true, uptime: process.uptime(), time: new Date().toISOString() }));
+app.get('/health', (req, res) => {
+  const cap = getCapacity();
+  // 503 — load balancer/monitoring uchun signal, lekin javob baribir to'liq
+  res.status(cap.level === LEVEL.BUSY ? 503 : 200).json({
+    ok: cap.level !== LEVEL.BUSY,
+    uptime: process.uptime(),
+    time: new Date().toISOString(),
+    capacity: capacitySummary(),
+  });
+});
+
+// Frontend shu endpoint orqali "server band" holatini biladi va
+// o'yin tugmalarini o'chirib qo'yadi (client crash/timeout o'rniga aniq xabar).
+app.get('/api/health', (req, res) => res.json({ success: true, data: capacitySummary() }));
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/staff', adminRoutes);
-app.use('/api/upload', uploadRoutes);
+app.use('/api/upload', capacityGuard({ heavy: true }), uploadRoutes);
 app.use('/api', gamesRoutes);
 const keepServerAlive = () => {
   if (!process.env.BASE_URL) {
@@ -97,11 +118,27 @@ app.use(errorHandler);
 
 await initCache();
 const server = http.createServer(app);
-setupSocket(server, env.corsOrigins);
+await setupSocket(server, env.corsOrigins);
 
 server.listen(env.port, '0.0.0.0', () => {
   console.log(`[xolt-games] Server ishga tushdi: http://0.0.0.0:${env.port}`);
   console.log(`[xolt-games] Swagger: http://localhost:${env.port}/api-docs`);
+});
+
+// ============ CRASH HIMOYASI ============
+// Kutilmagan xato butun serverni (va HAMMA o'yinni) yiqitmasligi kerak.
+// Log qilamiz va ishlashda davom etamiz; faqat tuzatib bo'lmaydigan
+// holatlarda (masalan port band) chiqamiz.
+process.on('uncaughtException', (err) => {
+  console.error('[xolt-games] uncaughtException (server ishlashda davom etadi):', err?.stack || err);
+  if (err && (err.code === 'EADDRINUSE' || err.code === 'EACCES')) {
+    console.error('[xolt-games] Fatal: port ochilmadi — process to\'xtatilmoqda');
+    process.exit(1);
+  }
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[xolt-games] unhandledRejection (server ishlashda davom etadi):', reason?.stack || reason);
 });
 
 // Toza yopilish

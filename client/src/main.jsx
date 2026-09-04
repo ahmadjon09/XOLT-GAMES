@@ -7,13 +7,17 @@ import './styles/global.css';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { SocketProvider } from './context/SocketContext.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
+import { ServerStatusProvider } from './context/ServerStatusContext.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
       <AuthProvider>
         <ToastProvider>
           <SocketProvider>
-            <App />
+            {/* Server RAM/yuk holati — "server band" bo'lsa o'yinlar bloklanadi */}
+            <ServerStatusProvider>
+              <App />
+            </ServerStatusProvider>
           </SocketProvider>
         </ToastProvider>
       </AuthProvider>
