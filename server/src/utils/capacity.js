@@ -3,8 +3,7 @@
 //
 // Muammo: server RAM (yoki event loop) ko'tara olmaydigan darajaga yetganda
 //   Node process OOM bilan "crash" bo'ladi — HAMMA o'yin va HAMMA foydalanuvchi
-//   birdan uziladi. Eng og'ir iste'molchi — 3D poyga (har xona: fizika,
-//   snapshot buferlari, 30 Hz tick).
+//   birdan uziladi.
 //
 // Yechim: crash BO'LISHIDAN OLDIN yangi yuklamani rad etish ("load shedding").
 //   * RAM / event-loop kechikishi doimiy o'lchanadi (1 s da bir marta).
@@ -15,7 +14,7 @@
 //
 // Darajalar:
 //   ok    — hammasi normal
-//   warn  — RAM ~75%+ : faqat ENG OG'IR o'yin (3D poyga) yangi xona ochmaydi
+//   warn  — RAM ~75%+ : ogohlantirish darajasi
 //   busy  — RAM ~88%+ : hech qanday yangi o'yin ochilmaydi ("server band")
 //
 // Muhim: bu modul hech qachon exception tashlamaydi — u himoya qatlami,
@@ -44,13 +43,10 @@ const CFG = {
   maxGames: num(process.env.CAP_MAX_ACTIVE_GAMES, 500),
   // "busy" dan chiqish uchun kamida shuncha vaqt tinch bo'lishi kerak (flapping oldini oladi)
   recoverMs: num(process.env.CAP_RECOVER_MS, 5000),
-  // Bitta 3D poyga xonasining taxminiy xotira narxi (MB)
-  race3dRoomMb: num(process.env.CAP_RACE3D_ROOM_MB, 6),
   retryAfterMs: num(process.env.CAP_RETRY_AFTER_MS, 15000),
 };
 
 export const BUSY_MESSAGE = "Server hozir band — biroz kutib, qayta urinib ko'ring";
-export const HEAVY_BUSY_MESSAGE = "Server yuki yuqori — 3D poyga vaqtincha yopiq, biroz kutib turing";
 
 // ---------------------------------------------------------------- XOTIRA CHEGARASI
 /**
@@ -87,7 +83,6 @@ const HEAP_LIMIT_BYTES = (() => {
 
 // ---------------------------------------------------------------- HOLAT
 const loadSources = new Map();  // nom -> () => number (aktiv xonalar soni)
-const shedders = new Map();     // nom -> () => void (yukni kamaytirish)
 let socketCounter = null;       // () => number
 
 let histogram = null;
@@ -202,7 +197,7 @@ function sample(now = Date.now()) {
   return state;
 }
 
-/** Bosim ostida: log + yukni kamaytirish (bo'sh xonalarni yopish, GC). */
+/** Bosim ostida ogohlantir; imkon bo'lsa GC chaqir. */
 function onPressure(now, level) {
   if (now - lastWarnLogAt > 10_000) {
     lastWarnLogAt = now;
@@ -214,10 +209,6 @@ function onPressure(now, level) {
   }
 
   if (level !== LEVEL.BUSY) return;
-
-  for (const [name, fn] of shedders) {
-    try { fn(state); } catch (err) { console.error(`[capacity] shedder "${name}" xato:`, err?.message || err); }
-  }
 
   // GC faqat --expose-gc bilan ishga tushirilganda mavjud (ixtiyoriy)
   if (typeof global.gc === 'function' && now - lastGcAt > 30_000) {
@@ -270,14 +261,9 @@ export function isServerBusy() {
   return getCapacity().level === LEVEL.BUSY;
 }
 
-/** Aktiv xona sonini beruvchi manba (masalan race3d manager). */
+/** Register an active-room metric source. */
 export function registerLoadSource(name, fn) {
   if (typeof fn === 'function') loadSources.set(name, fn);
-}
-
-/** Bosim ostida yukni kamaytiruvchi callback (bo'sh xonalarni yopish va h.k.). */
-export function registerShedder(name, fn) {
-  if (typeof fn === 'function') shedders.set(name, fn);
 }
 
 /** Ulangan socket sonini beruvchi funksiya (socket qatlamidan). */
@@ -288,10 +274,9 @@ export function setSocketCounter(fn) {
 /**
  * Yangi yuklamani qabul qilish mumkinmi?
  *
- * @param {'light'|'heavy'|'race3d'} kind
+ * @param {'light'|'heavy'} kind
  *   light  — mavjud o'yinga qo'shilish (kam xotira)
  *   heavy  — yangi o'yin/xona ochish
- *   race3d — 3D poyga xonasi (eng og'ir: fizika + snapshot buferlari)
  * @returns {{ok: true} | {ok: false, error: 'SERVER_BUSY', reason: string, message: string, retryAfterMs: number, level: string}}
  */
 export function checkCapacity(kind = 'light') {
@@ -310,25 +295,9 @@ export function checkCapacity(kind = 'light') {
     return deny(s.reason || 'MEMORY', BUSY_MESSAGE);
   }
 
-  if (kind === 'race3d') {
-    // Eng og'ir o'yin birinchi bo'lib "o'chadi" — qolgan o'yinlar ishlashda davom etadi
-    if (s.level === LEVEL.WARN) return deny(s.reason || 'MEMORY', HEAVY_BUSY_MESSAGE);
-    // Yangi xona uchun jismonan joy bormi? (xotiraning yarmi zaxira qoldiriladi)
-    if (s.freeMb > 0 && s.freeMb < CFG.race3dRoomMb * 2) {
-      return deny('MEMORY', HEAVY_BUSY_MESSAGE);
-    }
-  }
 
   return { ok: true, level: s.level };
 }
 
-/** 3D poyga uchun xotiraga qarab hisoblangan xona limiti. */
-export function affordableRace3DRooms(hardMax) {
-  const s = getCapacity();
-  if (!s.freeMb) return hardMax;
-  // Bo'sh xotiraning 50% i yangi xonalarga ajratiladi (qolgani zaxira)
-  const affordable = Math.floor((s.freeMb * 0.5) / CFG.race3dRoomMb);
-  return Math.max(1, Math.min(hardMax, affordable));
-}
 
 export const capacityConfig = CFG;

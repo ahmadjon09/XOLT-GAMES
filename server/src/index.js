@@ -23,6 +23,9 @@ import staffRoutes from './routes/staff.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import gamesRoutes from './routes/games.routes.js';
+import friendsRoutes from './routes/friends.routes.js';
+import userQuizzesRoutes from './routes/userQuizzes.routes.js';
+import { initMongo, closeMongo } from './mongo/runtimeStore.js';
 
 const app = express();
 app.set('trust proxy', 1)
@@ -86,6 +89,8 @@ app.get('/health', (req, res) => {
 // o'yin tugmalarini o'chirib qo'yadi (client crash/timeout o'rniga aniq xabar).
 app.get('/api/health', (req, res) => res.json({ success: true, data: capacitySummary() }));
 app.use('/api/auth', authRoutes);
+app.use('/api/user/friends', friendsRoutes);
+app.use('/api/user/quizzes', userQuizzesRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/staff', adminRoutes);
@@ -117,6 +122,7 @@ app.use(errorHandler);
 // ============ SERVER ============
 
 await initCache();
+await initMongo();
 const server = http.createServer(app);
 await setupSocket(server, env.corsOrigins);
 
@@ -144,7 +150,7 @@ process.on('unhandledRejection', (reason) => {
 // Toza yopilish
 const shutdown = async () => {
   console.log('[xolt-games] Serverni yopish...');
-  await prisma.$disconnect();
+  await Promise.all([prisma.$disconnect(), closeMongo()]);
   server.close(() => process.exit(0));
 };
 process.on('SIGINT', shutdown);

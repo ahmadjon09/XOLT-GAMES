@@ -10,7 +10,7 @@ const options = {
       title: 'XOLT Games API',
       version: '1.0.0',
       description:
-        "Ta'lim platformasi uchun API. O'quvchilar, o'qituvchilar, kassirlar va adminlar uchun. Kirish: telefon raqam + parol (email ishlatilmaydi). Socket.IO o'yinlar: Math Game, Quiz Game (Kahoot uslubi), Tic-Tac-Toe - kod yoki QR orqali qo'shilish.",
+        'Public multiplayer games API. Players sign in with Google or GitHub OAuth; admins manage public profiles, game availability, quizzes, shop content, and platform statistics. Live games use authenticated Socket.IO sessions.',
     },
     servers: [{ url: '/', description: 'Joriy server' }],
     components: {
@@ -19,7 +19,7 @@ const options = {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
-          description: 'Login orqali olingan token: Authorization: Bearer <token>',
+          description: 'OAuth browser session cookie; API clients may also send Authorization: Bearer <JWT>.',
         },
       },
     },

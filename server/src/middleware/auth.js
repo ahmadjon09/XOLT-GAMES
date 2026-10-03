@@ -7,7 +7,9 @@ import { prisma } from '../prisma/client.js';
 const extractToken = (req) => {
   const header = req.headers.authorization || '';
   if (header.startsWith('Bearer ')) return header.slice(7);
-  return null;
+  const cookie = String(req.headers.cookie || '').split(';').map((part) => part.trim()).find((part) => part.startsWith('xolt_token='));
+  if (!cookie) return null;
+  try { return decodeURIComponent(cookie.slice('xolt_token='.length)); } catch { return null; }
 };
 
 // kind: 'user' | 'staff' | 'any' - kim kirishi mumkin
@@ -47,7 +49,7 @@ export const requireAuth = (kind = 'any', roles = null) =>
     req.user = {
       id: db.id,
       kind: decoded.kind,
-      role: decoded.kind === 'staff' ? db.role : 'STUDENT',
+      role: decoded.kind === 'staff' ? db.role : 'PLAYER',
       full_name: db.full_name,
       db,
     };

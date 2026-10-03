@@ -30,6 +30,13 @@ export function socketAuthenticate(socket, next) {
         token = header.slice('Bearer '.length);
       }
     }
+    if (!token) {
+      const cookieHeader = String(socket.handshake.headers?.cookie || '');
+      const cookie = cookieHeader.split(';').map((part) => part.trim()).find((part) => part.startsWith('xolt_token='));
+      if (cookie) {
+        try { token = decodeURIComponent(cookie.slice('xolt_token='.length)); } catch { /* invalid cookie */ }
+      }
+    }
     if (!token) return next(new Error('AUTH_TOKEN_MISSING'));
 
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -37,7 +44,7 @@ export function socketAuthenticate(socket, next) {
     socket.data.user = {
       id: decoded.id,
       kind: decoded.kind,
-      role: decoded.kind === 'staff' ? decoded.role : 'STUDENT',
+      role: decoded.kind === 'staff' ? decoded.role : 'PLAYER',
       full_name: decoded.full_name,
     };
     next();
@@ -63,9 +70,7 @@ export function checkConnectionLimit(socket, next) {
 
 // Har bir socket uchun event hisoblagich - limit oshsa uziladi
 export function registerEventRateLimit(socket, opts = {}) {
-  // Real-time o'yinlar (masalan 3D poyga) o'zining aniqroq limitiga ega —
-  // ularning har-tick event'lari bu hisobga kiritilmaydi (aks holda o'yinchi
-  // poyga o'rtasida uzilib qoladi).
+  // Some games may provide narrow high-frequency event allowlists.
   const exempt = opts.exemptEvents || null;
   let count = 0;
   const resetTimer = setInterval(() => {
@@ -90,7 +95,7 @@ export function emitError(socket, code, message) {
   socket.emit('error', { code, message });
 }
 
-// DB dan to'liq o'quvchini olish (frame/effect bilan)
+// Load the full player account with its active frame/effect.
 export async function fetchFullUser(userId) {
   return prisma.user.findUnique({
     where: { id: userId },

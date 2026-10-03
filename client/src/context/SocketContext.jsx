@@ -1,7 +1,6 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { getToken } from '../api/fetcher.js';
 import { useAuth } from './AuthContext.jsx';
 import { api } from '../api/api.js';
 
@@ -21,7 +20,7 @@ export function SocketProvider({ children }) {
 
 
     const s = io(api, {
-      auth: { token: getToken() },
+      withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: Infinity,

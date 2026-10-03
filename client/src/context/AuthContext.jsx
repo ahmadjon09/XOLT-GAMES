@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { Fetch, getToken, setToken, clearToken } from '../api/fetcher.js';
+import { Fetch, clearToken } from '../api/fetcher.js';
 
 const AuthData = createContext(null);
 
@@ -10,11 +10,7 @@ export function AuthProvider({ children }) {
 
   
   const loadMe = useCallback(async () => {
-    if (!getToken()) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
+    // OAuth access cookie is HttpOnly, so JavaScript cannot inspect it before /auth/me.
     try {
       const profile = await Fetch.get('/auth/me');
       setUser(profile);
@@ -40,16 +36,11 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('xolt:unauthorized', onUnauthorized);
   }, [loadMe]);
 
-  const login = useCallback(async (phone, password) => {
-    const data = await Fetch.post('/auth/login', { phone, password });
-    setToken(data.token);
-    setUser(data.profile);
-    return data.profile;
-  }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     clearToken();
     setUser(null);
+    try { await Fetch.post('/auth/logout', {}); } catch { /* local sign-out is still complete */ }
   }, []);
 
   
@@ -69,7 +60,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthData.Provider value={{ user, setUser: patchUser, loading, login, logout, refresh, loadMe }}>
+    <AuthData.Provider value={{ user, setUser: patchUser, loading, logout, refresh, loadMe }}>
       {children}
     </AuthData.Provider>
   );

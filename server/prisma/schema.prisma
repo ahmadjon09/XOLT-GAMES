@@ -1,6 +1,6 @@
-// XOLT Games - Prisma sxemasi
-// O'quvchi (User) bir vaqtning o'zida bir nechta guruhga a'zo bo'la oladi (GroupMember orqali)
-// Staff: teacher (o'qituvchi), cashier (kassir), admin - rollar orqali ajratilgan
+// XOLT Games - Prisma schema
+// Group/attendance/payment models remain only for historical data compatibility; their product APIs are retired.
+// The public platform keeps a single staff role: admin.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,8 +12,6 @@ datasource db {
 }
 
 enum Role {
-  TEACHER
-  CASHIER
   ADMIN
 }
 
@@ -23,9 +21,11 @@ model User {
   telegramId      String?      @unique
   full_name       String
   avatar          String?
-  phone           String       @unique
+  coverImage      String?
+  phone           String?      @unique
   username        String?      @unique
-  password        String
+  password        String?
+  email           String?
   coin            Int          @default(100)
   week_score      Int          @default(0)
   month_score     Int          @default(0)
@@ -47,8 +47,12 @@ model User {
   attendances     Attendance[]
   typingRecords   TypingRecord[]
   coinTransactions CoinTransaction[]
+  oauthAccounts   OAuthAccount[]
+  friendRequestsSent     FriendRequest[] @relation("FriendRequester")
+  friendRequestsReceived FriendRequest[] @relation("FriendRecipient")
+  createdQuizzes Quiz[] @relation("UserCreatedQuizzes")
 
-  // Kim tomonidan yaratilgan (admin yoki kassir)
+  // Legacy attribution field retained for historical records.
   createdById     String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -56,16 +60,18 @@ model User {
   @@index([score])
   @@index([createdAt])
   @@index([phone])
+  @@index([email])
 }
 
-// ============ XODIM (teacher / cashier / admin) ============
+// ============ XODIM (admin) ============
 model Staff {
   id          String    @id @default(cuid())
   full_name   String
-  phone       String    @unique
+  phone       String?   @unique
+  email       String?   @unique
   avatar      String?
-  password    String
-  role        Role      @default(TEACHER)
+  password    String?
+  role        Role      @default(ADMIN)
   active      Boolean   @default(true)
   groups      Group[]
   quizzes     Quiz[]
@@ -74,6 +80,7 @@ model Staff {
   payments    Payment[] // kassir tomonidan qo'shilgan to'lovlar
   attendances Attendance[] // o'qituvchi tomonidan qo'yilgan davomatlar
   coinTransactions CoinTransaction[] // admin/kassir tomonidan berilgan yoki olingan coinlar
+  oauthAccounts OAuthAccount[]
   createdById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -165,16 +172,70 @@ model UserEffect {
 
 // ============ VIKTORINA (Kahoot uslubida) ============
 model Quiz {
-  id          String     @id @default(cuid())
-  name        String
-  keywords    String[]   @default([])
-  image       String?
-  createdById String
-  createdBy   Staff      @relation(fields: [createdById], references: [id])
-  questions   Question[]
-  createdAt   DateTime   @default(now())
+  id              String     @id @default(cuid())
+  name            String
+  keywords        String[]   @default([])
+  image           String?
+  createdById     String? // eski xodimlar yaratgan viktorinalar uchun
+  createdBy       Staff?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdByUserId String?
+  createdByUser   User?      @relation("UserCreatedQuizzes", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  active          Boolean    @default(true)
+  isPublic        Boolean    @default(true)
+  questions       Question[]
+  createdAt       DateTime   @default(now())
 
   @@index([createdById])
+  @@index([createdByUserId])
+  @@index([active, isPublic])
+}
+
+// OAuth identifikatorlari: profil va provayder hisoblari PostgreSQL'da qoladi.
+// Har bir hisob aynan bitta User yoki Staff administratorga tegishli.
+model OAuthAccount {
+  id                String   @id @default(cuid())
+  provider          String
+  providerAccountId String
+  email             String?
+  userId            String?
+  staffId           String?
+  user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staff             Staff?   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@index([staffId])
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+}
+
+model FriendRequest {
+  id          String              @id @default(cuid())
+  requesterId String
+  recipientId String
+  status      FriendRequestStatus @default(PENDING)
+  requester   User                @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  recipient   User                @relation("FriendRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([requesterId, recipientId])
+  @@index([recipientId, status, createdAt])
+  @@index([requesterId, status, createdAt])
+}
+
+// Admin paneldan o'yin turlarini yoqish/o'chirish.
+model GameCatalog {
+  id        String   @id
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@index([active, sortOrder])
 }
 
 model Question {

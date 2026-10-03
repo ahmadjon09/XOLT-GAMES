@@ -11,9 +11,7 @@ import { getCapacity, LEVEL, BUSY_MESSAGE } from '../utils/capacity.js';
 /** Har doim o'tkaziladigan yo'llar (hayotiy muhim). */
 const ALWAYS_ALLOW = [
   '/health',
-  '/auth/login',
-  '/auth/me',
-  '/auth/refresh',
+  '/auth', // OAuth provider discovery/callback and current-session checks must remain reachable.
 ];
 
 const isAllowed = (path) => ALWAYS_ALLOW.some((p) => path.startsWith(p));
@@ -53,7 +51,6 @@ export function capacitySummary() {
   return {
     level: cap.level,                 // ok | warn | busy
     busy: cap.level === LEVEL.BUSY,
-    heavyGamesDisabled: cap.level !== LEVEL.OK, // 3D poyga kabi og'ir o'yinlar
     reason: cap.reason,
     memoryPct: cap.memory.usedPct,
     freeMb: cap.freeMb,

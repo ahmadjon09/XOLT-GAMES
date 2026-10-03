@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaTrophy, FaCalendarWeek, FaCalendarAlt, FaInfinity, FaUsers, FaCrown, FaMedal, FaExclamationTriangle } from 'react-icons/fa';
+import { FaTrophy, FaCalendarWeek, FaCalendarAlt, FaInfinity, FaExclamationTriangle } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useGet } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Avatar, AnimatedName, Pagination } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
-import { fmtNum, cx } from '../../utils/format.js';
+import { fmtNum } from '../../utils/format.js';
 import gg1 from '../../assets/gg1.png';
 import gg2 from '../../assets/gg2.png';
 import gg3 from '../../assets/gg3.png';
@@ -38,27 +38,11 @@ export default function Leaderboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [scope, setScope] = useState('global'); // global | group
   const [period, setPeriod] = useState('all');
   const [page, setPage] = useState(1);
-  const [activeGroupId, setActiveGroupId] = useState('');
   const limit = 20;
 
-  const { data, isLoading } = useGet(
-    scope === 'group'
-      ? `/user/group-ranking?period=${period}`
-      : `/user/leaderboard?period=${period}&page=${page}&limit=${limit}`
-  );
-
-  // Guruh ro'yxati kelganda birinchi guruh tanlanadi
-  const groupRank = scope === 'group' ? (data || []) : [];
-  useEffect(() => {
-    if (scope === 'group' && groupRank.length > 0 && !groupRank.some((g) => g.groupId === activeGroupId)) {
-      setActiveGroupId(groupRank[0].groupId);
-    }
-  }, [scope, groupRank, activeGroupId]);
-
-  const selectedGroup = groupRank.find((g) => g.groupId === activeGroupId) || groupRank[0] || null;
+  const { data, isLoading } = useGet(`/user/leaderboard?period=${period}&page=${page}&limit=${limit}`);
 
   if (isLoading && !data) {
     return (
@@ -123,7 +107,10 @@ export default function Leaderboard() {
     const big = size === 'lg';
     return (
       <div
-        onClick={() => item?.id && navigate(`/staff/users/${item.id}`)}
+        onClick={() => item?.id && navigate(item.id === user?.id ? '/profile' : `/players/${item.id}`)}
+        role={item?.id ? 'link' : undefined}
+        tabIndex={item?.id ? 0 : undefined}
+        onKeyDown={(event) => { if (item?.id && (event.key === 'Enter' || event.key === ' ')) navigate(item.id === user?.id ? '/profile' : `/players/${item.id}`); }}
         className={`flex flex-col cursor-pointer items-center w-full min-w-0 ${rank === 1 ? 'z-10' : ''}`}
       >
         <div
@@ -151,7 +138,6 @@ export default function Leaderboard() {
           {item?.username && (
             <p className="hidden sm:block text-gray-400 text-xs text-center truncate w-full mt-1">@{item.username}</p>
           )}
-          {item?.group && <p className="hidden sm:block text-xs text-primary mt-1 font-medium truncate w-full">{item.group.name}</p>}
           <div className="mt-2 sm:mt-3 bg-gradient-to-r from-yellow-50 to-amber-50 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full border border-yellow-200 w-full">
             <p className="text-[11px] sm:text-sm text-gray-800 font-bold flex items-center justify-center gap-1 truncate">
               <FaTrophy className="text-yellow-500 shrink-0" size={big ? 14 : 12} /> {fmtNum(scoreOf(item, period))}
@@ -178,27 +164,11 @@ export default function Leaderboard() {
               <Trophy />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-ink">{scope === 'group' ? t('lb.groupTitle') : t('lb.title')}</h1>
-              <p className="text-sm text-muted">{scope === 'group' ? t('lb.groupSub') : t('lb.top')}</p>
+              <h1 className="text-2xl font-bold text-ink">{t('lb.title')}</h1>
+              <p className="text-sm text-muted">{t('lb.top')}</p>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto flex-wrap min-w-0">
-            <div className="segment min-w-0">
-              <button
-                onClick={() => { setScope('global'); setPage(1); }}
-                className={scope === 'global' ? 'active' : ''}
-              >
-                <FaUsers size={15} />
-                <span>{t('lb.scopeAll')}</span>
-              </button>
-              <button
-                onClick={() => { setScope('group'); setPage(1); }}
-                className={scope === 'group' ? 'active' : ''}
-              >
-                <FaTrophy size={14} />
-                <span>{t('lb.scopeGroup')}</span>
-              </button>
-            </div>
             <div className="segment scroll min-w-0 max-w-full">
               {PERIODS.map(({ key, labelKey, icon: Icon }) => (
                 <button
@@ -219,99 +189,7 @@ export default function Leaderboard() {
         </div>
       </div>
 
-      {/* ===== GURUH REYTINGI ===== */}
-      {scope === 'group' ? (
-        groupRank.length === 0 ? (
-          <div className="card">
-            <div className="p-12 text-center">
-              <FaUsers className="text-5xl mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-500 text-lg">{t('lb.noGroups')}</p>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Ko'p guruhli bo'lsa - guruh tanlash */}
-            {groupRank.length > 1 && (
-              <div className="card">
-                <div className="flex flex-wrap gap-2">
-                  {groupRank.map((g) => (
-                    <button
-                      key={g.groupId}
-                      onClick={() => setActiveGroupId(g.groupId)}
-                      className={cx('chip', selectedGroup?.groupId === g.groupId && 'active')}
-                    >
-                      {g.groupName}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Mening o'rnim */}
-            {selectedGroup && (
-              <div className="card border-primary/25" style={{ background: 'var(--grad-primary-soft)' }}>
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="relative">
-                    <Avatar w={60} frame={user?.currentFrame} avatar={user?.avatar} />
-                    <div className="absolute -bottom-1 -right-1 bg-gradient-to-br from-yellow-400 to-amber-500 text-white text-xs font-bold rounded-full w-7 h-7 flex items-center justify-center shadow-lg border-2 border-white">
-                      {selectedGroup.myRank}
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-800 text-lg truncate">{user?.full_name}</p>
-                    <p className="text-sm text-gray-500 truncate">
-                      {selectedGroup.groupName}{selectedGroup.teacher ? ` • ${selectedGroup.teacher}` : ''}
-                    </p>
-                  </div>
-                  <div className="ml-auto flex items-center gap-5 sm:gap-8">
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide">{t('lb.myGroupRank')}</p>
-                      <p className="text-2xl font-bold text-primary">#{selectedGroup.myRank}<span className="text-base text-gray-400">/{selectedGroup.membersCount}</span></p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide">{t('lb.points')}</p>
-                      <p className="text-2xl font-bold text-gray-800">{fmtNum(selectedGroup.myScore)}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Guruh a'zolari reytingi */}
-            <div className="card flush">
-              <div className="divide-y divide-border">
-                {(selectedGroup?.rows || []).map((r) => (
-                  <div
-                    key={r.id}
-                    onClick={() => r.isMe && navigate('/profile')}
-                    className={cx('list-row gap-4 py-4', r.isMe && 'bg-primary-soft/50')}
-                    role="row"
-                  >
-                    <div className={cx('w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0', rankColors[r.rank] || 'text-gray-500 bg-gray-50')}>
-                      #{r.rank}
-                    </div>
-                    <Avatar w={48} frame={r.currentFrame} avatar={r.avatar} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-800 truncate text-base">
-                        <AnimatedName config={r.currentEffect?.config}>{r.full_name}</AnimatedName>
-                        {r.isMe && <span className="ml-2 text-[11px] font-extrabold uppercase tracking-wide text-primary">{t('lb.thisIsYou')}</span>}
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
-                        {r.username && <span>@{r.username}</span>}
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-gray-800 text-lg">{fmtNum(r.score)}</p>
-                      <p className="text-xs text-gray-400">{t('lb.points')}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )
-      ) : (
-        <>
+      <>
           {/* ===== UMUMIY REYTING ===== */}
           {topThree.length > 0 && (
             <div className="card relative overflow-hidden p-3 sm:p-6 md:p-8 shadow-card-lg">
@@ -357,38 +235,32 @@ export default function Leaderboard() {
           <div className="card flush">
             {rest.length === 0 && topThree.length === 0 ? (
               <div className="p-12 text-center">
-                <FaUsers className="text-5xl mx-auto mb-4 text-gray-300" />
+                <FaTrophy className="text-5xl mx-auto mb-4 text-gray-300" />
                 <p className="text-gray-500 text-lg">{t('lb.noData')}</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {rest.map((student) => (
+                {rest.map((player) => (
                   <div
-                    key={student.id}
-                    onClick={() => student.id === user?.id ? navigate('/profile') : navigate(`/staff/users/${student.id}`)}
+                    key={player.id}
+                    onClick={() => navigate(player.id === user?.id ? '/profile' : `/players/${player.id}`)}
                     className="list-row tap gap-4 py-4"
                     role="row"
                   >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${rankColors[student.rank] || 'text-gray-500 bg-gray-50'}`}>
-                      #{student.rank}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${rankColors[player.rank] || 'text-gray-500 bg-gray-50'}`}>
+                      #{player.rank}
                     </div>
-                    <Avatar w={48} frame={student.currentFrame} avatar={student.avatar} />
+                    <Avatar w={48} frame={player.currentFrame} avatar={player.avatar} />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-800 truncate text-base">
-                        <AnimatedName config={student.currentEffect?.config}>{student.full_name}</AnimatedName>
+                        <AnimatedName config={player.currentEffect?.config}>{player.full_name}</AnimatedName>
                       </p>
                       <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
-                        {student.username && <span>@{student.username}</span>}
-                        {student.group && (
-                          <>
-                            <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                            <span className="text-primary font-medium truncate">{student.group.name}</span>
-                          </>
-                        )}
+                        {player.username && <span>@{player.username}</span>}
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-gray-800 text-lg">{fmtNum(scoreOf(student, period))}</p>
+                      <p className="font-bold text-gray-800 text-lg">{fmtNum(scoreOf(player, period))}</p>
                       <p className="text-xs text-gray-400">{t('lb.points')}</p>
                     </div>
                   </div>
@@ -400,8 +272,7 @@ export default function Leaderboard() {
           {totalPages > 1 && (
             <Pagination page={page} total={totalPages} pageSize={1} onChange={setPage} />
           )}
-        </>
-      )}
+      </>
       </div>
     </>
   );

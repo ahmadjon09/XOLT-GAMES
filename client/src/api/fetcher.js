@@ -1,6 +1,6 @@
 
 
-import { http, errorMessage, getToken, setToken, clearToken } from './http.js';
+import { http, errorMessage, clearToken } from './http.js';
 
 
 const unwrap = (res) => res.data;
@@ -40,4 +40,4 @@ export const Fetch = {
   },
 };
 
-export { errorMessage, getToken, setToken, clearToken };
+export { errorMessage, clearToken };

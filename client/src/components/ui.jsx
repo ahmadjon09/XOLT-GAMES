@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X, Globe, Search, RefreshCw, AlertTriangle, ChevronLeft, ChevronRight, Phone, Users, Lock } from 'lucide-react';
+import { Loader2, X, Globe, Search, RefreshCw, AlertTriangle, ChevronLeft, ChevronRight, Users, Lock } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5Qrcode } from 'html5-qrcode';
-import PhoneInputLib from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
 import { setLang } from '../i18n/index.js';
 import { cx, digitsOnly, formatDigits } from '../utils/format.js';
 import { initAudio, sounds } from '../utils/sound.js';
@@ -187,24 +185,6 @@ export function NumberInput({ value, onChange, min, max, placeholder, disabled, 
       value={draft}
       onChange={handleChange}
       placeholder={placeholder}
-      disabled={disabled}
-      {...rest}
-    />
-  );
-}
-
-// Telefon input — react-phone-number-input asosida, +998 formatda
-// value har doim E.164 formatda saqlanadi (+998901234567) — serverga shu yuboriladi
-// staticCountry: mamlakat tanlash o'chiriladi (faqat flag ko'rinadi) — boshqa inputlar kabi bir xil
-export function PhoneInput({ value, onChange, defaultCountry = 'UZ', dark, staticCountry, className, error, disabled, inputProps, ...rest }) {
-  return (
-    <PhoneInputLib
-      value={value || ''}
-      onChange={(v) => onChange(v || '')}
-      defaultCountry={defaultCountry}
-      disableCountrySelect={!!staticCountry}
-      inputProps={{ autoComplete: 'tel', placeholder: '+998 __ ___ __ __', ...inputProps }}
-      className={cx('phone-input-wrap', dark && 'dark', error && 'error', className)}
       disabled={disabled}
       {...rest}
     />

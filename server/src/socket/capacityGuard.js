@@ -8,7 +8,7 @@
 //     ya'ni allaqachon boshlangan o'yinlar buzilmaydi.
 //
 // Rad etilganda client ikki yo'l bilan xabar oladi:
-//   1) ack callback bo'lsa — { ok:false, error:'SERVER_BUSY' } (poyga shu yo'lni ishlatadi)
+//   1) ack callback bo'lsa — { ok:false, error:'SERVER_BUSY' }
 //   2) 'error' + 'server:busy' event'lari (eski o'yinlar shu yo'lni ishlatadi)
 // Natija: client HECH QACHON javobsiz qolib "TIMEOUT" ko'rsatmaydi.
 // ============================================================================
@@ -20,23 +20,18 @@ export const HEAVY_EVENTS = new Set([
   'ttt:create', 'ttt:rematch',
   'chess:create', 'chess:rematch',
   'checkers:create', 'checkers:rematch',
-  'race:host',
   'typing:host',
   'code:host',
   'quiz:host',
 ]);
 
-/** 3D poyga xonasi — alohida, eng og'ir toifa. */
-export const RACE3D_CREATE_EVENT = 'r3:c';
-
 /** Mavjud o'yinga QO'SHILADIGAN event'lar (o'rtacha). */
 export const JOIN_EVENTS = new Set([
   'mathgame:join', 'ttt:join', 'chess:join', 'checkers:join',
-  'race:join', 'typing:join', 'code:join', 'quiz:join', 'r3:j',
+  'typing:join', 'code:join', 'quiz:join',
 ]);
 
 function kindOf(event) {
-  if (event === RACE3D_CREATE_EVENT) return 'race3d';
   if (HEAVY_EVENTS.has(event)) return 'heavy';
   if (JOIN_EVENTS.has(event)) return 'light';
   return null;
@@ -71,7 +66,7 @@ export function attachCapacityGuard(socket) {
       if (typeof ack === 'function') {
         try { ack(payload); } catch { /* client ketgan */ }
       }
-      // 2) umumiy xabar (ack ishlatmaydigan o'yinlar uchun)
+      // 2) umumiy xabar (ack ishlatmaydigan clients uchun)
       try {
         socket.emit('server:busy', payload);
         socket.emit('error', { code: 'SERVER_BUSY', message: verdict.message, retryAfterMs: verdict.retryAfterMs });

@@ -1,7 +1,4 @@
-// XOLT Games - seed: demo ma'lumotlar yaratish
-// Admin, teacher, cashier, o'quvchilar, guruhlar, frame (SVG ramkalar),
-// effect konfiguratsiyalari, namuna viktorina, davomat va to'lovlar
-import bcrypt from 'bcryptjs';
+// XOLT Games seed: OAuth-provisioned admin, public game catalog and sample game content.
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -9,8 +6,6 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-const hash = (p) => bcrypt.hash(p, 10);
 
 // ============ SVG FRAME GENERATOR ============
 // Avatar ramkalari - markazi shaffof, chekkasi rangli SVG
@@ -173,77 +168,18 @@ const EFFECTS = [
 async function main() {
   console.log('[seed] boshlanmoqda...');
 
-  // ===== XODIMLAR =====
+  // The first allowlisted OAuth email becomes the seeded administrator.
+  const adminEmail = String(
+    process.env.ADMIN_OAUTH_EMAILS?.split(',')[0] || process.env.ADMIN_SEED_EMAIL || 'admin@example.com',
+  ).trim().toLowerCase();
   const admin = await prisma.staff.upsert({
-    where: { phone: '+998901234567' },
-    update: {},
-    create: { full_name: 'Bosh Administrator', phone: '+998901234567', password: await hash('admin123'), role: 'ADMIN' },
-  });
-  const cashier = await prisma.staff.upsert({
-    where: { phone: '+998901234568' },
-    update: {},
-    create: { full_name: 'Malika Kassir', phone: '+998901234568', password: await hash('cashier123'), role: 'CASHIER', createdById: admin.id },
-  });
-  const teacher = await prisma.staff.upsert({
-    where: { phone: '+998901234569' },
-    update: {},
-    create: { full_name: 'Aziz O\'qituvchi', phone: '+998901234569', password: await hash('teacher123'), role: 'TEACHER', createdById: admin.id },
+    where: { email: adminEmail },
+    update: { full_name: 'Bosh Administrator', role: 'ADMIN', active: true },
+    create: { full_name: 'Bosh Administrator', email: adminEmail, role: 'ADMIN', active: true },
   });
 
-  // ===== GURUHLAR =====
-  const g1 = await prisma.group.upsert({
-    where: { id: 'group_math_5a' },
-    update: { teacherId: teacher.id, monthlyFee: 200000 },
-    create: { id: 'group_math_5a', name: 'Matematika 5-A', monthlyFee: 200000, teacherId: teacher.id },
-  });
-  const g2 = await prisma.group.upsert({
-    where: { id: 'group_eng_5b' },
-    update: { teacherId: teacher.id, monthlyFee: 250000 },
-    create: { id: 'group_eng_5b', name: 'Ingliz tili 5-B', monthlyFee: 250000, teacherId: teacher.id },
-  });
-
-  // ===== O'QUVCHILAR (ba'zilari ikkala guruhda) =====
-  const students = [
-    { full_name: 'Ali Valiyev', phone: '+998900000001', username: 'ali_vali', groups: [g1.id, g2.id], coin: 500, score: 120 },
-    { full_name: 'Zarina Karimova', phone: '+998900000002', username: 'zarina_k', groups: [g1.id], coin: 800, score: 340 },
-    { full_name: 'Jasur Toshpulatov', phone: '+998900000003', username: 'jasur_t', groups: [g1.id, g2.id], coin: 120, score: 60 },
-    { full_name: 'Nilufar Rahimova', phone: '+998900000004', username: 'nilu_r', groups: [g2.id], coin: 2000, score: 510 },
-    { full_name: 'Bekzod Ergashev', phone: '+998900000005', username: 'bekzod_e', groups: [g1.id], coin: 60, score: 25 },
-  ];
-
-  for (const s of students) {
-    const exists = await prisma.user.findUnique({ where: { phone: s.phone } });
-    if (exists) {
-      // Guruh a'zoligini kafolatlash
-      for (const gid of s.groups) {
-        await prisma.groupMember.upsert({
-          where: { userId_groupId: { userId: exists.id, groupId: gid } },
-          update: {},
-          create: { userId: exists.id, groupId: gid },
-        });
-      }
-      continue;
-    }
-    await prisma.user.create({
-      data: {
-        full_name: s.full_name,
-        phone: s.phone,
-        username: s.username,
-        password: await hash('1234'),
-        coin: s.coin,
-        score: s.score,
-        week_score: Math.floor(s.score * 0.4),
-        month_score: Math.floor(s.score * 0.7),
-        createdById: admin.id,
-        groupMembers: { create: s.groups.map((gid) => ({ groupId: gid })) },
-      },
-    });
-  }
-
-  // ===== FRAMELAR (SVG ramkalar yaratiladi) =====
   const framesDir = path.join(__dirname, '..', 'uploads', 'frames');
   fs.mkdirSync(framesDir, { recursive: true });
-
   const frames = [
     { id: 'frame_classic', name: 'Klassik', price: 0, rarity: 'common', colors: ['#cbd5e1', '#64748b'], file: 'frame_classic.svg' },
     { id: 'frame_bronze', name: 'Bronza', price: 150, rarity: 'common', colors: ['#d97706', '#92400e'], file: 'frame_bronze.svg' },
@@ -252,51 +188,60 @@ async function main() {
     { id: 'frame_neon', name: 'Neon', price: 2500, rarity: 'epic', colors: ['#a78bfa', '#6366f1'], file: 'frame_neon.svg' },
     { id: 'frame_legend', name: 'Afsonaviy', price: 5000, rarity: 'legendary', colors: ['#f472b6', '#8b5cf6'], file: 'frame_legend.svg' },
   ];
-
-  for (const f of frames) {
-    const filePath = path.join(framesDir, f.file);
-    fs.writeFileSync(filePath, frameSvg(f.id, f.colors[0], f.colors[1], '#000'));
+  for (const [index, frame] of frames.entries()) {
+    fs.writeFileSync(
+      path.join(framesDir, frame.file),
+      frameSvg(frame.id, frame.colors[0], frame.colors[1], '#000'),
+    );
     await prisma.frame.upsert({
-      where: { id: f.id },
-      update: { name: f.name, price: f.price, rarity: f.rarity, image: `/uploads/frames/${f.file}` },
+      where: { id: frame.id },
+      update: { name: frame.name, price: frame.price, rarity: frame.rarity, image: `/uploads/frames/${frame.file}` },
       create: {
-        id: f.id,
-        name: f.name,
-        price: f.price,
-        rarity: f.rarity,
-        image: `/uploads/frames/${f.file}`,
-        description: `"${f.name}" avatar ramkasi`,
-        sortOrder: frames.indexOf(f),
+        id: frame.id,
+        name: frame.name,
+        price: frame.price,
+        rarity: frame.rarity,
+        image: `/uploads/frames/${frame.file}`,
+        description: `"${frame.name}" avatar ramkasi`,
+        sortOrder: index,
       },
     });
   }
 
-  // ===== EFFECTLAR =====
-  for (const e of EFFECTS) {
+  for (const [index, effect] of EFFECTS.entries()) {
     await prisma.effect.upsert({
-      where: { id: e.id },
-      update: { name: e.name, price: e.price, config: e.config },
-      create: {
-        id: e.id,
-        name: e.name,
-        description: e.description,
-        type: e.type,
-        price: e.price,
-        config: e.config,
-        sortOrder: EFFECTS.indexOf(e),
-      },
+      where: { id: effect.id },
+      update: { name: effect.name, price: effect.price, config: effect.config },
+      create: { ...effect, sortOrder: index },
     });
   }
 
-  // ===== NAMUNA VIKTORINA =====
+  const games = [
+    { id: 'math', sortOrder: 0 },
+    { id: 'quiz', sortOrder: 1 },
+    { id: 'tictactoe', sortOrder: 2 },
+    { id: 'chess', sortOrder: 3 },
+    { id: 'checkers', sortOrder: 4 },
+    { id: 'typerace', sortOrder: 5 },
+    { id: 'codebattle', sortOrder: 6 },
+  ];
+  for (const game of games) {
+    await prisma.gameCatalog.upsert({
+      where: { id: game.id },
+      update: { sortOrder: game.sortOrder },
+      create: { ...game, active: true },
+    });
+  }
+
   const quizName = 'Matematika asoslari';
-  const existingQuiz = await prisma.quiz.findFirst({ where: { name: quizName } });
-  if (!existingQuiz) {
+  if (!(await prisma.quiz.findFirst({ where: { name: quizName } }))) {
     await prisma.quiz.create({
       data: {
         name: quizName,
         keywords: ['matematika', 'boshlangich'],
-        createdById: teacher.id,
+        createdById: admin.id,
+        isPublic: true,
+        active: true,
         questions: {
           create: [
             { text: '12 + 34 nechaga teng?', variants: ['44', '46', '48', '52'], answer: '46', timeLimit: 20, points: 1000, sortOrder: 0 },
@@ -310,91 +255,43 @@ async function main() {
     });
   }
 
-
-  // ===== TYPE RACING MATNLARI (uz/ru/en) =====
   const typingTexts = [
-    { title: "Matematika haqida", lang: 'uz', difficulty: 'easy', content: "Matematika fanlar ichida eng qadimgi fanlardan biridir. U bizning kundalik hayotimizda juda muhim o'rin tutadi. Hisob-kitob qilish, o'lchash va solishtirish matematikaning asosiy vazifalaridir. Matematikani o'rganish orqali fikrlash qobiliyatimiz rivojlanadi." },
-    { title: "O'zbekiston", lang: 'uz', difficulty: 'normal', content: "O'zbekiston Markaziy Osiyoda joylashgan go'zal davlatdir. Uning poytaxti Toshkent shahri bo'lib, bu yerda ko'plab tarixiy obidalar va zamonaviy binolar mavjud. O'zbek xalqi mehmondo'stligi bilan mashhur." },
-    { title: "Tabiatni asrang", lang: 'uz', difficulty: 'hard', content: "Tabiat bizning eng katta boyligimizdir. Har bir inson atrof-muhitni asrashga hissa qo'shishi kerak. Daraxt ekish, suvni tejash va chiqindilarni saralash orqali biz kelajak avlodlarga toza dunyo qoldiramiz." },
-    { title: "О математике", lang: 'ru', difficulty: 'easy', content: "Математика - одна из древнейших наук. Она занимает важное место в нашей повседневной жизни. Счёт, измерение и сравнение - основные задачи математики. Изучение математики развивает наше мышление." },
-    { title: "Узбекистан", lang: 'ru', difficulty: 'normal', content: "Узбекистан - прекрасная страна в Центральной Азии. Его столица - город Ташкент, где много исторических памятников и современных зданий. Узбекский народ славится своим гостеприимством." },
-    { title: "Берегите природу", lang: 'ru', difficulty: 'hard', content: "Природа - наше самое большое богатство. Каждый человек должен внести свой вклад в защиту окружающей среды. Сажая деревья, экономя воду и сортируя отходы, мы оставим чистый мир будущим поколениям." },
-    { title: "About Mathematics", lang: 'en', difficulty: 'easy', content: "Mathematics is one of the oldest sciences. It plays an important role in our everyday life. Counting, measuring and comparing are the main tasks of mathematics. Learning mathematics develops our thinking." },
-    { title: "Uzbekistan", lang: 'en', difficulty: 'normal', content: "Uzbekistan is a beautiful country in Central Asia. Its capital is the city of Tashkent, which has many historical monuments and modern buildings. Uzbek people are famous for their hospitality." },
-    { title: "Protect Nature", lang: 'en', difficulty: 'hard', content: "Nature is our greatest treasure. Every person should contribute to protecting the environment. By planting trees, saving water and sorting waste, we will leave a clean world for future generations." },
+    { title: 'Matematika haqida', lang: 'uz', difficulty: 'easy', content: "Matematika fanlar ichida eng qadimgi fanlardan biridir. U bizning kundalik hayotimizda juda muhim o'rin tutadi. Hisob-kitob qilish, o'lchash va solishtirish matematikaning asosiy vazifalaridir. Matematikani o'rganish orqali fikrlash qobiliyatimiz rivojlanadi." },
+    { title: 'O\'zbekiston', lang: 'uz', difficulty: 'normal', content: "O'zbekiston Markaziy Osiyoda joylashgan go'zal davlatdir. Uning poytaxti Toshkent shahri bo'lib, bu yerda ko'plab tarixiy obidalar va zamonaviy binolar mavjud. O'zbek xalqi mehmondo'stligi bilan mashhur." },
+    { title: 'Tabiatni asrang', lang: 'uz', difficulty: 'hard', content: 'Tabiat bizning eng katta boyligimizdir. Har bir inson atrof-muhitni asrashga hissa qo\'shishi kerak. Daraxt ekish, suvni tejash va chiqindilarni saralash orqali biz kelajak avlodlarga toza dunyo qoldiramiz.' },
+    { title: 'О математике', lang: 'ru', difficulty: 'easy', content: 'Математика - одна из древнейших наук. Она занимает важное место в нашей повседневной жизни. Счёт, измерение и сравнение - основные задачи математики. Изучение математики развивает наше мышление.' },
+    { title: 'Узбекистан', lang: 'ru', difficulty: 'normal', content: 'Узбекистан - прекрасная страна в Центральной Азии. Его столица - город Ташкент, где много исторических памятников и современных зданий. Узбекский народ славится своим гостеприимством.' },
+    { title: 'Берегите природу', lang: 'ru', difficulty: 'hard', content: 'Природа - наше самое большое богатство. Каждый человек должен внести свой вклад в защиту окружающей среды. Сажая деревья, экономя воду и сортируя отходы, мы оставим чистый мир будущим поколениям.' },
+    { title: 'About Mathematics', lang: 'en', difficulty: 'easy', content: 'Mathematics is one of the oldest sciences. It plays an important role in our everyday life. Counting, measuring and comparing are the main tasks of mathematics. Learning mathematics develops our thinking.' },
+    { title: 'Uzbekistan', lang: 'en', difficulty: 'normal', content: 'Uzbekistan is a beautiful country in Central Asia. Its capital is the city of Tashkent, which has many historical monuments and modern buildings. Uzbek people are famous for their hospitality.' },
+    { title: 'Protect Nature', lang: 'en', difficulty: 'hard', content: 'Nature is our greatest treasure. Every person should contribute to protecting the environment. By planting trees, saving water and sorting waste, we will leave a clean world for future generations.' },
   ];
-  for (const tx of typingTexts) {
-    await prisma.typingText.create({ data: { ...tx, createdById: teacher.id } });
-  }
-
-  // ===== CODE BATTLE SAVOLLARI (output topish) =====
-  const codeQuestions = [
-    { title: "console.log(Hello)", category: "js", code: 'console.log("Hello World");', answer: "Hello World", explanation: "console.log() ekranga matn chiqaradi" },
-    { title: "JS summa", category: "js", code: "console.log(2 + 3 * 4);", answer: "14", explanation: "Ko'paytirish qo'shishdan oldin bajariladi: 3*4=12, 2+12=14" },
-    { title: "JS string", category: "js", code: 'console.log("5" + 2);', answer: "52", explanation: "String + son -> string birlashadi" },
-    { title: "Python print", category: "python", code: 'print("Hello, Python!")', answer: "Hello, Python!", explanation: "print() funksiyasi ekranga chiqaradi" },
-    { title: "Python math", category: "python", code: "print(10 // 3)", answer: "3", explanation: "// butun bo'lish amali: 10//3 = 3" },
-    { title: "Python pow", category: "python", code: "print(2 ** 5)", answer: "32", explanation: "** daraja amali: 2^5 = 32" },
-    { title: "C# Hello", category: "csharp", code: 'Console.WriteLine("Hi");', answer: "Hi", explanation: "WriteLine ekranga chiqaradi" },
-    { title: "C# qoldiq", category: "csharp", code: "Console.WriteLine(7 % 3);", answer: "1", explanation: "% qoldiq amali: 7 mod 3 = 1" },
-    { title: "C# bool", category: "csharp", code: "Console.WriteLine(5 > 3 && 2 < 4);", answer: "True", explanation: "Ikkala shart ham to'g'ri -> True" },
-  ];
-  for (const cq of codeQuestions) {
-    await prisma.codeQuestion.create({ data: { ...cq, createdById: teacher.id } });
-  }
-
-  // ===== DAVOMAT (oxirgi 3 kun) =====
-  const members = await prisma.user.findMany({ include: { groupMembers: true } });
-  const statuses = ['present', 'present', 'late', 'absent'];
-  for (let i = 1; i <= 3; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    for (const m of members) {
-      for (const gm of m.groupMembers) {
-        await prisma.attendance.upsert({
-          where: { userId_groupId_date: { userId: m.id, groupId: gm.groupId, date: d } },
-          update: {},
-          create: { userId: m.id, groupId: gm.groupId, date: d, status: statuses[(m.id.length + i) % statuses.length], staffId: teacher.id },
-        });
-      }
+  for (const text of typingTexts) {
+    if (!(await prisma.typingText.findFirst({ where: { title: text.title, lang: text.lang } }))) {
+      await prisma.typingText.create({ data: { ...text, createdById: admin.id } });
     }
   }
 
-  // ===== TO'LOVLAR (joriy oy) =====
-  const now = new Date();
-  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  for (const m of members) {
-    for (const gm of m.groupMembers) {
-      // Jasur: chala to'lagan (oylik 200k, atigi 80k bergan)
-      let payAmount = 200000;
-      let payStatus = 'paid';
-      if (m.username === 'jasur_t') { payAmount = 80000; payStatus = 'partial'; }
-      if (m.username === 'bekzod_e') { payStatus = 'unpaid'; }
-      await prisma.payment.upsert({
-        where: { userId_groupId_month: { userId: m.id, groupId: gm.groupId, month } },
-        update: {
-          amount: payAmount,
-          status: payStatus,
-          paidAt: payStatus === 'paid' ? new Date(now.getFullYear(), now.getMonth(), Math.max(1, now.getDate() - 5)) : null,
-        },
-        create: {
-          userId: m.id,
-          groupId: gm.groupId,
-          amount: payAmount,
-          month,
-          status: payStatus,
-          paidAt: payStatus === 'paid' ? new Date(now.getFullYear(), now.getMonth(), Math.max(1, now.getDate() - 5)) : null,
-          createdById: cashier.id,
-        },
-      });
+  const codeQuestions = [
+    { title: 'console.log(Hello)', category: 'js', code: 'console.log("Hello World");', answer: 'Hello World', explanation: 'console.log() ekranga matn chiqaradi' },
+    { title: 'JS summa', category: 'js', code: 'console.log(2 + 3 * 4);', answer: '14', explanation: "Ko'paytirish qo'shishdan oldin bajariladi: 3*4=12, 2+12=14" },
+    { title: 'JS string', category: 'js', code: 'console.log("5" + 2);', answer: '52', explanation: 'String + son -> string birlashadi' },
+    { title: 'Python print', category: 'python', code: 'print("Hello, Python!")', answer: 'Hello, Python!', explanation: 'print() funksiyasi ekranga chiqaradi' },
+    { title: 'Python math', category: 'python', code: 'print(10 // 3)', answer: '3', explanation: 'Butun bo\'lish amali: 10//3 = 3' },
+    { title: 'Python pow', category: 'python', code: 'print(2 ** 5)', answer: '32', explanation: 'Daraja amali: 2^5 = 32' },
+    { title: 'C# Hello', category: 'csharp', code: 'Console.WriteLine("Hi");', answer: 'Hi', explanation: 'WriteLine ekranga chiqaradi' },
+    { title: 'C# qoldiq', category: 'csharp', code: 'Console.WriteLine(7 % 3);', answer: '1', explanation: 'Qoldiq amali: 7 mod 3 = 1' },
+    { title: 'C# bool', category: 'csharp', code: 'Console.WriteLine(5 > 3 && 2 < 4);', answer: 'True', explanation: 'Ikkala shart ham to\'g\'ri -> True' },
+  ];
+  for (const question of codeQuestions) {
+    if (!(await prisma.codeQuestion.findFirst({ where: { title: question.title, category: question.category } }))) {
+      await prisma.codeQuestion.create({ data: { ...question, createdById: admin.id } });
     }
   }
 
   console.log('[seed] tayyor!');
-  console.log('  Admin:   +998901234567 / admin123');
-  console.log('  Kassir:  +998901234568 / cashier123');
-  console.log('  Teacher: +998901234569 / teacher123');
-  console.log('  O\'quvchi:+998900000001 / 1234');
+  console.log(`  Admin OAuth: ${adminEmail} (Google/GitHub allowlist) `);
+  console.log('  Player accounts are created only through Google or GitHub OAuth.');
 }
 
 main()

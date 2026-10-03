@@ -1,7 +1,7 @@
 {
   "name": "xolt-games-server",
   "version": "1.0.0",
-  "description": "XOLT Games - ta'lim platformasi backend (Node.js + Express + Prisma + Socket.IO)",
+  "description": "XOLT Games - public multiplayer platform API (Node.js + Express + Prisma + Socket.IO)",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
@@ -15,7 +15,6 @@
   "dependencies": {
     "@prisma/client": "^6.1.0",
     "axios": "^1.19.0",
-    "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -23,6 +22,7 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.13.0",
     "multer": "^1.4.5-lts.1",
     "redis": "^6.2.0",
     "socket.io": "^4.8.1",

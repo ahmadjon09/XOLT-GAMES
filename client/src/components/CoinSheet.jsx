@@ -1,5 +1,4 @@
-// Coin berish / olish — admin (va kassir) paneli uchun yagona oyna.
-// O'qituvchi faqat o'z guruhidagi o'quvchiga coin BERA oladi (server tekshiradi).
+// Reusable admin-only coin adjustment sheet for player accounts.
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Coins, Plus, Minus, History } from 'lucide-react';

@@ -13,7 +13,7 @@
  *
  * level:
  *   'ok'   — hammasi normal
- *   'warn' — yuk yuqori: og'ir o'yin (3D poyga) vaqtincha yopiq
+ *   'warn' — server yuklanishi yuqori
  *   'busy' — server band: yangi o'yin umuman ochilmaydi
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -24,7 +24,6 @@ import { useToast } from './ToastContext.jsx';
 const ServerStatusData = createContext({
   level: 'ok',
   busy: false,
-  heavyBlocked: false,
   reason: null,
   memoryPct: 0,
   refresh: () => {},
@@ -97,8 +96,6 @@ export function ServerStatusProvider({ children }) {
   const value = useMemo(() => ({
     level: status.level,
     busy: status.level === 'busy',
-    // Og'ir o'yinlar (3D poyga) 'warn' darajasida ham bloklanadi
-    heavyBlocked: status.level !== 'ok',
     reason: status.reason,
     memoryPct: status.memoryPct,
     refresh,

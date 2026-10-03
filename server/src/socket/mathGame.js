@@ -474,9 +474,9 @@ export function setupMathGame(io) {
   io.on('connection', (socket) => {
     const userId = socket.data.user.id;
 
-    // Faqat o'quvchilar o'ynay oladi
-    const isStudent = socket.data.user.kind === 'user';
-    if (!isStudent) return;
+    // Only public player accounts may join the game.
+    const isPlayer = socket.data.user.kind === 'user';
+    if (!isPlayer) return;
 
     // --- Aktiv o'yinni tiklash (refresh bo'lganda) ---
     socket.on('mathgame:get_active', async () => {

@@ -1,68 +1,188 @@
-// O'quvchi (student) route'lari - profil, shop, leaderboard, davomat, to'lovlar
+// Public player routes - profile, shop, and global leaderboard
 import { Router } from 'express';
 import { z } from 'zod';
 import { ok, ApiError, asyncH } from '../utils/response.js';
 import { requireAuth } from '../middleware/auth.js';
 import { prisma } from '../prisma/client.js';
 import { cacheGet, cacheSet } from '../cache/index.js';
-import { paymentView } from '../utils/payments.js';
+import { getOnlineActivity, getOnlineIds, getPresenceStatuses } from '../mongo/runtimeStore.js';
 
 const router = Router();
 
-// ============ PROFIL ============
+const publicPlayerSelect = {
+  id: true,
+  full_name: true,
+  username: true,
+  avatar: true,
+  coverImage: true,
+  score: true,
+  week_score: true,
+  month_score: true,
+  currentFrame: true,
+  currentEffect: true,
+  createdAt: true,
+};
 
-// GET /api/user/profile - to'liq profil (guruhlar, joriy frame/effect bilan)
+// GET /api/user/players/search?q=... — discover public player profiles without exposing contact data.
+router.get(
+  '/players/search',
+  requireAuth('user'),
+  asyncH(async (req, res) => {
+    const query = String(req.query.q || '').trim().replace(/^@/, '').slice(0, 50);
+    if (query.length < 2) return ok(res, []);
+
+    const users = await prisma.user.findMany({
+      where: {
+        id: { not: req.user.id },
+        OR: [
+          { username: { contains: query, mode: 'insensitive' } },
+          { full_name: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      select: publicPlayerSelect,
+      orderBy: { full_name: 'asc' },
+      take: 20,
+    });
+    if (!users.length) return ok(res, []);
+
+    const ids = users.map((user) => user.id);
+    const [relations, presence] = await Promise.all([
+      prisma.friendRequest.findMany({
+        where: {
+          OR: [
+            { requesterId: req.user.id, recipientId: { in: ids } },
+            { recipientId: req.user.id, requesterId: { in: ids } },
+          ],
+        },
+        select: { id: true, requesterId: true, recipientId: true, status: true },
+      }),
+      getPresenceStatuses(ids),
+    ]);
+    const relationByUser = new Map();
+    for (const relation of relations) {
+      const otherId = relation.requesterId === req.user.id ? relation.recipientId : relation.requesterId;
+      relationByUser.set(otherId, {
+        relation: relation.status === 'ACCEPTED'
+          ? 'friends'
+          : relation.requesterId === req.user.id ? 'outgoing' : 'incoming',
+        requestId: relation.id,
+      });
+    }
+
+    return ok(res, users.map((user) => ({
+      ...user,
+      online: presence.get(user.id)?.online || false,
+      currentOnlineSeconds: presence.get(user.id)?.currentOnlineSeconds || 0,
+      ...relationByUser.get(user.id),
+      relation: relationByUser.get(user.id)?.relation || 'none',
+    })));
+  }),
+);
+
+// GET /api/user/players/:id — public profile, presence and a 28-day online activity heatmap.
+router.get(
+  '/players/:id',
+  requireAuth('user'),
+  asyncH(async (req, res) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { ...publicPlayerSelect },
+    });
+    if (!user) throw new ApiError(404, 'NOT_FOUND', 'Foydalanuvchi topilmadi');
+
+    const [friendRelation, friendsCount, higherRankCount, activity] = await Promise.all([
+      req.user.id === user.id ? null : prisma.friendRequest.findFirst({
+        where: {
+          OR: [
+            { requesterId: req.user.id, recipientId: user.id },
+            { requesterId: user.id, recipientId: req.user.id },
+          ],
+        },
+        select: { id: true, requesterId: true, status: true },
+      }),
+      prisma.friendRequest.count({
+        where: {
+          status: 'ACCEPTED',
+          OR: [{ requesterId: user.id }, { recipientId: user.id }],
+        },
+      }),
+      prisma.user.count({ where: { score: { gt: user.score } } }),
+      getOnlineActivity(user.id, 28),
+    ]);
+
+    const relation = req.user.id === user.id
+      ? 'self'
+      : friendRelation?.status === 'ACCEPTED'
+        ? 'friends'
+        : friendRelation
+          ? friendRelation.requesterId === req.user.id ? 'outgoing' : 'incoming'
+          : 'none';
+
+    return ok(res, {
+      ...user,
+      rank: higherRankCount + 1,
+      friendsCount,
+      relation,
+      friendRequestId: friendRelation?.id || null,
+      online: activity.online,
+      onlineSince: activity.onlineSince,
+      lastSeenAt: activity.lastSeenAt,
+      currentOnlineSeconds: activity.currentOnlineSeconds,
+      activity: {
+        days: activity.days,
+        totalSeconds: activity.totalSeconds,
+        onlineTodaySeconds: activity.onlineTodaySeconds,
+      },
+    });
+  }),
+);
+
+// ============ MY PROFILE ============
 router.get(
   '/profile',
   requireAuth('user'),
   asyncH(async (req, res) => {
-    const u = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       include: {
         currentFrame: true,
         currentEffect: true,
-        groupMembers: { include: { group: { include: { teacher: true } } } },
-        frames: true,
-        effects: true,
+        frames: { select: { frameId: true } },
+        effects: { select: { effectId: true } },
       },
     });
-    const attendance = await prisma.attendance.groupBy({
-      by: ['status', 'groupId'],
-      where: { userId: req.user.id },
-      _count: { _all: true },
-    });
-
+    if (!user) throw new ApiError(404, 'NOT_FOUND', 'Foydalanuvchi topilmadi');
+    const activity = await getOnlineActivity(user.id, 28);
     return ok(res, {
-      id: u.id,
-      full_name: u.full_name,
-      avatar: u.avatar,
-      phone: u.phone,
-      username: u.username,
-      coin: u.coin,
-      score: u.score,
-      week_score: u.week_score,
-      month_score: u.month_score,
-      currentFrame: u.currentFrame,
-      currentEffect: u.currentEffect,
-      ownedFrameIds: u.frames.map((f) => f.frameId),
-      ownedEffectIds: u.effects.map((e) => e.effectId),
-      groups: u.groupMembers.map((gm) => ({
-        id: gm.group.id,
-        name: gm.group.name,
-        joinedAt: gm.joinedAt,
-        teacher: gm.group.teacher ? { id: gm.group.teacher.id, full_name: gm.group.teacher.full_name } : null,
-        attendance: {
-          present: attendance.filter((a) => a.status === 'present' && a.groupId === gm.group.id)[0]?._count._all || 0,
-          absent: attendance.filter((a) => a.status === 'absent' && a.groupId === gm.group.id)[0]?._count._all || 0,
-          late: attendance.filter((a) => a.status === 'late' && a.groupId === gm.group.id)[0]?._count._all || 0,
-        },
-      })),
-      createdAt: u.createdAt,
+      id: user.id,
+      full_name: user.full_name,
+      avatar: user.avatar,
+      coverImage: user.coverImage,
+      email: user.email,
+      username: user.username,
+      coin: user.coin,
+      score: user.score,
+      week_score: user.week_score,
+      month_score: user.month_score,
+      currentFrame: user.currentFrame,
+      currentEffect: user.currentEffect,
+      ownedFrameIds: user.frames.map((frame) => frame.frameId),
+      ownedEffectIds: user.effects.map((effect) => effect.effectId),
+      online: activity.online,
+      onlineSince: activity.onlineSince,
+      lastSeenAt: activity.lastSeenAt,
+      currentOnlineSeconds: activity.currentOnlineSeconds,
+      activity: {
+        days: activity.days,
+        totalSeconds: activity.totalSeconds,
+        onlineTodaySeconds: activity.onlineTodaySeconds,
+      },
+      createdAt: user.createdAt,
     });
-  })
+  }),
 );
 
-// PATCH /api/user/profile - username o'zgartirish
+// PATCH /api/user/profile — display name and username; media is managed by /api/upload.
 router.patch(
   '/profile',
   requireAuth('user'),
@@ -78,9 +198,9 @@ router.patch(
     if (data.full_name !== undefined) update.full_name = data.full_name;
 
     if (Object.keys(update).length === 0) return ok(res, { message: 'Hech narsa o\'zgarmadi' });
-    const u = await prisma.user.update({ where: { id: req.user.id }, data: update });
-    return ok(res, { message: 'Profil yangilandi', username: u.username, full_name: u.full_name });
-  })
+    const user = await prisma.user.update({ where: { id: req.user.id }, data: update });
+    return ok(res, { message: 'Profil yangilandi', username: user.username, full_name: user.full_name });
+  }),
 );
 
 // ============ SHOP ============
@@ -189,7 +309,7 @@ router.post(
 // ============ LEADERBOARD ============
 
 // GET /api/user/leaderboard?period=all|week|month&page=1&limit=20
-// Pagination + joriy foydalanuvchi + guruh nomi; Redis cache (30s)
+// Pagination + current player; Redis cache (30s)
 router.get(
   '/leaderboard',
   requireAuth('user'),
@@ -219,7 +339,6 @@ router.get(
           month_score: true,
           currentFrame: true,
           currentEffect: true,
-          groupMembers: { include: { group: { select: { id: true, name: true } } }, take: 1 },
         },
       }),
       prisma.user.findUnique({ where: { id: req.user.id } }),
@@ -234,7 +353,6 @@ router.get(
         username: u.username,
         currentFrame: u.currentFrame,
         currentEffect: u.currentEffect,
-        group: u.groupMembers[0]?.group || null,
         score: u.score,
         week_score: u.week_score,
         month_score: u.month_score,
@@ -270,168 +388,6 @@ router.get(
   })
 );
 
-// ============ GURUHLAR ============
-
-// GET /api/user/groups - mening guruhlarim (davomat va to'lov holati bilan)
-router.get(
-  '/groups',
-  requireAuth('user'),
-  asyncH(async (req, res) => {
-    const memberships = await prisma.groupMember.findMany({
-      where: { userId: req.user.id },
-      include: { group: { include: { teacher: true } } },
-      orderBy: { joinedAt: 'desc' },
-    });
-
-    const groupIds = memberships.map((m) => m.groupId);
-    const [attendance, payments] = await Promise.all([
-      prisma.attendance.findMany({ where: { userId: req.user.id, groupId: { in: groupIds } }, orderBy: { date: 'desc' } }),
-      prisma.payment.findMany({ where: { userId: req.user.id, groupId: { in: groupIds } }, orderBy: { month: 'desc' } }),
-    ]);
-
-    return ok(
-      res,
-      memberships.map((m) => {
-        const groupAttendance = attendance.filter((a) => a.groupId === m.groupId);
-        const groupPayments = payments.filter((p) => p.groupId === m.groupId);
-        return {
-          id: m.group.id,
-          name: m.group.name,
-          joinedAt: m.joinedAt,
-          monthlyFee: m.group.monthlyFee,
-          teacher: m.group.teacher ? { id: m.group.teacher.id, full_name: m.group.teacher.full_name } : null,
-          attendance: {
-            present: groupAttendance.filter((a) => a.status === 'present').length,
-            absent: groupAttendance.filter((a) => a.status === 'absent').length,
-            late: groupAttendance.filter((a) => a.status === 'late').length,
-            total: groupAttendance.length,
-          },
-          payments: groupPayments.map((p) => paymentView(p, m.group)),
-        };
-      })
-    );
-  })
-);
-
-// GET /api/user/group-ranking?period=all|week|month - o'z guruhlarimdagi reytingim
-// O'quvchi qaysi guruhda qanday o'rinda turganini ko'radi
-router.get(
-  '/group-ranking',
-  requireAuth('user'),
-  asyncH(async (req, res) => {
-    const period = ['all', 'week', 'month'].includes(req.query.period) ? req.query.period : 'all';
-    const field = period === 'week' ? 'week_score' : period === 'month' ? 'month_score' : 'score';
-
-    const memberships = await prisma.groupMember.findMany({
-      where: { userId: req.user.id },
-      include: { group: { include: { teacher: { select: { full_name: true } } } } },
-      orderBy: { joinedAt: 'asc' },
-    });
-
-    const result = [];
-    for (const m of memberships) {
-      const members = await prisma.groupMember.findMany({
-        where: { groupId: m.groupId },
-        include: { user: { include: { currentFrame: true, currentEffect: true } } },
-      });
-      // Ballar bo'yicha kamayish tartibida
-      const sorted = [...members].sort((a, b) => (b.user[field] ?? 0) - (a.user[field] ?? 0));
-      const rows = sorted.map((mem, idx) => ({
-        id: mem.user.id,
-        full_name: mem.user.full_name,
-        avatar: mem.user.avatar,
-        username: mem.user.username,
-        currentFrame: mem.user.currentFrame,
-        currentEffect: mem.user.currentEffect,
-        score: mem.user[field] ?? 0,
-        rank: idx + 1,
-        isMe: mem.userId === req.user.id,
-      }));
-      result.push({
-        groupId: m.group.id,
-        groupName: m.group.name,
-        teacher: m.group.teacher?.full_name || null,
-        membersCount: rows.length,
-        myRank: rows.find((r) => r.isMe)?.rank ?? null,
-        myScore: rows.find((r) => r.isMe)?.score ?? 0,
-        rows,
-      });
-    }
-
-    return ok(res, result);
-  })
-);
-
-// GET /api/user/attendance?groupId=xxx - guruh bo'yicha davomat tarixi
-router.get(
-  '/attendance',
-  requireAuth('user'),
-  asyncH(async (req, res) => {
-    const groupId = String(req.query.groupId || '');
-    if (!groupId) throw new ApiError(400, 'VALIDATION_ERROR', 'groupId kerak');
-
-    const member = await prisma.groupMember.findUnique({
-      where: { userId_groupId: { userId: req.user.id, groupId } },
-    });
-    if (!member) throw new ApiError(403, 'NOT_IN_GROUP', 'Siz bu guruhga a\'zo emassiz');
-
-    const records = await prisma.attendance.findMany({
-      where: { userId: req.user.id, groupId },
-      orderBy: { date: 'desc' },
-    });
-
-    const group = await prisma.group.findUnique({ where: { id: groupId }, include: { teacher: true } });
-
-    // Oxirgi 30 kun uchun holat matritsasi (sana bo'yicha)
-    const days = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const rec = records.find((r) => {
-        const rd = r.date;
-        const rkey = `${rd.getFullYear()}-${String(rd.getMonth() + 1).padStart(2, '0')}-${String(rd.getDate()).padStart(2, '0')}`;
-        return rkey === key;
-      });
-      days.push({ date: key, status: rec ? rec.status : null });
-    }
-
-    return ok(res, {
-      group: group ? { id: group.id, name: group.name, teacher: group.teacher?.full_name || null } : null,
-      summary: {
-        present: records.filter((r) => r.status === 'present').length,
-        absent: records.filter((r) => r.status === 'absent').length,
-        late: records.filter((r) => r.status === 'late').length,
-        total: records.length,
-      },
-      days,
-      records: records.slice(0, 60),
-    });
-  })
-);
-
-// GET /api/user/payments - to'lov holatim (bir martalik chegirma bilan)
-router.get(
-  '/payments',
-  requireAuth('user'),
-  asyncH(async (req, res) => {
-    const payments = await prisma.payment.findMany({
-      where: { userId: req.user.id },
-      include: { group: true },
-      orderBy: [{ month: 'desc' }, { createdAt: 'desc' }],
-    });
-
-    return ok(
-      res,
-      payments.map((p) => {
-        const view = paymentView(p, p.group);
-        return {
-          ...view,
-          group: { id: p.group.id, name: p.group.name },
-        };
-      })
-    );
-  })
-);
+// Group, attendance, and payment endpoints were retired from the public player API.
 
 export default router;

@@ -6,45 +6,17 @@
  * tags:
  *   - name: Auth
  *     description: Kirish va profil
- *   - name: Oquvchi
- *     description: O'quvchi paneli (shop, leaderboard, davomat, to'lovlar)
+ *   - name: Player
+ *     description: Public player profiles, friends, shop, games, and leaderboard
  *   - name: Xodim
- *     description: Teacher / Cashier / Admin paneli
+ *     description: Admin panel
  *   - name: Admin
- *     description: Admin boshqaruvi (statistika, xodimlar, shop)
+ *     description: Admin boshqaruvi (foydalanuvchilar, o'yinlar, shop)
  *   - name: Upload
  *     description: Fayl yuklash
  */
 
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     tags: [Auth]
- *     summary: Telefon va parol bilan kirish (o'quvchi yoki xodim)
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [phone, password]
- *             properties:
- *               phone: { type: string, example: "+998901234567" }
- *               password: { type: string, example: "1234" }
- *     responses:
- *       200:
- *         description: Muvaffaqiyatli kirish
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token: { type: string }
- *                 profile: { type: object }
- *       401:
- *         description: Noto'g'ri telefon yoki parol
- */
+
 
 /**
  * @swagger
@@ -58,32 +30,14 @@
  *         description: Profil ma'lumotlari
  */
 
-/**
- * @swagger
- * /api/auth/change-password:
- *   post:
- *     tags: [Auth]
- *     summary: Parolni o'zgartirish
- *     security: [{ bearerAuth: [] }]
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               oldPassword: { type: string }
- *               newPassword: { type: string, minLength: 4 }
- *     responses:
- *       200:
- *         description: Parol o'zgartirildi
- */
+
 
 /**
  * @swagger
  * /api/user/profile:
  *   get:
- *     tags: [Oquvchi]
- *     summary: To'liq profil (guruhlar, joriy frame/effect)
+ *     tags: [Player]
+ *     summary: Shaxsiy profil, score va tanlangan frame/effectlar
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200:
@@ -94,7 +48,7 @@
  * @swagger
  * /api/user/shop:
  *   get:
- *     tags: [Oquvchi]
+ *     tags: [Player]
  *     summary: Do'kon katalogi (frame va effectlar)
  *     security: [{ bearerAuth: [] }]
  *     responses:
@@ -106,7 +60,7 @@
  * @swagger
  * /api/user/shop/buy:
  *   post:
- *     tags: [Oquvchi]
+ *     tags: [Player]
  *     summary: Buyum sotib olish (coin bilan)
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -129,7 +83,7 @@
  * @swagger
  * /api/user/shop/equip:
  *   post:
- *     tags: [Oquvchi]
+ *     tags: [Player]
  *     summary: Buyumni kiyish yoki yechish (none bilan yechiladi)
  *     security: [{ bearerAuth: [] }]
  *     responses:
@@ -141,7 +95,7 @@
  * @swagger
  * /api/user/leaderboard:
  *   get:
- *     tags: [Oquvchi]
+ *     tags: [Player]
  *     summary: Reyting jadvali (all | week | month)
  *     security: [{ bearerAuth: [] }]
  *     parameters:
@@ -155,308 +109,14 @@
 
 /**
  * @swagger
- * /api/user/groups:
- *   get:
- *     tags: [Oquvchi]
- *     summary: Mening guruhlarim (davomat va to'lov holati bilan)
- *     security: [{ bearerAuth: [] }]
- *     responses:
- *       200:
- *         description: Guruhlar ro'yxati
- */
-
-/**
- * @swagger
- * /api/user/attendance:
- *   get:
- *     tags: [Oquvchi]
- *     summary: Guruh bo'yicha davomat tarixi (oxirgi 30 kun)
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: query
- *         name: groupId
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Davomat kundaligi + xulosa
- */
-
-/**
- * @swagger
- * /api/user/payments:
- *   get:
- *     tags: [Oquvchi]
- *     summary: To'lov holatim
- *     security: [{ bearerAuth: [] }]
- *     responses:
- *       200:
- *         description: To'lovlar ro'yxati
- */
-
-/**
- * @swagger
- * /api/staff/groups:
- *   get:
- *     tags: [Xodim]
- *     summary: Guruhlar (teacher o'zini, admin/cashier hammasini ko'radi)
- *     security: [{ bearerAuth: [] }]
- *     responses:
- *       200:
- *         description: Guruhlar ro'yxati
- *   post:
- *     tags: [Xodim]
- *     summary: Guruh yaratish (teacher/admin)
- *     security: [{ bearerAuth: [] }]
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name]
- *             properties:
- *               name: { type: string, example: "Matematika 5-sinf A" }
- *               rank: { type: integer }
- *     responses:
- *       200:
- *         description: Yaratildi
- */
-
-/**
- * @swagger
- * /api/staff/groups/{id}:
- *   get:
- *     tags: [Xodim]
- *     summary: Guruh a'zolari (profil buyumlari, davomat va to'lov qisqacha)
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Guruh ma'lumotlari
- *   delete:
- *     tags: [Xodim]
- *     summary: Guruhni o'chirish
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: O'chirildi
- */
-
-/**
- * @swagger
- * /api/staff/groups/{id}/members:
- *   post:
- *     tags: [Xodim]
- *     summary: O'quvchini guruhga qo'shish (telefon orqali yoki yangi yaratib)
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               phone: { type: string, example: "+998901234567" }
- *               full_name: { type: string }
- *               password: { type: string }
- *     responses:
- *       200:
- *         description: Qo'shildi
- */
-
-/**
- * @swagger
- * /api/staff/attendance:
- *   get:
- *     tags: [Xodim]
- *     summary: Ma'lum kundagi davomat holati
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: query
- *         name: groupId
- *         required: true
- *         schema: { type: string }
- *       - in: query
- *         name: date
- *         required: true
- *         schema: { type: string, format: date }
- *     responses:
- *       200:
- *         description: O'quvchilar ro'yxati holati bilan
- */
-
-/**
- * @swagger
- * /api/staff/attendance/save:
- *   post:
- *     tags: [Xodim]
- *     summary: Davomatni saqlash (bir kunda bir nechta o'quvchi)
- *     security: [{ bearerAuth: [] }]
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [groupId, date, items]
- *             properties:
- *               groupId: { type: string }
- *               date: { type: string, format: date }
- *               items:
- *                 type: array
- *                 items:
- *                   type: object
- *                   required: [userId, status]
- *                   properties:
- *                     userId: { type: string }
- *                     status: { type: string, enum: [present, absent, late] }
- *                     note: { type: string }
- *     responses:
- *       200:
- *         description: Saqlandi
- */
-
-/**
- * @swagger
- * /api/staff/attendance/summary:
- *   get:
- *     tags: [Xodim]
- *     summary: Oy bo'yicha davomat statistikasi
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: query
- *         name: groupId
- *         required: true
- *         schema: { type: string }
- *       - in: query
- *         name: month
- *         schema: { type: string, example: "2026-08" }
- *     responses:
- *       200:
- *         description: Har bir o'quvchi uchun hisob
- */
-
-/**
- * @swagger
- * /api/staff/quizzes:
- *   get:
- *     tags: [Xodim]
- *     summary: Viktorinalar ro'yxati
- *     security: [{ bearerAuth: [] }]
- *     responses:
- *       200:
- *         description: Viktorinalar
- *   post:
- *     tags: [Xodim]
- *     summary: Viktorina yaratish (savollar bilan)
- *     security: [{ bearerAuth: [] }]
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name, questions]
- *             properties:
- *               name: { type: string }
- *               keywords: { type: array, items: { type: string } }
- *               questions:
- *                 type: array
- *                 items:
- *                   type: object
- *                   required: [text, variants, answer]
- *                   properties:
- *                     text: { type: string }
- *                     variants: { type: array, items: { type: string } }
- *                     answer: { type: string }
- *                     image: { type: string }
- *                     timeLimit: { type: integer, example: 20 }
- *                     points: { type: integer, example: 1000 }
- *     responses:
- *       200:
- *         description: Yaratildi
- */
-
-/**
- * @swagger
- * /api/staff/payments:
- *   get:
- *     tags: [Xodim]
- *     summary: Guruh bo'yicha to'lovlar (cashier/admin)
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: query
- *         name: groupId
- *         required: true
- *         schema: { type: string }
- *       - in: query
- *         name: month
- *         schema: { type: string, example: "2026-08" }
- *     responses:
- *       200:
- *         description: O'quvchilar va ularning to'lovlari
- *   post:
- *     tags: [Xodim]
- *     summary: To'lov qo'shish yoki yangilash (upsert)
- *     security: [{ bearerAuth: [] }]
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [userId, groupId, amount, month]
- *             properties:
- *               userId: { type: string }
- *               groupId: { type: string }
- *               amount: { type: number }
- *               month: { type: string, example: "2026-08" }
- *               status: { type: string, enum: [paid, unpaid] }
- *               note: { type: string }
- *     responses:
- *       200:
- *         description: Saqlandi
- */
-
-/**
- * @swagger
- * /api/staff/payments/overview:
- *   get:
- *     tags: [Xodim]
- *     summary: Oy bo'yicha guruhlar umumiy to'lov holati
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: query
- *         name: month
- *         schema: { type: string, example: "2026-08" }
- *     responses:
- *       200:
- *         description: Guruhlar bo'yicha xulosa
- */
-
-/**
- * @swagger
  * /api/staff/users:
  *   get:
  *     tags: [Admin]
- *     summary: O'quvchilar ro'yxati (qidiruv va guruh filtri bilan)
+ *     summary: OAuth orqali ro'yxatdan o'tgan foydalanuvchilar ro'yxati
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: query
  *         name: search
- *         schema: { type: string }
- *       - in: query
- *         name: groupId
  *         schema: { type: string }
  *       - in: query
  *         name: page
@@ -466,26 +126,20 @@
  *         schema: { type: integer }
  *     responses:
  *       200:
- *         description: O'quvchilar
+ *         description: Players
  *   post:
  *     tags: [Admin]
- *     summary: O'quvchi yaratish (admin/cashier/teacher)
+ *     summary: Yopilgan — foydalanuvchilar OAuth orqali ro'yxatdan o'tadi
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [full_name, phone, password]
- *             properties:
- *               full_name: { type: string }
- *               phone: { type: string }
- *               password: { type: string, minLength: 4 }
- *               username: { type: string }
- *               groupIds: { type: array, items: { type: string } }
+ *             description: Player accounts are created with Google or GitHub OAuth; this endpoint returns 410.
  *     responses:
- *       200:
- *         description: Yaratildi
+ *       410:
+ *         description: Public accounts must use OAuth
  */
 
 /**
@@ -493,7 +147,7 @@
  * /api/staff/users/{id}:
  *   get:
  *     tags: [Admin]
- *     summary: Bitta o'quvchining to'liq ma'lumotlari (profil, guruhlar, davomat, to'lovlar, o'yinlar, reyting)
+ *     summary: Player profile, score, rank, and recent game wins
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
@@ -503,11 +157,9 @@
  *     responses:
  *       200:
  *         description: To'liq ma'lumotlar
- *       403:
- *         description: Teacher o'z guruhlaridan tashqari o'quvchini ko'ra olmaydi
  *   patch:
  *     tags: [Admin]
- *     summary: O'quvchini yangilash (guruhlar almashadi)
+ *     summary: Player display name and username
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
@@ -522,14 +174,12 @@
  *             properties:
  *               full_name: { type: string }
  *               username: { type: string }
- *               password: { type: string }
- *               groupIds: { type: array, items: { type: string } }
  *     responses:
  *       200:
  *         description: Yangilandi
  *   delete:
  *     tags: [Admin]
- *     summary: O'quvchini o'chirish (faqat admin)
+ *     summary: Player deletion (admin only)
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
@@ -541,35 +191,7 @@
  *         description: O'chirildi
  */
 
-/**
- * @swagger
- * /api/staff/staff:
- *   get:
- *     tags: [Admin]
- *     summary: Xodimlar ro'yxati (faqat admin)
- *     security: [{ bearerAuth: [] }]
- *     responses:
- *       200:
- *         description: Xodimlar
- *   post:
- *     tags: [Admin]
- *     summary: Xodim yaratish (faqat admin)
- *     security: [{ bearerAuth: [] }]
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [full_name, phone, password, role]
- *             properties:
- *               full_name: { type: string }
- *               phone: { type: string }
- *               password: { type: string }
- *               role: { type: string, enum: [TEACHER, CASHIER, ADMIN] }
- *     responses:
- *       200:
- *         description: Yaratildi
- */
+
 
 /**
  * @swagger
@@ -596,7 +218,7 @@
  *         schema: { type: integer, default: 30 }
  *     responses:
  *       200:
- *         description: Ro'yxatga olish, o'yinlar, to'lovlar, top o'yinchilar
+ *         description: Registrations, games, and top players
  */
 
 /**
@@ -659,7 +281,7 @@
  *         description: Savollar
  *   post:
  *     tags: [Admin]
- *     summary: Coding savol yaratish (teacher/admin)
+ *     summary: Coding savol yaratish (faqat admin)
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       content:
@@ -717,7 +339,7 @@ export const swaggerDocs = {};
  * /api/staff/typing-texts:
  *   get:
  *     tags: [Xodim]
- *     summary: Type Racing matnlari (teacher o'zini, admin hammasini)
+ *     summary: Type Racing matnlari (faqat admin)
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: query
@@ -727,7 +349,7 @@ export const swaggerDocs = {};
  *       200: { description: Matnlar }
  *   post:
  *     tags: [Xodim]
- *     summary: Matn qo'shish (teacher/admin)
+ *     summary: Matn qo'shish (faqat admin)
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       content:
@@ -759,7 +381,7 @@ export const swaggerDocs = {};
  *       200: { description: Savollar }
  *   post:
  *     tags: [Xodim]
- *     summary: Savol qo'shish (teacher/admin)
+ *     summary: Savol qo'shish (faqat admin)
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       content:
@@ -783,7 +405,7 @@ export const swaggerDocs = {};
  * @swagger
  * /api/user/typing/record:
  *   post:
- *     tags: [Oquvchi]
+ *     tags: [Player]
  *     summary: Solo yozish natijasi (coin/ball berilmaydi, WPM reytingga yoziladi)
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -800,7 +422,7 @@ export const swaggerDocs = {};
  *       200: { description: Saqlandi }
  * /api/user/typing/leaderboard:
  *   get:
- *     tags: [Oquvchi]
+ *     tags: [Player]
  *     summary: Eng tez yozuvchilar (WPM)
  *     security: [{ bearerAuth: [] }]
  *     responses:
@@ -811,7 +433,7 @@ export const swaggerDocs = {};
  * @swagger
  * /api/user/code/practice:
  *   get:
- *     tags: [Oquvchi]
+ *     tags: [Player]
  *     summary: Random code savol (javobsiz, mashq uchun)
  *     security: [{ bearerAuth: [] }]
  *     parameters:
@@ -822,7 +444,7 @@ export const swaggerDocs = {};
  *       200: { description: Savol }
  * /api/user/code/check:
  *   post:
- *     tags: [Oquvchi]
+ *     tags: [Player]
  *     summary: Javobni tekshirish (to'g'ri bo'lsa +3 coin)
  *     security: [{ bearerAuth: [] }]
  *     requestBody:

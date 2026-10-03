@@ -1,459 +1,171 @@
-// Admin route'lari - o'quvchilar, xodimlar, shop buyumlari, statistika, coding savollar
+// Admin-only management routes for players, games, shop, stats, and game content
 import { Router } from 'express';
 import { z } from 'zod';
 import { ok, ApiError, asyncH } from '../utils/response.js';
 import { requireAuth } from '../middleware/auth.js';
-import { hashPassword } from '../utils/security.js';
-import { normalizePhone } from '../utils/helpers.js';
-import { paymentView } from '../utils/payments.js';
 import { prisma } from '../prisma/client.js';
 import { cacheGet, cacheSet, cacheDelPrefix } from '../cache/index.js';
+import { getGameCatalog, invalidateGameCatalog } from '../services/gameCatalog.js';
 
 const router = Router();
 router.use(requireAuth('staff'));
 
-// ============ O'QUVCHILAR (admin va cashier yaratadi) ============
+// ============ PUBLIC PLAYERS ============
 
-// GET /api/staff/users?search&groupId&page&limit
-router.get(
-  '/users',
-  asyncH(async (req, res) => {
-    const search = String(req.query.search || '');
-    const groupId = String(req.query.groupId || '');
-    const page = Math.max(1, Number(req.query.page || 1));
-    const limit = Math.min(50, Math.max(1, Number(req.query.limit || 20)));
+// GET /api/staff/users?search&page&limit
+router.get('/users', asyncH(async (req, res) => {
+  if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+  const search = String(req.query.search || '').trim();
+  const page = Math.max(1, Number(req.query.page || 1));
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit || 20)));
+  const where = search ? {
+    OR: [
+      { full_name: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
+      { username: { contains: search, mode: 'insensitive' } },
+      { phone: { contains: search } },
+    ],
+  } : {};
 
-    const where = {
-      ...(search
-        ? { OR: [{ full_name: { contains: search, mode: 'insensitive' } }, { phone: { contains: search } }, { username: { contains: search, mode: 'insensitive' } }] }
-        : {}),
-      ...(groupId ? { groupMembers: { some: { groupId } } } : {}),
-    };
-
-    const [users, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        include: {
-          currentFrame: true,
-          currentEffect: true,
-          groupMembers: { include: { group: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.user.count({ where }),
-    ]);
-
-    return ok(
-      res,
-      users.map((u) => ({
-        id: u.id,
-        full_name: u.full_name,
-        avatar: u.avatar,
-        phone: u.phone,
-        username: u.username,
-        coin: u.coin,
-        score: u.score,
-        currentFrame: u.currentFrame,
-        currentEffect: u.currentEffect,
-        groups: u.groupMembers.map((gm) => ({ id: gm.group.id, name: gm.group.name })),
-        createdAt: u.createdAt,
-      })),
-      { total, page, limit }
-    );
-  })
-);
-
-// POST /api/staff/users - o'quvchi yaratish (admin yoki cashier)
-router.post(
-  '/users',
-  asyncH(async (req, res) => {
-    if (!['ADMIN', 'CASHIER', 'TEACHER'].includes(req.user.role)) throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
-
-    const schema = z.object({
-      full_name: z.string().min(3, 'Ism kamida 3 belgi').max(60),
-      phone: z.string().min(7, 'Telefon kiriting'),
-      password: z.string().min(4, 'Parol kamida 4 belgi').max(50),
-      username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional().nullable(),
-      groupIds: z.array(z.string()).max(10).optional(),
-    });
-    const data = schema.parse(req.body);
-
-    const phone = normalizePhone(data.phone);
-    if (!phone) throw new ApiError(400, 'INVALID_PHONE', 'Telefon noto\'g\'ri');
-
-    const exists = await prisma.user.findUnique({ where: { phone } });
-    if (exists) throw new ApiError(409, 'PHONE_EXISTS', 'Bu telefon allaqachon ro\'yxatdan o\'tgan');
-
-    // O'qituvchi faqat o'z guruhlariga qo'sha oladi
-    let groupIds = data.groupIds || [];
-    if (req.user.role === 'TEACHER') {
-      const mine = await prisma.group.findMany({ where: { teacherId: req.user.id }, select: { id: true } });
-      const mineIds = new Set(mine.map((g) => g.id));
-      groupIds = groupIds.filter((id) => mineIds.has(id));
-    }
-
-    const user = await prisma.user.create({
-      data: {
-        full_name: data.full_name,
-        phone,
-        password: await hashPassword(data.password),
-        username: data.username || null,
-        createdById: req.user.id,
-        groupMembers: { create: groupIds.map((groupId) => ({ groupId })) },
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      select: {
+        id: true, full_name: true, avatar: true, email: true, phone: true, username: true,
+        coin: true, score: true, currentFrame: true, currentEffect: true, createdAt: true,
       },
-      include: { groupMembers: { include: { group: true } } },
-    });
-
-    return ok(res, { id: user.id, full_name: user.full_name, phone: user.phone, groups: user.groupMembers.map((gm) => gm.group.name) }, { message: 'O\'quvchi yaratildi' });
-  })
-);
-
-// GET /api/staff/users/:id - bitta o'quvchining to'liq ma'lumotlari
-// Profil, guruhlar, davomat tarixi, to'lov tarixi, yutilgan o'yinlar, reyting o'rni
-router.get(
-  '/users/:id',
-  asyncH(async (req, res) => {
-    const user = await prisma.user.findUnique({
-      where: { id: req.params.id },
-      include: {
-        currentFrame: true,
-        currentEffect: true,
-        groupMembers: { include: { group: { include: { teacher: true } } } },
-      },
-    });
-    if (!user) throw new ApiError(404, 'NOT_FOUND', 'O\'quvchi topilmadi');
-
-    // Teacher faqat o'z guruhlaridagi o'quvchilarni ko'ra oladi
-    if (req.user.role === 'TEACHER') {
-      const myGroups = await prisma.group.findMany({ where: { teacherId: req.user.id }, select: { id: true } });
-      const myIds = new Set(myGroups.map((g) => g.id));
-      if (!user.groupMembers.some((gm) => myIds.has(gm.groupId))) {
-        throw new ApiError(403, 'AUTH_FORBIDDEN', 'Bu o\'quvchi sizning guruhlaringizda emas');
-      }
-    }
-
-    const groupIds = user.groupMembers.map((gm) => gm.groupId);
-    const [attendance, payments, games, rank] = await Promise.all([
-      prisma.attendance.findMany({ where: { userId: user.id, groupId: { in: groupIds } }, orderBy: { date: 'desc' }, take: 60 }),
-      prisma.payment.findMany({ where: { userId: user.id, groupId: { in: groupIds } }, orderBy: [{ month: 'desc' }] }),
-      prisma.gameRecord.findMany({ where: { winnerId: user.id }, orderBy: { createdAt: 'desc' }, take: 20 }),
-      prisma.user.count({ where: { score: { gt: user.score } } }),
-    ]);
-
-    const groupName = new Map(user.groupMembers.map((gm) => [gm.groupId, gm.group.name]));
-
-    return ok(res, {
-      id: user.id,
-      full_name: user.full_name,
-      avatar: user.avatar,
-      phone: user.phone,
-      username: user.username,
-      coin: user.coin,
-      score: user.score,
-      week_score: user.week_score,
-      month_score: user.month_score,
-      rank: rank + 1,
-      currentFrame: user.currentFrame,
-      currentEffect: user.currentEffect,
-      createdAt: user.createdAt,
-      groups: user.groupMembers.map((gm) => {
-        const gAtt = attendance.filter((a) => a.groupId === gm.groupId);
-        const gPay = payments.filter((p) => p.groupId === gm.groupId);
-        return {
-          id: gm.group.id,
-          name: gm.group.name,
-          teacher: gm.group.teacher ? gm.group.teacher.full_name : null,
-          joinedAt: gm.joinedAt,
-          attendance: {
-            present: gAtt.filter((a) => a.status === 'present').length,
-            absent: gAtt.filter((a) => a.status === 'absent').length,
-            late: gAtt.filter((a) => a.status === 'late').length,
-            marked: gAtt.length,
-          },
-          payments: gPay.map((p) => ({ id: p.id, month: p.month, amount: p.amount, status: p.status, paidAt: p.paidAt })),
-        };
-      }),
-      attendance: attendance.slice(0, 40).map((a) => ({
-        id: a.id,
-        date: a.date,
-        status: a.status,
-        note: a.note,
-        groupName: groupName.get(a.groupId) || null,
-      })),
-      payments: payments.map((p) => ({
-        id: p.id,
-        month: p.month,
-        amount: p.amount,
-        status: p.status,
-        paidAt: p.paidAt,
-        groupName: groupName.get(p.groupId) || null,
-      })),
-      games: games.map((g) => ({
-        id: g.id,
-        type: g.type,
-        roomCode: g.roomCode,
-        totalBets: g.totalBets,
-        commission: g.commission,
-        totalPlayers: g.totalPlayers,
-        createdAt: g.createdAt,
-      })),
-    });
-  })
-);
-
-// ============ COIN BERISH / OLISH ============
-// GET /api/staff/users/:id/coins - oxirgi coin operatsiyalari
-router.get(
-  '/users/:id/coins',
-  asyncH(async (req, res) => {
-    if (!['ADMIN', 'CASHIER', 'TEACHER'].includes(req.user.role)) throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
-
-    const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, coin: true } });
-    if (!user) throw new ApiError(404, 'NOT_FOUND', "O'quvchi topilmadi");
-
-    const rows = await prisma.coinTransaction.findMany({
-      where: { userId: user.id },
-      include: { staff: { select: { id: true, full_name: true, role: true } } },
       orderBy: { createdAt: 'desc' },
-      take: 30,
-    });
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.user.count({ where }),
+  ]);
+  return ok(res, users, { total, page, limit });
+}));
 
-    return ok(
-      res,
-      rows.map((r) => ({
-        id: r.id,
-        amount: r.amount,
-        balance: r.balance,
-        note: r.note,
-        staffName: r.staff?.full_name || null,
-        staffRole: r.staff?.role || null,
-        createdAt: r.createdAt,
-      })),
-      { coin: user.coin }
-    );
-  })
-);
+// Player accounts must be created through Google/GitHub OAuth, not by staff with a phone/password.
+router.post('/users', asyncH(async (_req, _res) => {
+  throw new ApiError(410, 'OAUTH_REQUIRED', 'Foydalanuvchi Google yoki GitHub orqali ro\'yxatdan o\'tishi kerak');
+}));
 
-// POST /api/staff/users/:id/coins - coin qo'shish (+) yoki olish (-)
-// body: { amount: number (0 dan farqli), note?: string }
-// Ruxsat: ADMIN va CASHIER — istalgan yo'nalishda;
-//         TEACHER — faqat o'z guruhidagi o'quvchiga va faqat qo'shish (+).
-router.post(
-  '/users/:id/coins',
-  asyncH(async (req, res) => {
-    if (!['ADMIN', 'CASHIER', 'TEACHER'].includes(req.user.role)) throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+router.get('/users/:id', asyncH(async (req, res) => {
+  if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+  const user = await prisma.user.findUnique({
+    where: { id: req.params.id },
+    include: { currentFrame: true, currentEffect: true },
+  });
+  if (!user) throw new ApiError(404, 'NOT_FOUND', 'Foydalanuvchi topilmadi');
+  const [games, rank] = await Promise.all([
+    prisma.gameRecord.findMany({ where: { winnerId: user.id }, orderBy: { createdAt: 'desc' }, take: 20 }),
+    prisma.user.count({ where: { score: { gt: user.score } } }),
+  ]);
+  return ok(res, {
+    id: user.id,
+    full_name: user.full_name,
+    avatar: user.avatar,
+    email: user.email,
+    phone: user.phone,
+    username: user.username,
+    coin: user.coin,
+    score: user.score,
+    week_score: user.week_score,
+    month_score: user.month_score,
+    rank: rank + 1,
+    currentFrame: user.currentFrame,
+    currentEffect: user.currentEffect,
+    createdAt: user.createdAt,
+    games: games.map((game) => ({
+      id: game.id,
+      type: game.type,
+      roomCode: game.roomCode,
+      totalBets: game.totalBets,
+      commission: game.commission,
+      totalPlayers: game.totalPlayers,
+      createdAt: game.createdAt,
+    })),
+  });
+}));
 
-    const schema = z.object({
-      amount: z.number().int('Coin butun son bo\'lishi kerak').min(-100000).max(100000),
-      note: z.string().max(200).optional().nullable(),
-    });
-    const data = schema.parse(req.body);
-    if (!data.amount) throw new ApiError(400, 'VALIDATION_ERROR', "Miqdor 0 dan farqli bo'lishi kerak");
+// Coin adjustment is an admin-only moderation tool.
+router.get('/users/:id/coins', asyncH(async (req, res) => {
+  if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+  const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, coin: true } });
+  if (!user) throw new ApiError(404, 'NOT_FOUND', 'Foydalanuvchi topilmadi');
+  const rows = await prisma.coinTransaction.findMany({
+    where: { userId: user.id },
+    include: { staff: { select: { id: true, full_name: true, role: true } } },
+    orderBy: { createdAt: 'desc' },
+    take: 30,
+  });
+  return ok(res, rows.map((row) => ({
+    id: row.id,
+    amount: row.amount,
+    balance: row.balance,
+    note: row.note,
+    staffName: row.staff?.full_name || null,
+    staffRole: row.staff?.role || null,
+    createdAt: row.createdAt,
+  })), { coin: user.coin });
+}));
 
-    const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, coin: true, full_name: true } });
-    if (!user) throw new ApiError(404, 'NOT_FOUND', "O'quvchi topilmadi");
+router.post('/users/:id/coins', asyncH(async (req, res) => {
+  if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+  const data = z.object({
+    amount: z.number().int('Coin butun son bo\'lishi kerak').min(-100000).max(100000),
+    note: z.string().max(200).optional().nullable(),
+  }).parse(req.body);
+  if (!data.amount) throw new ApiError(400, 'VALIDATION_ERROR', 'Miqdor 0 dan farqli bo\'lishi kerak');
+  const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, coin: true } });
+  if (!user) throw new ApiError(404, 'NOT_FOUND', 'Foydalanuvchi topilmadi');
+  const after = Math.max(0, user.coin + data.amount);
+  const delta = after - user.coin;
+  const [transaction] = await prisma.$transaction([
+    prisma.coinTransaction.create({
+      data: { userId: user.id, amount: delta, balance: after, note: data.note || null, staffId: req.user.id },
+    }),
+    prisma.user.update({ where: { id: user.id }, data: { coin: after } }),
+  ]);
+  await cacheDelPrefix('xolt:stats');
+  return ok(res, { id: transaction.id, coin: after, delta }, { message: delta >= 0 ? 'Coin qo\'shildi' : 'Coin olindi' });
+}));
 
-    // O'qituvchi faqat o'z guruhidagi o'quvchiga coin BERA oladi (ololmaydi)
-    if (req.user.role === 'TEACHER') {
-      if (data.amount < 0) throw new ApiError(403, 'AUTH_FORBIDDEN', "O'qituvchi coin ololmaydi");
-      const mine = await prisma.group.findMany({ where: { teacherId: req.user.id }, select: { id: true } });
-      const member = await prisma.groupMember.findFirst({
-        where: { userId: user.id, groupId: { in: mine.map((g) => g.id) } },
-      });
-      if (!member) throw new ApiError(403, 'AUTH_FORBIDDEN', "Bu o'quvchi sizning guruhingizda emas");
-    }
+router.patch('/users/:id', asyncH(async (req, res) => {
+  if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+  const data = z.object({
+    full_name: z.string().trim().min(3).max(60).optional(),
+    username: z.string().trim().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional().nullable(),
+  }).parse(req.body);
+  if (data.full_name === undefined && data.username === undefined) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'Yangilash uchun maydon ko\'rsating');
+  }
+  const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  if (!user) throw new ApiError(404, 'NOT_FOUND', 'Foydalanuvchi topilmadi');
+  await prisma.user.update({ where: { id: user.id }, data });
+  return ok(res, { id: user.id, message: 'Profil yangilandi' });
+}));
 
-    const before = user.coin;
-    const after = Math.max(0, before + data.amount);
-    const delta = after - before;
+router.delete('/users/:id', asyncH(async (req, res) => {
+  if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin o\'chira oladi');
+  await prisma.user.delete({ where: { id: req.params.id } });
+  return ok(res, { message: 'Foydalanuvchi o\'chirildi' });
+}));
 
-    const [tx] = await prisma.$transaction([
-      prisma.coinTransaction.create({
-        data: {
-          userId: user.id,
-          amount: delta,
-          balance: after,
-          note: data.note || null,
-          staffId: req.user.id,
-        },
-      }),
-      prisma.user.update({ where: { id: user.id }, data: { coin: after } }),
-    ]);
+// ============ O'YINLAR BOSHQARUVI (faqat admin) ============
 
-    await cacheDelPrefix('xolt:stats');
+router.get('/games', asyncH(async (req, res) => {
+  if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin o\'yinlarni boshqarishi mumkin');
+  return ok(res, await getGameCatalog({ refresh: true }));
+}));
 
-    return ok(
-      res,
-      { id: tx.id, coin: after, delta },
-      { message: delta >= 0 ? 'Coin qo\'shildi' : 'Coin olindi' }
-    );
-  })
-);
-
-// PATCH /api/staff/users/:id - yangilash (guruhlar almashadi)
-router.patch(
-  '/users/:id',
-  asyncH(async (req, res) => {
-    if (!['ADMIN', 'CASHIER', 'TEACHER'].includes(req.user.role)) throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
-
-    const schema = z.object({
-      full_name: z.string().min(3).max(60).optional(),
-      username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional().nullable(),
-      password: z.string().min(4).max(50).optional(),
-      groupIds: z.array(z.string()).max(10).optional(),
-    });
-    const data = schema.parse(req.body);
-
-    const user = await prisma.user.findUnique({ where: { id: req.params.id }, include: { groupMembers: true } });
-    if (!user) throw new ApiError(404, 'NOT_FOUND', 'O\'quvchi topilmadi');
-
-    const update = {};
-    if (data.full_name) update.full_name = data.full_name;
-    if (data.username !== undefined) update.username = data.username;
-    if (data.password) update.password = await hashPassword(data.password);
-
-    if (data.groupIds) {
-      let groupIds = data.groupIds;
-      if (req.user.role === 'TEACHER') {
-        const mine = await prisma.group.findMany({ where: { teacherId: req.user.id }, select: { id: true } });
-        const mineIds = new Set(mine.map((g) => g.id));
-        groupIds = groupIds.filter((id) => mineIds.has(id));
-      }
-      await prisma.groupMember.deleteMany({ where: { userId: user.id } });
-      await prisma.groupMember.createMany({
-        data: groupIds.map((groupId) => ({ userId: user.id, groupId })),
-        skipDuplicates: true,
-      });
-    }
-
-    const updated = await prisma.user.update({ where: { id: user.id }, data: update });
-    return ok(res, { id: updated.id, message: 'O\'quvchi yangilandi' });
-  })
-);
-
-// DELETE /api/staff/users/:id - faqat admin
-router.delete(
-  '/users/:id',
-  asyncH(async (req, res) => {
-    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin o\'chira oladi');
-    await prisma.user.delete({ where: { id: req.params.id } });
-    return ok(res, { message: 'O\'quvchi o\'chirildi' });
-  })
-);
-
-// ============ XODIMLAR (faqat admin) ============
-
-// GET /api/staff/staff
-router.get(
-  '/staff',
-  asyncH(async (req, res) => {
-    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
-    const staff = await prisma.staff.findMany({
-      include: { _count: { select: { groups: true, quizzes: true } } },
-      orderBy: { createdAt: 'desc' },
-    });
-    return ok(
-      res,
-      staff.map((s) => ({
-        id: s.id,
-        full_name: s.full_name,
-        phone: s.phone,
-        avatar: s.avatar,
-        role: s.role,
-        active: s.active,
-        groupsCount: s._count.groups,
-        quizzesCount: s._count.quizzes,
-        createdAt: s.createdAt,
-      }))
-    );
-  })
-);
-
-// POST /api/staff/staff - xodim yaratish
-router.post(
-  '/staff',
-  asyncH(async (req, res) => {
-    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
-    const schema = z.object({
-      full_name: z.string().min(3).max(60),
-      phone: z.string().min(7),
-      password: z.string().min(4).max(50),
-      role: z.enum(['TEACHER', 'CASHIER', 'ADMIN']),
-    });
-    const data = schema.parse(req.body);
-
-    const phone = normalizePhone(data.phone);
-    if (!phone) throw new ApiError(400, 'INVALID_PHONE', 'Telefon noto\'g\'ri');
-
-    const exists = await prisma.staff.findUnique({ where: { phone } });
-    if (exists) throw new ApiError(409, 'PHONE_EXISTS', 'Bu telefon allaqachon ro\'yxatdan o\'tgan');
-
-    const staff = await prisma.staff.create({
-      data: {
-        full_name: data.full_name,
-        phone,
-        password: await hashPassword(data.password),
-        role: data.role,
-        createdById: req.user.id,
-      },
-    });
-    return ok(res, { id: staff.id, role: staff.role }, { message: 'Xodim yaratildi' });
-  })
-);
-
-// PATCH /api/staff/staff/:id
-router.patch(
-  '/staff/:id',
-  asyncH(async (req, res) => {
-    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
-    const schema = z.object({
-      full_name: z.string().min(3).max(60).optional(),
-      password: z.string().min(4).max(50).optional(),
-      role: z.enum(['TEACHER', 'CASHIER', 'ADMIN']).optional(),
-      active: z.boolean().optional(),
-    });
-    const data = schema.parse(req.body);
-
-    const staff = await prisma.staff.findUnique({ where: { id: req.params.id } });
-    if (!staff) throw new ApiError(404, 'NOT_FOUND', 'Xodim topilmadi');
-
-    // Boshqa adminni tahrirlash mumkin emas — admin faqat o'zini "Mening profilim"dan o'zgartiradi
-    if (staff.role === 'ADMIN' && staff.id !== req.user.id) {
-      throw new ApiError(403, 'ADMIN_LOCKED', 'Boshqa adminni tahrirlash mumkin emas');
-    }
-
-    // O'zini o'zi faolshtira olmaydi
-    if (data.active === false && staff.id === req.user.id) {
-      throw new ApiError(400, 'CANNOT_DISABLE_SELF', 'O\'zingizni faolshtira olmaysiz');
-    }
-
-    const update = {};
-    if (data.full_name) update.full_name = data.full_name;
-    if (data.password) update.password = await hashPassword(data.password);
-    if (data.role) update.role = data.role;
-    if (data.active !== undefined) update.active = data.active;
-
-    const updated = await prisma.staff.update({ where: { id: staff.id }, data: update });
-    return ok(res, { id: updated.id, message: 'Xodim yangilandi' });
-  })
-);
-
-// DELETE /api/staff/staff/:id
-router.delete(
-  '/staff/:id',
-  asyncH(async (req, res) => {
-    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
-    if (req.params.id === req.user.id) throw new ApiError(400, 'CANNOT_DELETE_SELF', 'O\'zingizni o\'chira olmaysiz');
-    const target = await prisma.staff.findUnique({ where: { id: req.params.id } });
-    if (target && target.role === 'ADMIN') {
-      throw new ApiError(403, 'ADMIN_LOCKED', 'Adminni o\'chirish mumkin emas');
-    }
-    await prisma.staff.delete({ where: { id: req.params.id } });
-    return ok(res, { message: 'Xodim o\'chirildi' });
-  })
-);
+router.patch('/games/:id', asyncH(async (req, res) => {
+  if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin o\'yinlarni boshqarishi mumkin');
+  const { active } = z.object({ active: z.boolean() }).parse(req.body);
+  const known = await getGameCatalog({ refresh: true });
+  if (!known.some((game) => game.id === req.params.id)) throw new ApiError(404, 'NOT_FOUND', 'O\'yin topilmadi');
+  const game = await prisma.gameCatalog.update({ where: { id: req.params.id }, data: { active } });
+  await invalidateGameCatalog();
+  return ok(res, game, { message: 'O\'yin holati yangilandi' });
+}));
 
 // ============ SHOP BOSHQARUVI (faqat admin) ============
 
@@ -605,117 +317,77 @@ router.delete(
   })
 );
 
-// ============ STATISTIKA (faqat admin) ============
+// ============ STATISTICS (admin only) ============
 
-// GET /api/staff/stats/overview (Redis cache 60s)
-router.get(
-  '/stats/overview',
-  asyncH(async (req, res) => {
-    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
-    const cached = await cacheGet('xolt:stats:overview');
-    if (cached) return ok(res, cached);
+router.get('/stats/overview', asyncH(async (req, res) => {
+  if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
+  const cacheKey = 'xolt:stats:overview:v2';
+  const cached = await cacheGet(cacheKey);
+  if (cached) return ok(res, cached);
 
-    const [usersCount, staffCount, groupsCount, quizzesCount, questionsCount, paymentsAgg, coinAgg, gamesAgg] = await Promise.all([
-      prisma.user.count(),
-      prisma.staff.count(),
-      prisma.group.count(),
-      prisma.quiz.count(),
-      prisma.question.count(),
-      prisma.payment.aggregate({ _sum: { amount: true }, _count: true }),
-      prisma.user.aggregate({ _sum: { coin: true } }),
-      prisma.gameRecord.count(),
-    ]);
+  const [usersCount, staffCount, quizzesCount, questionsCount, coinAgg, gamesCount, activeGames] = await Promise.all([
+    prisma.user.count(),
+    prisma.staff.count(),
+    prisma.quiz.count(),
+    prisma.question.count(),
+    prisma.user.aggregate({ _sum: { coin: true } }),
+    prisma.gameRecord.count(),
+    getGameCatalog({ includeInactive: false }),
+  ]);
+  const data = {
+    usersCount,
+    staffCount,
+    quizzesCount,
+    questionsCount,
+    coinsInCirculation: coinAgg._sum.coin || 0,
+    gamesCount,
+    activeGamesCount: activeGames.length,
+    activeToday: await prisma.user.count({ where: { updatedAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } }),
+  };
+  await cacheSet(cacheKey, data, 60);
+  return ok(res, data);
+}));
 
-    const paidSum = await prisma.payment.aggregate({
-      _sum: { amount: true },
-      where: { status: 'paid' },
+router.get('/stats/charts', asyncH(async (req, res) => {
+  if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
+  const days = Math.min(90, Math.max(7, Number(req.query.days || 30)));
+  const from = new Date();
+  from.setDate(from.getDate() - days);
+  from.setHours(0, 0, 0, 0);
+
+  const [users, games, topUsers, roleStaff] = await Promise.all([
+    prisma.user.findMany({ where: { createdAt: { gte: from } }, select: { createdAt: true } }),
+    prisma.gameRecord.findMany({ where: { createdAt: { gte: from } }, select: { createdAt: true, type: true } }),
+    prisma.user.findMany({ orderBy: { score: 'desc' }, take: 10, select: { id: true, full_name: true, score: true, avatar: true, currentFrame: true } }),
+    prisma.staff.groupBy({ by: ['role'], _count: { _all: true } }),
+  ]);
+
+  const registrations = [];
+  const gamesByDay = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    date.setHours(0, 0, 0, 0);
+    const next = new Date(date);
+    next.setDate(date.getDate() + 1);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    registrations.push({ date: key, count: users.filter((user) => user.createdAt >= date && user.createdAt < next).length });
+    const dayGames = games.filter((game) => game.createdAt >= date && game.createdAt < next);
+    gamesByDay.push({
+      date: key,
+      math: dayGames.filter((game) => game.type === 'math').length,
+      quiz: dayGames.filter((game) => game.type === 'quiz').length,
+      tictactoe: dayGames.filter((game) => game.type === 'tictactoe').length,
     });
+  }
 
-    const data = {
-      usersCount,
-      staffCount,
-      groupsCount,
-      quizzesCount,
-      questionsCount,
-      paymentsCount: paymentsAgg._count,
-      paymentsSum: paymentsAgg._sum.amount || 0,
-      paidPaymentsSum: paidSum._sum.amount || 0,
-      coinsInCirculation: coinAgg._sum.coin || 0,
-      gamesCount: gamesAgg,
-      activeToday: await prisma.user.count({ where: { updatedAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } }),
-    };
-    await cacheSet('xolt:stats:overview', data, 60);
-    return ok(res, data);
-  })
-);
-
-// GET /api/staff/stats/charts?days=30
-router.get(
-  '/stats/charts',
-  asyncH(async (req, res) => {
-    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
-    const days = Math.min(90, Math.max(7, Number(req.query.days || 30)));
-
-    const from = new Date();
-    from.setDate(from.getDate() - days);
-    from.setHours(0, 0, 0, 0);
-
-    const [users, games, payments, topUsers, roleStaff] = await Promise.all([
-      prisma.user.findMany({ where: { createdAt: { gte: from } }, select: { createdAt: true } }),
-      prisma.gameRecord.findMany({ where: { createdAt: { gte: from } }, select: { createdAt: true, type: true } }),
-      prisma.payment.findMany({ where: { paidAt: { gte: from } }, select: { paidAt: true, amount: true } }),
-      prisma.user.findMany({ orderBy: { score: 'desc' }, take: 10, select: { id: true, full_name: true, score: true, avatar: true, currentFrame: true } }),
-      prisma.staff.groupBy({ by: ['role'], _count: { _all: true } }),
-    ]);
-
-    // Kunlar bo'yicha ro'yxatga olishlar
-    const registrations = [];
-    const gamesByDay = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      d.setHours(0, 0, 0, 0);
-      const next = new Date(d);
-      next.setDate(d.getDate() + 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      registrations.push({
-        date: key,
-        count: users.filter((u) => u.createdAt >= d && u.createdAt < next).length,
-      });
-      const dayGames = games.filter((g) => g.createdAt >= d && g.createdAt < next);
-      gamesByDay.push({
-        date: key,
-        math: dayGames.filter((g) => g.type === 'math').length,
-        quiz: dayGames.filter((g) => g.type === 'quiz').length,
-        tictactoe: dayGames.filter((g) => g.type === 'tictactoe').length,
-      });
-    }
-
-    // Oy bo'yicha to'lovlar (oxirgi 6 oy)
-    const paymentsByMonth = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const fromM = new Date(d.getFullYear(), d.getMonth(), 1);
-      const toM = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-      const monthPayments = payments.filter((p) => p.paidAt >= fromM && p.paidAt < toM);
-      paymentsByMonth.push({
-        month: key,
-        amount: monthPayments.reduce((s, p) => s + p.amount, 0),
-        count: monthPayments.length,
-      });
-    }
-
-    return ok(res, {
-      registrations,
-      gamesByDay,
-      paymentsByMonth,
-      topUsers,
-      roleStaff: roleStaff.map((r) => ({ role: r.role, count: r._count._all })),
-    });
-  })
-);
+  return ok(res, {
+    registrations,
+    gamesByDay,
+    topUsers,
+    roleStaff: roleStaff.map((row) => ({ role: row.role, count: row._count._all })),
+  });
+}));
 
 // ============ CODING SAVOLLAR ============
 
@@ -735,7 +407,7 @@ router.get(
 router.post(
   '/coding-questions',
   asyncH(async (req, res) => {
-    if (!['ADMIN', 'TEACHER'].includes(req.user.role)) throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
     const schema = z.object({
       title: z.string().min(2).max(120),
       question_uz: z.string().min(5),
@@ -774,7 +446,7 @@ router.post(
 router.patch(
   '/coding-questions/:id',
   asyncH(async (req, res) => {
-    if (!['ADMIN', 'TEACHER'].includes(req.user.role)) throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
     const q = await prisma.codingQuestion.update({ where: { id: req.params.id }, data: req.body });
     return ok(res, q, { message: 'Savol yangilandi' });
   })

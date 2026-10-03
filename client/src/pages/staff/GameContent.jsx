@@ -1,4 +1,4 @@
-// TEACHER: Type Racing matnlari CRUD (uz/ru/en) va Code Battle savollari CRUD
+// Admin editors for Type Racing text and Code Battle question libraries.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, Plus, Trash2, Pencil, Code2 } from 'lucide-react';
