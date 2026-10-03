@@ -10,7 +10,8 @@ export function AuthProvider({ children }) {
 
   
   const loadMe = useCallback(async () => {
-    // OAuth access cookie is HttpOnly, so JavaScript cannot inspect it before /auth/me.
+    // OAuth's JWT fragment is captured before React mounts (see main.jsx), so this
+    // initial profile request can authenticate with the new Bearer token.
     try {
       const profile = await Fetch.get('/auth/me');
       setUser(profile);
