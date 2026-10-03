@@ -88,7 +88,9 @@ async function requestProviderProfile(provider, code, config, redirectUri) {
       signal: AbortSignal.timeout(12_000),
     });
     const tokenData = await tokenResponse.json();
-    if (!tokenResponse.ok || !tokenData.access_token) throw new Error('GITHUB_TOKEN_EXCHANGE_FAILED');
+    if (!tokenResponse.ok || !tokenData.access_token) {
+      throw new Error(`GITHUB_TOKEN_EXCHANGE_FAILED: ${tokenData.error || tokenResponse.status} ${tokenData.error_description || ''}`.trim());
+    }
 
     const headers = {
       Authorization: `Bearer ${tokenData.access_token}`,
@@ -128,7 +130,9 @@ async function requestProviderProfile(provider, code, config, redirectUri) {
     signal: AbortSignal.timeout(12_000),
   });
   const tokenData = await tokenResponse.json();
-  if (!tokenResponse.ok || !tokenData.access_token) throw new Error('GOOGLE_TOKEN_EXCHANGE_FAILED');
+  if (!tokenResponse.ok || !tokenData.access_token) {
+    throw new Error(`GOOGLE_TOKEN_EXCHANGE_FAILED: ${tokenData.error || tokenResponse.status} ${tokenData.error_description || ''}`.trim());
+  }
 
   const profileResponse = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
     headers: { Authorization: `Bearer ${tokenData.access_token}` },
@@ -320,7 +324,13 @@ router.get('/oauth/:provider/callback', authLimiter, asyncH(async (req, res) => 
       ? signToken({ id: principal.record.id, kind: 'staff', role: principal.record.role, full_name: principal.record.full_name })
       : signToken({ id: principal.record.id, kind: 'user', full_name: principal.record.full_name });
     res.cookie(AUTH_COOKIE, token, cookieOptions(AUTH_COOKIE_MAX_AGE));
-    return res.redirect(`${env.frontendUrl.replace(/\/+$/, '')}/auth/callback`);
+    // Tokenni URL fragment (#) orqali ham qaytaramiz: frontend va API har xil
+    // domenda bo'lsa (Cloudflare + Render) yoki brauzer third-party cookie'ni
+    // bloklasa ham client tokenni o'qib, Authorization: Bearer bilan ishlatadi.
+    // Fragment serverga/loglarga yuborilmaydi — query'dan xavfsizroq.
+    return res.redirect(
+      `${env.frontendUrl.replace(/\/+$/, '')}/auth/callback#token=${encodeURIComponent(token)}`,
+    );
   } catch (error) {
     if (error instanceof ApiError && error.status === 403) return authFailureRedirect(res, 'account_disabled');
     console.error(`[auth] ${provider} OAuth callback failed:`, error?.message || error);
