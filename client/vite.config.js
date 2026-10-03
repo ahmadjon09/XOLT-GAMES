@@ -8,17 +8,6 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: {
-    host: '0.0.0.0',
-    fs: { allow: [repoRoot] },
-    port: 5173,
-    allowedHosts: true,
-    proxy: {
-      '/api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
-      '/uploads': { target: 'http://127.0.0.1:4000', changeOrigin: true },
-      '/socket.io': { target: 'http://127.0.0.1:4000', changeOrigin: true, ws: true },
-    },
-  },
   build: {
     outDir: 'dist',
     sourcemap: false,
