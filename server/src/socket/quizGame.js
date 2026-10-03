@@ -1,6 +1,4 @@
-// QUIZ GAME - Kahoot uslubidagi viktorina
-// O'qituvchi savollar yaratadi (matn + rasm), xost qiladi, QR/kod tarqatadi
-// O'quvchilar kod yoki QR orqali qo'shiladi, tezlik bo'yicha ball yig'iladi
+// QUIZ GAME - players create public quizzes, host them, and invite others by room code/QR.
 import { prisma } from '../prisma/client.js';
 import {
   emitError,
@@ -29,7 +27,7 @@ const sessions = new Map(); // code -> session
 const hostSessionMap = new Map(); // staffId -> code (host reconnect uchun)
 const sessionTimers = new Map(); // code -> { questionTimer, revealTimer }
 
-// O'yinchi (o'quvchi) ma'lumotlari
+// Public player account data
 function buildQuizPlayer(user, socketId) {
   return {
     userId: user.id,
@@ -45,7 +43,7 @@ function buildQuizPlayer(user, socketId) {
   };
 }
 
-// Sessiyaning ommaviy holati (o'quvchiga ko'rinadigan)
+// Public session state visible to players
 function publicSession(session) {
   return {
     code: session.code,
@@ -238,7 +236,7 @@ async function finishQuiz(io, session) {
     payload: { quizName: session.quizName, top3: final.slice(0, 3).map((f) => ({ id: f.userId, name: f.full_name, score: f.score })) },
   });
 
-  // O'quvchilarni o'yin ro'yxatidan chiqaramiz
+  // Remove players from the active game registry
   for (const p of session.players.values()) {
     unregisterGame(p.userId, 'quiz', session.code);
   }
@@ -270,11 +268,11 @@ export function setupQuizGame(io) {
     const user = socket.data.user;
     const userId = user.id;
 
-    // --- XOST: sessiya yaratish ---
+    // --- HOST: create a quiz room ---
     socket.on('quiz:host', async (payload) => {
       try {
-        if (user.kind !== 'staff') return emitError(socket, 'NOT_ALLOWED', 'Faqat xodim xost qila oladi');
-        if (!['TEACHER', 'ADMIN'].includes(user.role)) return emitError(socket, 'NOT_ALLOWED', 'Ruxsat yoq');
+        const isAdmin = user.kind === 'staff' && user.role === 'ADMIN';
+        if (user.kind !== 'user' && !isAdmin) return emitError(socket, 'NOT_ALLOWED', 'Ruxsat yo\'q');
 
         const { quizId } = payload || {};
         if (!quizId) return emitError(socket, 'INVALID_PAYLOAD', 'quizId kerak');
@@ -284,9 +282,10 @@ export function setupQuizGame(io) {
           include: { questions: { orderBy: { sortOrder: 'asc' } } },
         });
         if (!quiz) return emitError(socket, 'QUIZ_NOT_FOUND', 'Viktorina topilmadi');
+        if (!quiz.active) return emitError(socket, 'QUIZ_INACTIVE', 'Viktorina faol emas');
         if (quiz.questions.length === 0) return emitError(socket, 'NO_QUESTIONS', 'Viktorinada savollar yo\'q');
-        if (user.role === 'TEACHER' && quiz.createdById !== userId) {
-          return emitError(socket, 'NOT_OWNER', 'Bu viktorina sizga tegishli emas');
+        if (!isAdmin && quiz.createdByUserId !== userId && !quiz.isPublic) {
+          return emitError(socket, 'NOT_OWNER', 'Bu viktorinani xost qilish uchun ruxsat yo\'q');
         }
 
         // Kod yaratish (band bo'lmasa)
@@ -436,10 +435,10 @@ export function setupQuizGame(io) {
       }
     });
 
-    // --- O'QUVCHI: qo'shilish / qayta ulanish ---
+    // --- PLAYER: qo'shilish / qayta ulanish ---
     socket.on('quiz:join', async (payload) => {
       try {
-        if (user.kind !== 'user') return emitError(socket, 'NOT_ALLOWED', 'Faqat o\'quvchi qo\'shila oladi');
+        if (user.kind !== 'user') return emitError(socket, 'NOT_ALLOWED', 'Faqat o\'yinchi qo\'shila oladi');
 
         const { code } = payload || {};
         if (!code || typeof code !== 'string') return emitError(socket, 'INVALID_PAYLOAD', 'Kod kerak');
@@ -524,7 +523,7 @@ export function setupQuizGame(io) {
       }
     });
 
-    // --- O'QUVCHI: javob berish ---
+    // --- PLAYER: javob berish ---
     socket.on('quiz:answer', (payload) => {
       try {
         const { code, questionIndex, variantIndex } = payload || {};
@@ -585,7 +584,7 @@ export function setupQuizGame(io) {
       }
     });
 
-    // --- O'QUVCHI: sessiyadan chiqish ---
+    // --- PLAYER: sessiyadan chiqish ---
     socket.on('quiz:leave', () => {
       const entry = userGameMap.get(userId);
       if (!entry || entry.type !== 'quiz') return;
@@ -605,7 +604,7 @@ export function setupQuizGame(io) {
       }
     });
 
-    // --- O'QUVCHI: aktiv sessiyani tiklash ---
+    // --- PLAYER: aktiv sessiyani tiklash ---
     socket.on('quiz:get_active', () => {
       const entry = userGameMap.get(userId);
       if (!entry || entry.type !== 'quiz') return;
@@ -661,7 +660,7 @@ export function setupQuizGame(io) {
         }
       }
 
-      // O'quvchi uzilsa - o'yin davom etadi, reconnect kutiladi
+      // O'yinchi uzilsa - o'yin davom etadi, reconnect kutiladi
       const entry = userGameMap.get(userId);
       if (!entry || entry.type !== 'quiz') return;
       const session = sessions.get(entry.id);

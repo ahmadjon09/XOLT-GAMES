@@ -27,7 +27,7 @@ export default function QuizHost() {
   const [hosting, setHosting] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const { data: quizzes, isLoading } = useGet('/staff/quizzes');
+  const { data: quizzes, isLoading } = useGet('/user/quizzes');
 
   const resync = useCallback(() => {
     if (socket) socket.emit('quiz:host_resync');
@@ -148,7 +148,7 @@ export default function QuizHost() {
         </Card>
         {/* Mobil: tugmalar ustma-ust (yonma-yon sig'maydi) */}
         <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-          <Button variant="outline" className="w-full sm:flex-1 min-w-0" onClick={() => navigate('/staff/quizzes')}>
+          <Button variant="outline" className="w-full sm:flex-1 min-w-0" onClick={() => navigate('/quizzes')}>
             <ListChecks size={16} className="mr-1.5 shrink-0" /> <span className="truncate">{t('quizzesP.backToQuizzes')}</span>
           </Button>
           <Button className="w-full sm:flex-1 min-w-0" onClick={resetAll}>
@@ -295,7 +295,7 @@ export default function QuizHost() {
     <div className="page-staff pt-4 space-y-3.5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-bold min-w-0 truncate">{t('hostP.selectQuiz')}</h2>
-        <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/staff/quizzes')}>
+        <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/quizzes')}>
           <ListChecks size={16} className="mr-1" /> <span className="hidden sm:inline">{t('quizzesP.backToQuizzes')}</span>
         </Button>
       </div>
@@ -305,7 +305,7 @@ export default function QuizHost() {
       ) : quizzes?.length === 0 ? (
         <Card>
           <EmptyState icon={ListChecks} title={t('quizzesP.noQuizzes')} action={
-            <Link to="/staff/quizzes/new"><Button><Plus size={16} /> {t('quizzesP.createQuiz')}</Button></Link>
+            <Link to="/quizzes/new"><Button><Plus size={16} /> {t('quizzesP.createQuiz')}</Button></Link>
           } />
         </Card>
       ) : (

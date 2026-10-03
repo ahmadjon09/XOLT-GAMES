@@ -2,15 +2,11 @@
   "name": "xolt-games",
   "private": true,
   "version": "1.0.0",
-  "description": "XOLT Games — platform + 3D multiplayer racing subsystem (server authoritative)",
+  "description": "XOLT Games — multiplayer games and public player profiles",
   "type": "module",
   "scripts": {
     "build": "npm --prefix client run build",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test \"tests/*.test.ts\"",
-    "test:race": "node --test tests/protocol.test.ts tests/determinism.test.ts tests/collision.test.ts tests/netcode.test.ts tests/server-room.test.ts tests/capacity.test.ts",
-    "race:sim": "node scripts/race-headless.mjs",
-    "race:load": "node scripts/race-loadtest.mjs",
+    "test": "node --test \"tests/*.test.js\"",
     "client": "npm --prefix client run dev",
     "server": "npm --prefix server run dev",
     "preview": "node preview/ensure-dist.mjs && node --import ./preview/register-loader.mjs preview/server.mjs"
@@ -18,7 +14,6 @@
   "devDependencies": {
     "jsonwebtoken": "^9.0.3",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3",
-    "typescript": "^5.9.2"
+    "socket.io-client": "^4.8.3"
   }
 }

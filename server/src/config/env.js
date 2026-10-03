@@ -7,6 +7,9 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET || 'xolt-dev-secret-please-change',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '30d',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  oauthRedirectBaseUrl: process.env.OAUTH_REDIRECT_BASE_URL || process.env.FRONTEND_URL || 'http://localhost:5173',
+  isProduction: process.env.NODE_ENV === 'production',
+  cookieSameSite: process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'none' : 'lax'),
   corsOrigins: process.env.CORS_ORIGINS?.split(',')
     .map(s => s.trim())
     .filter(Boolean) ?? ['http://localhost:5173'],

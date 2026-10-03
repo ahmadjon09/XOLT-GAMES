@@ -1,7 +1,5 @@
-// CODE BATTLE - kod ko'rsatiladi, output nima chiqishini topish
-// Teacher savollar yaratadi (kategoriya: js, python, csharp, java, php, sql...)
-// Host (teacher yoki admin) sessiya ochadi, 10 tagacha o'quvchi qo'shiladi
-// Tezlik bo'yicha ball (Kahoot uslubida)
+// CODE BATTLE - an admin-maintained code-question library for public multiplayer rounds.
+// Players can host a room, invite others through the lobby, and score points by speed.
 import { prisma } from '../prisma/client.js';
 import {
   emitError,
@@ -250,7 +248,7 @@ export function setupCodeBattle(io) {
           take: 50,
         });
         if (questions.length === 0) {
-          return emitError(socket, 'NO_QUESTIONS', 'Bu kategoriyada savollar yo\'q. Teacherdan qo\'shishni so\'rang');
+          return emitError(socket, 'NO_QUESTIONS', 'Bu kategoriyada hozircha savollar yo\'q');
         }
         const picked = [...questions].sort(() => Math.random() - 0.5).slice(0, Math.min(count, questions.length));
 

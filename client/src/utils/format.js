@@ -18,8 +18,19 @@ export const fmtInt = (n) => {
   return num.toLocaleString('ru-RU', { maximumFractionDigits: 2 });
 };
 
-// Pul summalari uchun: "1 000 000" (so'm birligi bilan chaqiruvchi tomon qo'shadi)
-export const fmtMoney = fmtInt;
+export const fmtDuration = (seconds) => {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const lang = String(i18n.language || 'uz').split('-')[0];
+  const dayUnit = lang === 'ru' ? 'д' : lang === 'en' ? 'd' : 'kun';
+  const hourUnit = lang === 'ru' ? 'ч' : lang === 'en' ? 'h' : 'soat';
+  const minuteUnit = lang === 'ru' ? 'мин' : lang === 'en' ? 'm' : 'daq';
+  const days = Math.floor(total / 86_400);
+  const hours = Math.floor((total % 86_400) / 3_600);
+  const minutes = Math.floor((total % 3_600) / 60);
+  if (days) return `${days}${dayUnit} ${hours}${hourUnit}`;
+  if (hours) return minutes ? `${hours}${hourUnit} ${minutes}${minuteUnit}` : `${hours}${hourUnit}`;
+  return `${total > 0 ? Math.max(1, minutes) : 0}${minuteUnit}`;
+};
 
 // Faqat raqamlarni qaytaradi: "1 000" -> "1000"
 export const digitsOnly = (v) => String(v ?? '').replace(/\D/g, '');
@@ -29,17 +40,6 @@ export const formatDigits = (v) => {
   const d = digitsOnly(v);
   return d ? Number(d).toLocaleString('ru-RU') : '';
 };
-
-// Telefon raqamni chiroyli ko'rinishda: +998901234567 -> +998 90 123 45 67
-export const fmtPhone = (phone) => {
-  if (!phone) return '';
-  const s = String(phone).replace(/\D/g, '');
-  if (s.length === 12 && s.startsWith('998')) {
-    return `+998 ${s.slice(3, 5)} ${s.slice(5, 8)} ${s.slice(8, 10)} ${s.slice(10)}`;
-  }
-  return String(phone);
-};
-
 
 export const fmtDate = (d) => {
   if (!d) return '—';

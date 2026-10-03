@@ -1,6 +1,6 @@
 // Yangi o'yinlar uchun route'lar:
-// Teacher: typing matnlar CRUD, code battle savollari CRUD
-// O'quvchi: typing solo rekord + WPM reyting, code practice
+// Admin-only game content management; player routes remain OAuth-authenticated.
+// Public-player endpoints: solo typing records, WPM leaderboard, and code practice
 import { Router } from 'express';
 import { z } from 'zod';
 import { ok, ApiError, asyncH } from '../utils/response.js';
@@ -10,11 +10,15 @@ import { getMathLobbyRooms } from '../socket/mathGame.js';
 import { getTicTacToeLobbyRooms } from '../socket/tictactoe.js';
 import { getChessLobbyRooms } from '../socket/chessGame.js';
 import { getCheckersLobbyRooms } from '../socket/checkersGame.js';
-import { getRaceLobbyRooms } from '../socket/raceGame.js';
 import { getTypingLobbyRooms } from '../socket/typingRace.js';
 import { getCodeLobbyRooms } from '../socket/codeBattle.js';
+import { getGameCatalog } from '../services/gameCatalog.js';
 
 const router = Router();
+
+router.get('/games/catalog', requireAuth('user'), asyncH(async (_req, res) => {
+  return ok(res, await getGameCatalog({ includeInactive: false }));
+}));
 
 // =====================================================================
 // GAME LOBBY - ochiq (public) kutishdagi o'yinlar ro'yxati
@@ -23,33 +27,31 @@ router.get(
   '/games/lobby',
   requireAuth('user'),
   asyncH(async (req, res) => {
+    const activeTypes = new Set((await getGameCatalog({ includeInactive: false })).map((game) => game.id));
     const rooms = [
       ...getMathLobbyRooms(),
       ...getTicTacToeLobbyRooms(),
       ...getChessLobbyRooms(),
       ...getCheckersLobbyRooms(),
-      ...getRaceLobbyRooms(),
       ...getTypingLobbyRooms(),
       ...getCodeLobbyRooms(),
-    ].sort((a, b) => b.createdAt - a.createdAt);
+    ].filter((room) => activeTypes.has(room.type)).sort((a, b) => b.createdAt - a.createdAt);
     return ok(res, rooms);
   })
 );
 
 // =====================================================================
-// TYPE RACING - TEACHER MATNLARI CRUD
+// TYPE RACING - ADMIN CONTENT CRUD
 // =====================================================================
 
-// GET /api/staff/typing-texts?lang=uz - teacher o'zini, admin hammasini
+// GET /api/staff/typing-texts?lang=uz - admin content library
 router.get(
   '/staff/typing-texts',
   requireAuth('staff'),
   asyncH(async (req, res) => {
     const lang = String(req.query.lang || '');
-    const where = {
-      ...(req.user.role === 'TEACHER' ? { createdById: req.user.id } : {}),
-      ...(lang ? { lang } : {}),
-    };
+    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
+    const where = lang ? { lang } : {};
     const texts = await prisma.typingText.findMany({
       where,
       include: { createdBy: { select: { full_name: true } } },
@@ -64,7 +66,7 @@ router.post(
   '/staff/typing-texts',
   requireAuth('staff'),
   asyncH(async (req, res) => {
-    if (!['ADMIN', 'TEACHER'].includes(req.user.role)) throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
     const schema = z.object({
       title: z.string().min(2, 'Nomi kamida 2 belgi').max(100),
       lang: z.enum(['uz', 'ru', 'en']),
@@ -84,6 +86,7 @@ router.patch(
   '/staff/typing-texts/:id',
   requireAuth('staff'),
   asyncH(async (req, res) => {
+    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
     const schema = z.object({
       title: z.string().min(2).max(100).optional(),
       lang: z.enum(['uz', 'ru', 'en']).optional(),
@@ -101,13 +104,14 @@ router.delete(
   '/staff/typing-texts/:id',
   requireAuth('staff'),
   asyncH(async (req, res) => {
+    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
     await prisma.typingText.delete({ where: { id: req.params.id } });
     return ok(res, { message: 'Matn o\'chirildi' });
   })
 );
 
 // =====================================================================
-// CODE BATTLE - TEACHER SAVOLLARI CRUD
+// CODE BATTLE - ADMIN CONTENT CRUD
 // =====================================================================
 
 // GET /api/staff/code-questions?category=js
@@ -116,10 +120,8 @@ router.get(
   requireAuth('staff'),
   asyncH(async (req, res) => {
     const category = String(req.query.category || '');
-    const where = {
-      ...(req.user.role === 'TEACHER' ? { createdById: req.user.id } : {}),
-      ...(category ? { category } : {}),
-    };
+    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
+    const where = category ? { category } : {};
     const questions = await prisma.codeQuestion.findMany({
       where,
       include: { createdBy: { select: { full_name: true } } },
@@ -134,7 +136,7 @@ router.post(
   '/staff/code-questions',
   requireAuth('staff'),
   asyncH(async (req, res) => {
-    if (!['ADMIN', 'TEACHER'].includes(req.user.role)) throw new ApiError(403, 'AUTH_FORBIDDEN', 'Ruxsat yoq');
+    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
     const schema = z.object({
       title: z.string().min(2, 'Nomi kamida 2 belgi').max(120),
       category: z.string().min(1).max(30),
@@ -163,6 +165,7 @@ router.patch(
   '/staff/code-questions/:id',
   requireAuth('staff'),
   asyncH(async (req, res) => {
+    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
     const schema = z.object({
       title: z.string().min(2).max(120).optional(),
       category: z.string().min(1).max(30).optional(),
@@ -184,13 +187,14 @@ router.delete(
   '/staff/code-questions/:id',
   requireAuth('staff'),
   asyncH(async (req, res) => {
+    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'AUTH_FORBIDDEN', 'Faqat admin');
     await prisma.codeQuestion.delete({ where: { id: req.params.id } });
     return ok(res, { message: 'Savol o\'chirildi' });
   })
 );
 
 // =====================================================================
-// TYPE RACING - O'QUVCHI SOLO (coin/ball berilmaydi, WPM eslab qolinadi)
+// TYPE RACING - PLAYER SOLO (coin/ball berilmaydi, WPM eslab qolinadi)
 // =====================================================================
 
 // GET /api/user/typing/texts?lang=uz - solo uchun random matn
@@ -283,7 +287,7 @@ router.get(
 );
 
 // =====================================================================
-// CODE BATTLE - O'QUVCHI SOLO PRACTICE (to'g'ri javobga kichik coin)
+// CODE BATTLE - PLAYER SOLO PRACTICE (to'g'ri javobga kichik coin)
 // =====================================================================
 
 // GET /api/user/code/practice?category=js - random savol (javobsiz)

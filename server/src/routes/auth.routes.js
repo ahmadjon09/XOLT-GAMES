@@ -1,183 +1,358 @@
-// Auth route'lari - telefon raqam + parol orqali kirish (email ishlatilmaydi)
+// Public account authentication: GitHub/Google OAuth for players; admin access is allowlisted by verified email.
 import { Router } from 'express';
-import { z } from 'zod';
-import { ok, fail, ApiError, asyncH } from '../utils/response.js';
-import { hashPassword, comparePassword, signToken } from '../utils/security.js';
-import { normalizePhone } from '../utils/helpers.js';
+import crypto from 'node:crypto';
+import { ok, ApiError, asyncH } from '../utils/response.js';
+import { signToken } from '../utils/security.js';
 import { requireAuth } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rateLimit.js';
 import { prisma } from '../prisma/client.js';
+import { env } from '../config/env.js';
 
 const router = Router();
+const OAUTH_STATE_COOKIE = 'xolt_oauth_state';
+const AUTH_COOKIE = 'xolt_token';
+const AUTH_COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 
-// Profil ma'lumotlarini to'liq qaytarish (o'quvchi uchun)
-const userProfile = (u) => ({
-  id: u.id,
+const userProfile = (user) => ({
+  id: user.id,
   kind: 'user',
-  full_name: u.full_name,
-  avatar: u.avatar,
-  phone: u.phone,
-  username: u.username,
-  coin: u.coin,
-  score: u.score,
-  week_score: u.week_score,
-  month_score: u.month_score,
-  currentFrame: u.currentFrame,
-  currentEffect: u.currentEffect,
-  groups: (u.groupMembers || []).map((gm) => ({
-    id: gm.group.id,
-    name: gm.group.name,
-    teacher: gm.group.teacher ? { id: gm.group.teacher.id, full_name: gm.group.teacher.full_name } : null,
-  })),
-  createdAt: u.createdAt,
+  full_name: user.full_name,
+  avatar: user.avatar,
+  coverImage: user.coverImage,
+  email: user.email,
+  phone: user.phone,
+  username: user.username,
+  coin: user.coin,
+  score: user.score,
+  week_score: user.week_score,
+  month_score: user.month_score,
+  currentFrame: user.currentFrame || null,
+  currentEffect: user.currentEffect || null,
+  createdAt: user.createdAt,
 });
 
-// Profil ma'lumotlarini qaytarish (xodim uchun)
-const staffProfile = (s, extra = {}) => ({
-  id: s.id,
+const staffProfile = (staff) => ({
+  id: staff.id,
   kind: 'staff',
-  full_name: s.full_name,
-  avatar: s.avatar,
-  phone: s.phone,
-  role: s.role,
-  ...extra,
-  createdAt: s.createdAt,
+  full_name: staff.full_name,
+  avatar: staff.avatar,
+  email: staff.email || null,
+  phone: staff.phone || null,
+  role: staff.role,
+  createdAt: staff.createdAt,
 });
 
+const providerConfig = (provider) => {
+  if (provider === 'github') {
+    return {
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    };
+  }
+  if (provider === 'google') {
+    return {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    };
+  }
+  throw new ApiError(404, 'OAUTH_PROVIDER_NOT_FOUND', 'OAuth provider topilmadi');
+};
 
-// POST /api/auth/register - o'quvchi o'zi ro'yxatdan o'tishi (guruhsiz, coin 0)
-router.post(
-  '/register',
-  authLimiter,
-  asyncH(async (req, res) => {
-    const schema = z.object({
-      full_name: z.string().min(3, 'Ism kamida 3 belgi').max(60),
-      phone: z.string().min(7, 'Telefon kiriting'),
-      password: z.string().min(4, 'Parol kamida 4 belgi').max(50),
-      username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/, 'Username faqat harf, raqam va _').optional().nullable(),
+const redirectUriFor = (provider) =>
+  `${env.oauthRedirectBaseUrl.replace(/\/+$/, '')}/api/auth/oauth/${provider}/callback`;
+
+const cookieOptions = (maxAge, path = '/') => ({
+  httpOnly: true,
+  secure: env.isProduction || env.cookieSameSite === 'none',
+  sameSite: env.cookieSameSite,
+  maxAge,
+  path,
+});
+
+const authFailureRedirect = (res, reason = 'oauth_failed') => {
+  const base = env.frontendUrl.replace(/\/+$/, '');
+  return res.redirect(`${base}/login?auth_error=${encodeURIComponent(reason)}`);
+};
+
+async function requestProviderProfile(provider, code, config, redirectUri) {
+  if (provider === 'github') {
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        code,
+        redirect_uri: redirectUri,
+      }),
+      signal: AbortSignal.timeout(12_000),
     });
-    const data = schema.parse(req.body);
+    const tokenData = await tokenResponse.json();
+    if (!tokenResponse.ok || !tokenData.access_token) throw new Error('GITHUB_TOKEN_EXCHANGE_FAILED');
 
-    const phone = normalizePhone(data.phone);
-    if (!phone) throw new ApiError(400, 'INVALID_PHONE', 'Telefon noto\'g\'ri');
+    const headers = {
+      Authorization: `Bearer ${tokenData.access_token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    };
+    const userResponse = await fetch('https://api.github.com/user', { headers, signal: AbortSignal.timeout(12_000) });
+    if (!userResponse.ok) throw new Error('GITHUB_PROFILE_FAILED');
+    const githubUser = await userResponse.json();
 
-    const exists = await prisma.user.findUnique({ where: { phone } });
-    if (exists) throw new ApiError(409, 'PHONE_EXISTS', 'Bu telefon allaqachon ro\'yxatdan o\'tgan');
-    if (data.username) {
-      const uname = await prisma.user.findUnique({ where: { username: data.username } });
-      if (uname) throw new ApiError(409, 'USERNAME_TAKEN', 'Bu username band');
+    let email = null;
+    const emailResponse = await fetch('https://api.github.com/user/emails', { headers, signal: AbortSignal.timeout(12_000) });
+    if (emailResponse.ok) {
+      const emails = await emailResponse.json();
+      email = emails.find((entry) => entry.primary && entry.verified)?.email || null;
     }
+    return {
+      id: String(githubUser.id),
+      name: githubUser.name || githubUser.login || 'GitHub player',
+      username: githubUser.login,
+      avatar: githubUser.avatar_url || null,
+      email: email ? email.toLowerCase() : null,
+      verifiedEmail: Boolean(email),
+    };
+  }
 
-    const user = await prisma.user.create({
-      data: {
-        full_name: data.full_name,
-        phone,
-        username: data.username || null,
-        password: await hashPassword(data.password),
-        coin: 100, // har bir yangi o'quvchi 100 coin bilan boshlaydi
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
+    }),
+    signal: AbortSignal.timeout(12_000),
+  });
+  const tokenData = await tokenResponse.json();
+  if (!tokenResponse.ok || !tokenData.access_token) throw new Error('GOOGLE_TOKEN_EXCHANGE_FAILED');
+
+  const profileResponse = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!profileResponse.ok) throw new Error('GOOGLE_PROFILE_FAILED');
+  const googleUser = await profileResponse.json();
+  const verifiedEmail = googleUser.email_verified === true || googleUser.email_verified === 'true';
+  return {
+    id: String(googleUser.sub),
+    name: googleUser.name || googleUser.email?.split('@')[0] || 'Google player',
+    username: googleUser.email?.split('@')[0],
+    avatar: googleUser.picture || null,
+    email: verifiedEmail && googleUser.email ? String(googleUser.email).toLowerCase() : null,
+    verifiedEmail,
+  };
+}
+
+function normalizeUsername(value) {
+  const cleaned = String(value || 'player')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 16);
+  return cleaned || 'player';
+}
+
+async function makeUniqueUsername(value) {
+  const base = normalizeUsername(value);
+  let candidate = base;
+  let suffix = 2;
+  while (await prisma.user.findUnique({ where: { username: candidate }, select: { id: true } })) {
+    const tail = `_${suffix++}`;
+    candidate = `${base.slice(0, 20 - tail.length)}${tail}`;
+  }
+  return candidate;
+}
+
+async function getOrCreateOAuthPrincipal(provider, profile) {
+  const providerAccountId = String(profile.id);
+  const existing = await prisma.oAuthAccount.findUnique({
+    where: { provider_providerAccountId: { provider, providerAccountId } },
+    include: { user: true, staff: true },
+  });
+  if (existing?.staff) {
+    if (!existing.staff.active) throw new ApiError(403, 'ACCOUNT_DISABLED', 'Admin hisobi faolsizlantirilgan');
+    return { kind: 'staff', record: existing.staff };
+  }
+  if (existing?.user) {
+    const update = {};
+    if (profile.avatar && profile.avatar !== existing.user.avatar) update.avatar = profile.avatar;
+    if (!existing.user.email && profile.email) update.email = profile.email;
+    const user = Object.keys(update).length
+      ? await prisma.user.update({ where: { id: existing.user.id }, data: update })
+      : existing.user;
+    return { kind: 'user', record: user };
+  }
+
+  const adminEmails = new Set(
+    String(process.env.ADMIN_OAUTH_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean),
+  );
+  if (profile.verifiedEmail && profile.email && adminEmails.has(profile.email)) {
+    const staff = await prisma.staff.upsert({
+      where: { email: profile.email },
+      update: { full_name: profile.name, role: 'ADMIN', active: true },
+      create: {
+        full_name: profile.name,
+        email: profile.email,
+        phone: null,
+        password: null,
+        role: 'ADMIN',
+        active: true,
       },
     });
-
-    const token = signToken({ id: user.id, kind: 'user', full_name: user.full_name });
-    return ok(res, { token, profile: userProfile(user) }, { message: 'Ro\'yxatdan o\'tildi' });
-  })
-);
-
-// POST /api/auth/login
-router.post(
-  '/login',
-  authLimiter,
-  asyncH(async (req, res) => {
-    const schema = z.object({
-      phone: z.string().min(7, 'Telefon raqam kiriting'),
-      password: z.string().min(4, 'Parol kamida 4 belgi'),
+    await prisma.oAuthAccount.create({
+      data: { provider, providerAccountId, email: profile.email, staffId: staff.id },
     });
-    const { phone, password } = schema.parse(req.body);
+    return { kind: 'staff', record: staff };
+  }
 
-    const normalized = normalizePhone(phone);
-    if (!normalized) throw new ApiError(400, 'INVALID_PHONE', 'Telefon raqam noto\'g\'ri formatda');
-
-    // Avval xodimlar orasidan qidiramiz (teacher/cashier/admin)
-    const staff = await prisma.staff.findUnique({ where: { phone: normalized } });
+  // Provisioned admin accounts can sign in with their verified Google/GitHub email.
+  if (profile.verifiedEmail && profile.email) {
+    const staff = await prisma.staff.findUnique({ where: { email: profile.email } });
     if (staff) {
-      const match = await comparePassword(password, staff.password);
-      if (!match) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Telefon yoki parol noto\'g\'ri');
-      if (!staff.active) throw new ApiError(403, 'ACCOUNT_DISABLED', 'Hisob faolshtirilgan. Admin bilan bog\'laning');
-
-      const token = signToken({ id: staff.id, kind: 'staff', role: staff.role, full_name: staff.full_name });
-      const [groupsCount, quizzesCount] = await Promise.all([
-        prisma.group.count({ where: { teacherId: staff.id } }),
-        prisma.quiz.count({ where: { createdById: staff.id } }),
-      ]);
-      return ok(res, { token, profile: staffProfile(staff, { groupsCount, quizzesCount }) });
+      if (!staff.active) throw new ApiError(403, 'ACCOUNT_DISABLED', 'Xodim hisobi faolsizlantirilgan');
+      await prisma.oAuthAccount.create({
+        data: { provider, providerAccountId, email: profile.email, staffId: staff.id },
+      });
+      return { kind: 'staff', record: staff };
     }
+  }
 
-    // Keyin o'quvchilar orasidan
-    const user = await prisma.user.findUnique({
-      where: { phone: normalized },
-      include: {
-        currentFrame: true,
-        currentEffect: true,
-        groupMembers: { include: { group: { include: { teacher: true } } } },
-      },
+  // Link the second provider to an existing player when it returns the same verified email.
+  // This avoids duplicate profiles when someone starts with Google and later uses GitHub (or vice versa).
+  if (profile.verifiedEmail && profile.email) {
+    const matchingUser = await prisma.user.findFirst({
+      where: { email: { equals: profile.email, mode: 'insensitive' } },
     });
-    if (!user) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Telefon yoki parol noto\'g\'ri');
-
-    const match = await comparePassword(password, user.password);
-    if (!match) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Telefon yoki parol noto\'g\'ri');
-
-    const token = signToken({ id: user.id, kind: 'user', full_name: user.full_name });
-    return ok(res, { token, profile: userProfile(user) });
-  })
-);
-
-// GET /api/auth/me - joriy foydalanuvchi
-router.get(
-  '/me',
-  requireAuth('any'),
-  asyncH(async (req, res) => {
-    const { kind, id } = req.user;
-    if (kind === 'staff') {
-      const s = await prisma.staff.findUnique({ where: { id } });
-      const [groupsCount, quizzesCount] = await Promise.all([
-        prisma.group.count({ where: { teacherId: id } }),
-        prisma.quiz.count({ where: { createdById: id } }),
-      ]);
-      return ok(res, staffProfile(s, { groupsCount, quizzesCount }));
+    if (matchingUser) {
+      await prisma.oAuthAccount.create({
+        data: { provider, providerAccountId, email: profile.email, userId: matchingUser.id },
+      });
+      const update = {};
+      if (!matchingUser.email) update.email = profile.email;
+      if (profile.avatar && !matchingUser.avatar) update.avatar = profile.avatar;
+      const user = Object.keys(update).length
+        ? await prisma.user.update({ where: { id: matchingUser.id }, data: update })
+        : matchingUser;
+      return { kind: 'user', record: user };
     }
-    const u = await prisma.user.findUnique({
-      where: { id },
-      include: {
-        currentFrame: true,
-        currentEffect: true,
-        groupMembers: { include: { group: { include: { teacher: true } } } },
+  }
+
+  const username = await makeUniqueUsername(profile.username || profile.email?.split('@')[0] || profile.name);
+  const user = await prisma.user.create({
+    data: {
+      full_name: String(profile.name || 'XOLT Player').trim().slice(0, 60) || 'XOLT Player',
+      avatar: profile.avatar,
+      email: profile.email,
+      phone: null,
+      password: null,
+      username,
+      coin: 100,
+      oauthAccounts: {
+        create: { provider, providerAccountId, email: profile.email },
       },
-    });
-    return ok(res, userProfile(u));
-  })
-);
+    },
+  });
+  return { kind: 'user', record: user };
+}
 
-// POST /api/auth/change-password
-router.post(
-  '/change-password',
-  requireAuth('any'),
-  asyncH(async (req, res) => {
-    const schema = z.object({
-      oldPassword: z.string().min(4),
-      newPassword: z.string().min(4, 'Yangi parol kamida 4 belgi'),
-    });
-    const { oldPassword, newPassword } = schema.parse(req.body);
+// Public accounts must be created by a verified GitHub or Google OAuth provider.
+router.post('/register', authLimiter, asyncH(async (_req, _res) => {
+  throw new ApiError(410, 'OAUTH_REQUIRED', 'Ro\'yxatdan o\'tish uchun GitHub yoki Google orqali kiring');
+}));
 
-    const model = req.user.kind === 'staff' ? prisma.staff : prisma.user;
-    const record = await model.findUnique({ where: { id: req.user.id } });
-    if (!record) throw new ApiError(404, 'NOT_FOUND', 'Foydalanuvchi topilmadi');
+router.get('/providers', (_req, res) => {
+  return ok(res, {
+    github: Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
+    google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+  });
+});
 
-    const match = await comparePassword(oldPassword, record.password);
-    if (!match) throw new ApiError(400, 'WRONG_PASSWORD', 'Eski parol noto\'g\'ri');
+router.get('/oauth/:provider', authLimiter, asyncH(async (req, res) => {
+  const provider = String(req.params.provider).toLowerCase();
+  const config = providerConfig(provider);
+  if (!config.clientId || !config.clientSecret) {
+    throw new ApiError(503, 'OAUTH_NOT_CONFIGURED', `${provider} OAuth hali sozlanmagan`);
+  }
 
-    await model.update({ where: { id: req.user.id }, data: { password: await hashPassword(newPassword) } });
-    return ok(res, { message: 'Parol muvaffaqiyatli o\'zgartirildi' });
-  })
-);
+  const state = crypto.randomBytes(32).toString('hex');
+  res.cookie(OAUTH_STATE_COOKIE, state, cookieOptions(10 * 60 * 1000, '/api/auth/oauth'));
+  const redirectUri = redirectUriFor(provider);
+  const authorizeUrl = new URL(provider === 'github'
+    ? 'https://github.com/login/oauth/authorize'
+    : 'https://accounts.google.com/o/oauth2/v2/auth');
+  authorizeUrl.searchParams.set('client_id', config.clientId);
+  authorizeUrl.searchParams.set('redirect_uri', redirectUri);
+  authorizeUrl.searchParams.set('response_type', 'code');
+  authorizeUrl.searchParams.set('state', state);
+  if (provider === 'github') {
+    authorizeUrl.searchParams.set('scope', 'read:user user:email');
+  } else {
+    authorizeUrl.searchParams.set('scope', 'openid email profile');
+    authorizeUrl.searchParams.set('prompt', 'select_account');
+  }
+  return res.redirect(authorizeUrl.toString());
+}));
+
+router.get('/oauth/:provider/callback', authLimiter, asyncH(async (req, res) => {
+  const provider = String(req.params.provider).toLowerCase();
+  const config = providerConfig(provider);
+  const expectedState = String(req.cookies?.[OAUTH_STATE_COOKIE] || readCookie(req.headers.cookie, OAUTH_STATE_COOKIE) || '');
+  const receivedState = String(req.query.state || '');
+  res.clearCookie(OAUTH_STATE_COOKIE, cookieOptions(0, '/api/auth/oauth'));
+
+  if (req.query.error) return authFailureRedirect(res, 'oauth_cancelled');
+  if (!req.query.code || !expectedState || !receivedState || expectedState !== receivedState) {
+    return authFailureRedirect(res, 'oauth_state_invalid');
+  }
+  if (!config.clientId || !config.clientSecret) return authFailureRedirect(res, 'oauth_not_configured');
+
+  try {
+    const profile = await requestProviderProfile(provider, String(req.query.code), config, redirectUriFor(provider));
+    if (!profile.id) throw new Error('OAUTH_PROFILE_ID_MISSING');
+    const principal = await getOrCreateOAuthPrincipal(provider, profile);
+    const token = principal.kind === 'staff'
+      ? signToken({ id: principal.record.id, kind: 'staff', role: principal.record.role, full_name: principal.record.full_name })
+      : signToken({ id: principal.record.id, kind: 'user', full_name: principal.record.full_name });
+    res.cookie(AUTH_COOKIE, token, cookieOptions(AUTH_COOKIE_MAX_AGE));
+    return res.redirect(`${env.frontendUrl.replace(/\/+$/, '')}/auth/callback`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) return authFailureRedirect(res, 'account_disabled');
+    console.error(`[auth] ${provider} OAuth callback failed:`, error?.message || error);
+    return authFailureRedirect(res, 'oauth_failed');
+  }
+}));
+
+function readCookie(cookieHeader, name) {
+  const item = String(cookieHeader || '').split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
+  if (!item) return null;
+  try { return decodeURIComponent(item.slice(name.length + 1)); } catch { return null; }
+}
+
+router.post('/logout', (_req, res) => {
+  res.clearCookie(AUTH_COOKIE, cookieOptions(0));
+  return ok(res, { message: 'Hisobdan chiqildi' });
+});
+
+// GET /api/auth/me — current OAuth player or staff account.
+router.get('/me', requireAuth('any'), asyncH(async (req, res) => {
+  const { kind, id } = req.user;
+  if (kind === 'staff') {
+    const staff = await prisma.staff.findUnique({ where: { id } });
+    if (!staff) throw new ApiError(404, 'NOT_FOUND', 'Admin topilmadi');
+    return ok(res, staffProfile(staff));
+  }
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: { currentFrame: true, currentEffect: true },
+  });
+  if (!user) throw new ApiError(404, 'NOT_FOUND', 'Foydalanuvchi topilmadi');
+  return ok(res, userProfile(user));
+}));
 
 export default router;

@@ -1,4 +1,4 @@
-// Fayl yuklash route'i - avatar, frame, savol rasmlari
+// Fayl yuklash route'i - profil avatar/cover, frame va savol rasmlari
 // IMGBB_API_KEY o'rnatilgan bo'lsa -> imgbb.com ga yuklanadi (URL qaytariladi)
 // Aks holda -> lokal /uploads papkasiga saqlanadi (dev rejim)
 import { Router } from 'express';
@@ -49,7 +49,7 @@ function saveLocal(buffer, folder, originalName) {
   return `/uploads/${folder}/${name}`;
 }
 
-// POST /api/upload - form-data: file + folder (avatars|frames|questions|effects)
+// POST /api/upload - form-data: file + folder (avatars|covers|frames|questions|effects)
 // Maksimal hajm: 5MB (env.MAX_UPLOAD_MB)
 router.post(
   '/',
@@ -63,6 +63,9 @@ router.post(
     if (!ALLOWED_FOLDERS.includes(folder)) {
       throw new ApiError(400, 'INVALID_FOLDER', 'Noto\'g\'ri papka');
     }
+    if (folder === 'covers' && req.user.kind !== 'user') {
+      throw new ApiError(403, 'AUTH_FORBIDDEN', 'Cover rasm faqat player profiliga qo\'shiladi');
+    }
 
     // imgbb yoki lokal
     let url;
@@ -74,10 +77,13 @@ router.post(
       url = saveLocal(req.file.buffer, folder, req.file.originalname);
     }
 
-    // Avatar yuklanganda avtomatik profilga yozish
+    // Profile media is persisted directly; cover images are player-only.
     if (folder === 'avatars') {
       const model = req.user.kind === 'staff' ? prisma.staff : prisma.user;
       await model.update({ where: { id: req.user.id }, data: { avatar: url } });
+    }
+    if (folder === 'covers') {
+      await prisma.user.update({ where: { id: req.user.id }, data: { coverImage: url } });
     }
 
     return ok(res, { url, folder, filename: req.file.originalname || null, host });

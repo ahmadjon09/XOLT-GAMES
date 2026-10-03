@@ -6,7 +6,7 @@ import { Plus, Trash2, ImagePlus, X, Save, ListChecks } from 'lucide-react';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet } from '../../api/hooks.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Card, Button, Input, Field, Textarea, PageLoader, Select, PageHeader } from '../../components/ui.jsx';
+import { Card, Button, Input, Field, Textarea, PageLoader, PageError, Select, PageHeader } from '../../components/ui.jsx';
 import ImageCropper from '../../components/ImageCropper.jsx';
 import { fileToDataUrl, validateImageFile } from '../../utils/cropImage.js';
 import { fmtInt } from '../../utils/format.js';
@@ -36,7 +36,7 @@ export default function QuizEditor() {
   const fileForRef = useRef(null);
   const [cropFor, setCropFor] = useState(null);
 
-  const { data: quiz, isLoading: quizLoading } = useGet(id ? `/staff/quizzes/${id}` : null);
+  const { data: quiz, isLoading: quizLoading, error: quizError } = useGet(id ? `/user/quizzes/${id}` : null);
 
   useEffect(() => {
     if (!id || !quiz) return;
@@ -54,6 +54,10 @@ export default function QuizEditor() {
     );
     setLoading(false);
   }, [id, quiz]);
+
+  useEffect(() => {
+    if (id && !quizLoading && quizError) setLoading(false);
+  }, [id, quizLoading, quizError]);
 
   const updateQ = (qi, patch) => {
     setQuestions((qs) => qs.map((q, i) => (i === qi ? { ...q, ...patch } : q)));
@@ -118,12 +122,12 @@ export default function QuizEditor() {
     setBusy(true);
     try {
       if (id) {
-        await Fetch.patch(`/staff/quizzes/${id}`, { name: name.trim(), keywords: keywords.split(',').map((k) => k.trim()).filter(Boolean), questions: validQuestions });
+        await Fetch.patch(`/user/quizzes/${id}`, { name: name.trim(), keywords: keywords.split(',').map((k) => k.trim()).filter(Boolean), questions: validQuestions });
       } else {
-        await Fetch.post('/staff/quizzes', { name: name.trim(), keywords: keywords.split(',').map((k) => k.trim()).filter(Boolean), questions: validQuestions });
+        await Fetch.post('/user/quizzes', { name: name.trim(), keywords: keywords.split(',').map((k) => k.trim()).filter(Boolean), questions: validQuestions });
       }
       toast.success(t('quizzesP.saveSuccess'));
-      navigate('/staff/quizzes');
+      navigate('/quizzes');
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -132,6 +136,9 @@ export default function QuizEditor() {
   };
 
   if (loading || quizLoading) return <PageLoader />;
+  if (id && quizError) {
+    return <><TopBar title={t('quizzesP.title')} back /><div className="page-staff pt-4"><PageError onRetry={() => navigate('/quizzes')} /></div></>;
+  }
 
   return (
     <>
@@ -142,9 +149,9 @@ export default function QuizEditor() {
         icon={ListChecks}
         title={id ? t('quizzesP.edit') : t('quizzesP.newQuiz')}
         back
-        onBack={() => navigate('/staff/quizzes')}
+        onBack={() => navigate('/quizzes')}
         actions={
-          <Button variant="outline" size="sm" onClick={() => navigate('/staff/quizzes')}>
+          <Button variant="outline" size="sm" onClick={() => navigate('/quizzes')}>
             <X size={15} /> {t('common.cancel')}
           </Button>
         }

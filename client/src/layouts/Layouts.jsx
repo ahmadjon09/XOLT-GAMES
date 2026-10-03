@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Home, Store, Trophy, User, LayoutDashboard, Users, CalendarCheck2, ListChecks,
-  Wallet, LogOut, Wifi, WifiOff, Zap, Keyboard, Code2, ChevronLeft, Swords, UserRound,
+  Home, Store, Trophy, User, LayoutDashboard, Users, LogOut, Wifi, WifiOff, Zap, ChevronLeft, Swords, UserRound,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSocket } from '../context/SocketContext.jsx';
@@ -158,19 +157,13 @@ function useStaffMenu() {
   const { user } = useAuth();
   const role = user?.role;
   return [
-    { to: '/staff', end: true, icon: LayoutDashboard, label: t('staff.dashboard'), roles: ['ADMIN', 'TEACHER', 'CASHIER'] },
-    { to: '/staff/profile', icon: UserRound, label: t('staff.myProfile'), roles: ['ADMIN', 'TEACHER', 'CASHIER'] },
-    { to: '/staff/groups', icon: Users, label: t('staff.groups'), roles: ['ADMIN', 'TEACHER'] },
-    { to: '/staff/attendance', icon: CalendarCheck2, label: t('staff.attendance'), roles: ['ADMIN', 'TEACHER'] },
-    { to: '/staff/quizzes', icon: ListChecks, label: t('staff.quizzes'), roles: ['ADMIN', 'TEACHER'] },
-    { to: '/staff/payments', icon: Wallet, label: t('staff.payments'), roles: ['ADMIN', 'CASHIER'] },
-    { to: '/staff/users', icon: Users, label: t('staff.users'), roles: ['ADMIN', 'CASHIER', 'TEACHER'] },
-    { to: '/staff/staff', icon: User, label: t('staff.staff'), roles: ['ADMIN'] },
+    { to: '/staff', end: true, icon: LayoutDashboard, label: t('staff.dashboard'), roles: ['ADMIN'] },
+    { to: '/staff/profile', icon: UserRound, label: t('staff.myProfile'), roles: ['ADMIN'] },
+    { to: '/staff/games', icon: Swords, label: t('adminGames.title'), roles: ['ADMIN'] },
+    { to: '/staff/users', icon: Users, label: t('usersP.title'), roles: ['ADMIN'] },
     { to: '/staff/shop', icon: Store, label: t('staff.shop'), roles: ['ADMIN'] },
-    { to: '/staff/typing-texts', icon: Keyboard, label: t('typing.manageTexts'), roles: ['ADMIN', 'TEACHER'] },
-    { to: '/staff/code-questions', icon: Code2, label: t('code.manageQuestions'), roles: ['ADMIN', 'TEACHER'] },
     { to: '/staff/stats', icon: Trophy, label: t('staff.stats'), roles: ['ADMIN'] },
-  ].filter((m) => m.roles.includes(role));
+  ].filter((item) => item.roles.includes(role));
 }
 
 // ---------- BottomNav (markazlashgan suzuvchi panel) ----------
@@ -296,6 +289,7 @@ export function StudentLayout() {
   const navItems = [
     { to: '/', end: true, icon: Home, label: t('nav.home') },
     { to: '/lobby', icon: Swords, label: t('nav.lobby') },
+    { to: '/friends', icon: Users, label: t('nav.friends') },
     { to: '/shop', icon: Store, label: t('nav.shop') },
     { to: '/leaderboard', icon: Trophy, label: t('nav.leaderboard') },
     { to: '/profile', icon: User, label: t('nav.profile') },
@@ -339,11 +333,7 @@ export function StaffLayout() {
   const { user } = useAuth();
   const menu = useStaffMenu();
 
-  const roleLabel = {
-    TEACHER: t('staff.roleTeacher'),
-    CASHIER: t('staff.roleCashier'),
-    ADMIN: t('staff.roleAdmin'),
-  }[user?.role];
+  const roleLabel = t('staff.roleAdmin');
 
   return (
     <>

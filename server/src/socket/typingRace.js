@@ -1,6 +1,6 @@
 // TYPE RACING - tez yozish poygasi (10 tagacha o'yinchi)
 // O'yin yaratgan odamning tili bo'yicha matnlar tanlanadi (uz/ru/en)
-// Teacher matnlarni boshqaradi (CRUD), o'yinda DB dan tildagi matnlar olinadi
+// Admin-managed text prompts are selected by language for the typing race.
 // Solo rejim coin/ball bermaydi, faqat WPM reytingga yoziladi (REST orqali)
 import { prisma } from '../prisma/client.js';
 import {
@@ -19,7 +19,7 @@ const SESSION_IDLE_MS = 30 * 60 * 1000;
 const FINISHED_SESSION_MS = 10 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 60 * 1000;
 const PODIUM_COINS = [50, 30, 15];
-const CORRECT_BONUS = 2; // har qatnashgan o'quvchiga ball
+const CORRECT_BONUS = 2; // har bir o'yinchiga ball
 
 const sessions = new Map();
 
@@ -66,8 +66,8 @@ function publicSession(session) {
   };
 }
 
-async function pickTexts(lang, hostId) {
-  // Avval teacher yaratgan matnlardan, bo'lmasa hamma tildagilardan
+async function pickTexts(lang) {
+  // Load the current language's text library.
   const where = { lang };
   const texts = await prisma.typingText.findMany({
     where,
@@ -100,7 +100,7 @@ async function finishRace(io, session) {
   });
   players.forEach((p, i) => { p.rank = i + 1; });
 
-  // Faqat o'quvchilarga coin/ball (host teacher bo'lsa ham)
+  // Award coins and leaderboard points to participating player accounts.
   const fin = players.map((p) => ({
     userId: p.userId,
     full_name: p.full_name,
@@ -126,7 +126,7 @@ async function finishRace(io, session) {
         fin[i].coinsWon = coins;
         await tx.user.update({ where: { id: fin[i].userId }, data: { coin: { increment: coins } } });
       }
-      // Har bir qatnashgan o'quvchiga ball (raqobat uchun)
+      // Each participating player earns score (raqobat uchun)
       for (const p of fin) {
         const user = await tx.user.findUnique({ where: { id: p.userId } });
         if (!user) continue;
@@ -138,7 +138,7 @@ async function finishRace(io, session) {
             month_score: { increment: CORRECT_BONUS },
           },
         });
-        // WPM reytingga yozish (faqat o'quvchi - user jadvalida bor bo'lsa)
+        // WPM reytingga yozish (faqat public player hisoblariga)
         if (p.done && user) {
           await tx.typingRecord.create({
             data: {
@@ -218,9 +218,9 @@ export function setupTypingRace(io) {
     socket.on('typing:host', async (payload) => {
       try {
         const lang = ['uz', 'ru', 'en'].includes(payload?.lang) ? payload.lang : 'uz';
-        const texts = await pickTexts(lang, userId);
+        const texts = await pickTexts(lang);
         if (!texts || texts.length === 0) {
-          return emitError(socket, 'NO_TEXTS', 'Bu tilda matnlar yo\'q. Teacherdan matn qo\'shishini so\'rang');
+          return emitError(socket, 'NO_TEXTS', 'Bu tilda hozircha matnlar yo\'q');
         }
 
         let code;
@@ -242,7 +242,7 @@ export function setupTypingRace(io) {
           lastActivity: Date.now(),
         };
 
-        // Xost ham o'yinchi (agar foydalanuvchi bo'lsa - teacher ham o'ynay oladi, coin olmaydi)
+        // Add the player-host to the room as a regular participant when applicable.
         const hostUser = await fetchFullUser(userId);
         if (hostUser) {
           session.players.set(userId, buildPlayer(hostUser, socket.id));

@@ -1,15 +1,16 @@
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Pencil, Upload, Settings, ChevronRight, CalendarCheck2, Wallet, LogOut, Volume2, Globe, Loader2 } from 'lucide-react';
+import { Globe, ImagePlus, Loader2, ListChecks, Pencil, Settings, Store, Upload, Users, Volume2 } from 'lucide-react';
 import { Fetch, errorMessage } from '../../api/fetcher.js';
 import { useGet, useInvalidate } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Avatar, AnimatedName, Button, Input, Field, CoinBadge, Sheet, Toggle, LangSwitcher, ConfirmDialog, AutoGrid, Card } from '../../components/ui.jsx';
+import { Avatar, AnimatedName, Button, Input, Field, CoinBadge, Sheet, Toggle, LangSwitcher, AutoGrid, Card } from '../../components/ui.jsx';
 import ImageCropper from '../../components/ImageCropper.jsx';
+import OnlineActivity from '../../components/OnlineActivity.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
-import { fmtNum, fmtDate, fmtPhone } from '../../utils/format.js';
+import { fmtNum, fmtDate } from '../../utils/format.js';
 import { isSoundEnabled, setSoundEnabled } from '../../utils/sound.js';
 import { fileToDataUrl, validateImageFile } from '../../utils/cropImage.js';
 
@@ -20,20 +21,16 @@ export default function Profile() {
   const invalidate = useInvalidate();
   const [editOpen, setEditOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [passOpen, setPassOpen] = useState(false);
   const [sound, setSound] = useState(isSoundEnabled());
   const fileRef = useRef(null);
+  const coverRef = useRef(null);
   const [avatarCrop, setAvatarCrop] = useState(null);
-
+  const [coverCrop, setCoverCrop] = useState(null);
   const [form, setForm] = useState({ username: '', full_name: '' });
-  const [passForm, setPassForm] = useState({ oldPassword: '', newPassword: '', newPassword2: '' });
   const [busy, setBusy] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
-
-  const { data: profile, isLoading } = useGet('/user/profile');
-  // Guruh ichidagi reytingim (har guruh bo'yicha o'rin)
-  const { data: groupRank } = useGet('/user/group-ranking', { fallbackData: [] });
-  const rankOf = (groupId) => (groupRank || []).find((g) => g.groupId === groupId) || null;
+  const [coverUploading, setCoverUploading] = useState(false);
+  const { data: profile, isLoading } = useGet('/user/profile', { refreshInterval: 30_000 });
 
   const onAvatarPick = async (file) => {
     if (!file) return;
@@ -43,27 +40,57 @@ export default function Profile() {
       return;
     }
     try {
-      const src = await fileToDataUrl(file);
-      setAvatarCrop({ src });
-    } catch (e) {
-      toast.error(errorMessage(e));
+      setAvatarCrop({ src: await fileToDataUrl(file) });
+    } catch (error) {
+      toast.error(errorMessage(error));
     }
   };
 
   const uploadAvatar = async (blob) => {
     setAvatarUploading(true);
-    const fd = new FormData();
-    fd.append('file', blob, 'avatar.png');
-    fd.append('folder', 'avatars');
+    const formData = new FormData();
+    formData.append('file', blob, 'avatar.png');
+    formData.append('folder', 'avatars');
     try {
-      await Fetch.upload('/upload', fd);
+      await Fetch.upload('/upload', formData);
       toast.success(t('profile.avatarChanged'));
       await refresh();
       invalidate('/user/profile');
-    } catch (e) {
-      toast.error(errorMessage(e));
+    } catch (error) {
+      toast.error(errorMessage(error));
     } finally {
       setAvatarUploading(false);
+    }
+  };
+
+  const onCoverPick = async (file) => {
+    if (!file) return;
+    const check = validateImageFile(file, 5);
+    if (!check.ok) {
+      toast.error(check.error === 'TOO_LARGE' ? t('crop.fileTooLarge', { mb: check.maxMb }) : t('crop.invalidType'));
+      return;
+    }
+    try {
+      setCoverCrop({ src: await fileToDataUrl(file) });
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  };
+
+  const uploadCover = async (blob) => {
+    setCoverUploading(true);
+    const formData = new FormData();
+    formData.append('file', blob, 'profile-cover.png');
+    formData.append('folder', 'covers');
+    try {
+      await Fetch.upload('/upload', formData);
+      toast.success(t('profile.coverChanged'));
+      await refresh();
+      invalidate('/user/profile');
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setCoverUploading(false);
     }
   };
 
@@ -75,26 +102,8 @@ export default function Profile() {
       setEditOpen(false);
       await refresh();
       invalidate('/user/profile');
-    } catch (e) {
-      toast.error(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const changePassword = async () => {
-    if (passForm.newPassword !== passForm.newPassword2) {
-      toast.error(t('auth.passwordsNotMatch'));
-      return;
-    }
-    setBusy(true);
-    try {
-      await Fetch.post('/auth/change-password', { oldPassword: passForm.oldPassword, newPassword: passForm.newPassword });
-      toast.success(t('auth.passwordChanged'));
-      setPassOpen(false);
-      setPassForm({ oldPassword: '', newPassword: '', newPassword2: '' });
-    } catch (e) {
-      toast.error(errorMessage(e));
+    } catch (error) {
+      toast.error(errorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -112,9 +121,7 @@ export default function Profile() {
                 <div className="skeleton h-6 w-40" />
                 <div className="skeleton h-4 w-52" />
               </Card>
-              <AutoGrid col={150}>
-                {[...Array(4)].map((_, i) => <div key={i} className="skeleton h-[96px]" style={{ borderRadius: 'var(--r-md)' }} />)}
-              </AutoGrid>
+              <AutoGrid col={150}>{[...Array(3)].map((_, i) => <div key={i} className="skeleton h-[96px]" style={{ borderRadius: 'var(--r-md)' }} />)}</AutoGrid>
             </div>
             <div className="skeleton h-[260px]" style={{ borderRadius: 'var(--r-lg)' }} />
           </div>
@@ -123,148 +130,97 @@ export default function Profile() {
     );
   }
 
-  const attendanceTotal = profile.groups.reduce((s, g) => s + g.attendance.present + g.attendance.absent + g.attendance.late, 0);
-  const absenceTotal = profile.groups.reduce((s, g) => s + g.attendance.absent, 0);
-
+  const currentProfile = profile || user || {};
   return (
     <>
       <TopBar
         title={t('profile.title')}
-        right={
-          <button className="btn ico ghost" onClick={() => setSettingsOpen(true)} title={t('common.settings')} aria-label={t('common.settings')}>
-            <Settings size={18} />
-          </button>
-        }
+        right={<button className="btn ico ghost" onClick={() => setSettingsOpen(true)} title={t('common.settings')} aria-label={t('common.settings')}><Settings size={18} /></button>}
       />
       <div className="page pt-4">
         <div className="grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] gap-[var(--gap)] items-start">
-          {/* Chap ustun: profil + statistika */}
           <div className="space-y-[var(--gap)]">
-            <Card className="text-center">
-              <div className="relative inline-block">
-                <Avatar w={112} avatar={profile.avatar} frame={profile.currentFrame} />
+            <Card className="p-0 overflow-hidden text-center">
+              <div className="relative h-32 sm:h-40 bg-gradient-to-r from-violet-700 via-primary to-indigo-600">
+                {currentProfile.coverImage && <img src={currentProfile.coverImage} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
                 <button
-                  onClick={() => fileRef.current?.click()}
-                  disabled={avatarUploading}
-                  className="absolute -right-1 -bottom-1 w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center shadow-[0_4px_12px_rgba(91,30,166,0.45)] hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  onClick={() => coverRef.current?.click()}
+                  disabled={coverUploading}
+                  className="absolute top-3 right-3 z-10 inline-flex items-center gap-2 rounded-xl bg-black/45 px-3 py-2 text-xs font-bold text-white backdrop-blur hover:bg-black/60 disabled:opacity-50"
+                  aria-label={t('profile.changeCover')}
                 >
-                  {avatarUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                  {coverUploading ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
+                  <span>{t('profile.changeCover')}</span>
                 </button>
-                <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { onAvatarPick(e.target.files[0]); e.target.value = ''; }} />
+                <input ref={coverRef} type="file" accept="image/*" hidden onChange={(event) => { onCoverPick(event.target.files[0]); event.target.value = ''; }} />
               </div>
-              <div className="mt-3.5 text-[21px] font-extrabold tracking-tight">
-                <AnimatedName config={profile.currentEffect?.config}>{profile.full_name}</AnimatedName>
+              <div className="relative -mt-14 px-4 pb-5">
+                <div className="relative inline-block">
+                  <Avatar w={112} avatar={currentProfile.avatar} frame={currentProfile.currentFrame} />
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    disabled={avatarUploading}
+                    className="absolute -right-1 -bottom-1 w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center shadow-[0_4px_12px_rgba(91,30,166,0.45)] hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label={t('profile.changeAvatar')}
+                  >
+                    {avatarUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" hidden onChange={(event) => { onAvatarPick(event.target.files[0]); event.target.value = ''; }} />
+                </div>
+                <div className="mt-3.5 text-[21px] font-extrabold tracking-tight">
+                  <AnimatedName config={currentProfile.currentEffect?.config}>{currentProfile.full_name}</AnimatedName>
+                </div>
+                <div className="text-muted text-[13px] mt-0.5">
+                  {currentProfile.username ? `@${currentProfile.username}` : currentProfile.email || ''}
+                </div>
+                <div className="flex justify-center gap-2 mt-3.5 flex-wrap">
+                  <CoinBadge value={currentProfile.coin ?? 0} />
+                  {currentProfile.createdAt && <span className="badge neutral">{t('profile.memberSince')}: {fmtDate(currentProfile.createdAt)}</span>}
+                </div>
+                <Button variant="soft" size="sm" className="mt-4" onClick={() => { setForm({ username: currentProfile.username || '', full_name: currentProfile.full_name || '' }); setEditOpen(true); }}>
+                  <Pencil size={15} /> {t('profile.edit')}
+                </Button>
               </div>
-              <div className="text-muted text-[13px] tabular-nums mt-0.5">
-                {fmtPhone(profile.phone)} {profile.username ? `@${profile.username}` : ''}
-              </div>
-              <div className="flex justify-center gap-2 mt-3.5 flex-wrap">
-                <CoinBadge value={profile.coin} />
-                <span className="badge neutral">{t('profile.memberSince')}: {fmtDate(profile.createdAt)}</span>
-              </div>
-              <Button variant="soft" size="sm" className="mt-4" onClick={() => { setForm({ username: profile.username || '', full_name: profile.full_name }); setEditOpen(true); }}>
-                <Pencil size={15} /> {t('profile.edit')}
-              </Button>
             </Card>
 
             <AutoGrid col={150}>
               {[
-                { label: t('profile.score'), value: fmtNum(profile.score) },
-                { label: t('profile.weekScore'), value: fmtNum(profile.week_score) },
-                { label: t('profile.monthScore'), value: fmtNum(profile.month_score) },
-                { label: t('profile.groups'), value: profile.groups.length },
-              ].map((st) => (
-                <div key={st.label} className="tile">
-                  <div className="tile-v">{st.value}</div>
-                  <div className="tile-l">{st.label}</div>
-                </div>
+                { label: t('profile.score'), value: fmtNum(currentProfile.score ?? 0) },
+                { label: t('profile.weekScore'), value: fmtNum(currentProfile.week_score ?? 0) },
+                { label: t('profile.monthScore'), value: fmtNum(currentProfile.month_score ?? 0) },
+              ].map((stat) => (
+                <div key={stat.label} className="tile"><div className="tile-v">{stat.value}</div><div className="tile-l">{stat.label}</div></div>
               ))}
             </AutoGrid>
+            <OnlineActivity activity={currentProfile.activity} />
           </div>
 
-          {/* O'ng ustun: guruhlar + havolalar */}
-          <div className="space-y-[var(--gap)]">
-            <section>
-              <div className="section-title">
-                <div className="t">{t('profile.myGroups')}</div>
-                {profile.groups.length > 0 && <span className="badge neutral">{profile.groups.length}</span>}
-              </div>
-              <Card flush>
-                {profile.groups.length === 0 ? (
-                  <div className="text-center text-muted py-6 text-[13.5px]">{t('profile.noGroups')}</div>
-                ) : (
-                  profile.groups.map((g) => {
-                    const gr = rankOf(g.id);
-                    return (
-                      <div key={g.id} className="list-row">
-                        <div
-                          className="w-11 h-11 bg-surface-2 flex items-center justify-center font-extrabold text-primary shrink-0"
-                          style={{ borderRadius: 'var(--r-sm)' }}
-                        >
-                          {g.name.slice(0, 1)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-[14.5px] truncate">{g.name}</div>
-                          <div className="text-[12px] text-muted truncate">
-                            {g.teacher ? g.teacher.full_name : ''}
-                            {gr && ` • ${t('lb.myGroupRank')}: #${gr.myRank}/${gr.membersCount}`}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {gr && (
-                            <span className="badge primary">#{gr.myRank}<span className="opacity-60">/{gr.membersCount}</span></span>
-                          )}
-                          <span className="badge present">{t('attendance.present')}: {g.attendance.present}</span>
-                          {g.attendance.absent > 0 && (
-                            <span className="badge absent">{t('attendance.absent')}: {g.attendance.absent}</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </Card>
-            </section>
-
-            <section>
-              <Card flush>
-                <Link to="/attendance" className="block">
+          <section>
+            <div className="section-title"><div className="t">{t('profile.shortcuts')}</div></div>
+            <Card flush>
+              {[
+                { to: '/friends', icon: Users, title: t('nav.friends'), sub: t('friends.inviteHint'), color: 'var(--color-primary)', bg: 'var(--color-primary-soft)' },
+                { to: '/quizzes', icon: ListChecks, title: t('quizzesP.title'), sub: t('quizzesP.createQuiz'), color: '#e34c6b', bg: '#fdeef1' },
+                { to: '/shop', icon: Store, title: t('nav.shop'), sub: t('shop.desc'), color: '#9a6d00', bg: 'var(--color-accent-soft)' },
+              ].map((item) => (
+                <Link key={item.to} to={item.to} className="block">
                   <div className="list-row tap">
-                    <div className="w-11 h-11 bg-success-soft text-success flex items-center justify-center shrink-0" style={{ borderRadius: 'var(--r-sm)' }}>
-                      <CalendarCheck2 size={20} />
-                    </div>
-                    <div className="grow">
-                      <div className="title">{t('attendance.title')}</div>
-                      <div className="sub">{t('attendance.totalDays')}: {attendanceTotal} • {t('attendance.absent')}: {absenceTotal}</div>
-                    </div>
-                    <ChevronRight size={18} className="text-muted shrink-0" />
+                    <div className="w-11 h-11 flex items-center justify-center shrink-0" style={{ borderRadius: 'var(--r-sm)', background: item.bg, color: item.color }}><item.icon size={20} /></div>
+                    <div className="grow min-w-0"><div className="title">{item.title}</div><div className="sub truncate">{item.sub}</div></div>
+                    <span className="text-muted">›</span>
                   </div>
                 </Link>
-                <Link to="/payments" className="block">
-                  <div className="list-row tap">
-                    <div className="w-11 h-11 bg-accent-soft text-[#9a6d00] flex items-center justify-center shrink-0" style={{ borderRadius: 'var(--r-sm)' }}>
-                      <Wallet size={20} />
-                    </div>
-                    <div className="grow">
-                      <div className="title">{t('payments.title')}</div>
-                      <div className="sub">{t('payments.status')}</div>
-                    </div>
-                    <ChevronRight size={18} className="text-muted shrink-0" />
-                  </div>
-                </Link>
-              </Card>
-            </section>
-          </div>
+              ))}
+            </Card>
+          </section>
         </div>
       </div>
 
       <Sheet open={editOpen} onClose={() => setEditOpen(false)} title={t('profile.editProfile')}>
-        <Field label={t('common.name')}>
-          <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-        </Field>
-        <Field label={t('profile.username')}>
-          <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="@username" />
-        </Field>
+        <Field label={t('common.name')}><Input value={form.full_name} onChange={(event) => setForm({ ...form, full_name: event.target.value })} /></Field>
+        <Field label={t('profile.username')}><Input value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} placeholder="@username" /></Field>
         <Button className="w-full" loading={busy} onClick={saveProfile}>{t('common.save')}</Button>
       </Sheet>
 
@@ -272,43 +228,33 @@ export default function Profile() {
         <div className="flex items-center gap-3 py-3 border-b border-border">
           <Volume2 size={19} className="text-primary" />
           <div className="flex-1 min-w-0"><div className="font-bold text-[14.5px]">{t('profile.soundEnabled')}</div></div>
-          <Toggle checked={sound} onChange={(v) => { setSound(v); setSoundEnabled(v); }} />
+          <Toggle checked={sound} onChange={(enabled) => { setSound(enabled); setSoundEnabled(enabled); }} />
         </div>
-        <div className="flex items-center gap-3 py-3 border-b border-border">
+        <div className="flex items-center gap-3 py-3">
           <Globe size={19} className="text-primary" />
           <div className="flex-1 min-w-0"><div className="font-bold text-[14.5px]">{t('profile.language')}</div></div>
           <LangSwitcher />
         </div>
-        <Button variant="outline" className="w-full mt-2.5" onClick={() => { setSettingsOpen(false); setPassOpen(true); }}>
-          {t('profile.changePassword')}
-        </Button>
-      </Sheet>
-
-      <Sheet open={passOpen} onClose={() => setPassOpen(false)} title={t('auth.changePassword')}>
-        <Field label={t('auth.oldPassword')}>
-          <Input type="password" value={passForm.oldPassword} onChange={(e) => setPassForm({ ...passForm, oldPassword: e.target.value })} />
-        </Field>
-        <Field label={t('auth.newPassword')}>
-          <Input type="password" value={passForm.newPassword} onChange={(e) => setPassForm({ ...passForm, newPassword: e.target.value })} />
-        </Field>
-        <Field label={t('auth.newPassword2')}>
-          <Input type="password" value={passForm.newPassword2} onChange={(e) => setPassForm({ ...passForm, newPassword2: e.target.value })} />
-        </Field>
-        <Button className="w-full" loading={busy} onClick={changePassword}>{t('common.save')}</Button>
       </Sheet>
 
       <ImageCropper
         open={!!avatarCrop}
         imageSrc={avatarCrop?.src}
         onCancel={() => setAvatarCrop(null)}
-        onComplete={(blob) => {
-          setAvatarCrop(null);
-          uploadAvatar(blob);
-        }}
+        onComplete={(blob) => { setAvatarCrop(null); uploadAvatar(blob); }}
         aspect={1}
         outputSize={{ width: 512, height: 512 }}
         circular
         label={t('crop.cropAvatar')}
+      />
+      <ImageCropper
+        open={!!coverCrop}
+        imageSrc={coverCrop?.src}
+        onCancel={() => setCoverCrop(null)}
+        onComplete={(blob) => { setCoverCrop(null); uploadCover(blob); }}
+        aspect={3.2}
+        outputSize={{ width: 1600, height: 500 }}
+        label={t('profile.changeCover')}
       />
     </>
   );

@@ -2,37 +2,20 @@ import axios from 'axios';
 import i18n from '../i18n/index.js';
 import { api } from './api.js';
 
-export const TOKEN_KEY = 'xolt_token';
+const TOKEN_KEY = 'xolt_token';
 
-// --- Cookie helpers ---
-const setCookie = (name, value, days = 7) => {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; expires=${expires}; SameSite=Lax`;
-};
-
-const getCookie = (name) => {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : null;
-};
-
+// The auth cookie is HttpOnly and managed by the server. This only clears any legacy JS cookie.
 const deleteCookie = (name) => {
   document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 };
 
-export const getToken = () => getCookie(TOKEN_KEY);
-export const setToken = (t) => setCookie(TOKEN_KEY, t);
 export const clearToken = () => deleteCookie(TOKEN_KEY);
 // -------------------------
 
 export const http = axios.create({
   baseURL: `${api}/api`,
   timeout: 20000,
-});
-
-http.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
+  withCredentials: true,
 });
 
 http.interceptors.response.use(
@@ -53,7 +36,7 @@ http.interceptors.response.use(
     err.code = body?.error?.code || (error.code === 'ECONNABORTED' ? 'TIMEOUT' : 'NETWORK');
     err.status = status;
 
-    if (status === 401 && !String(error.config?.url || '').includes('/auth/login')) {
+    if (status === 401) {
       clearToken();
       window.dispatchEvent(new CustomEvent('xolt:unauthorized'));
     }

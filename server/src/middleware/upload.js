@@ -4,7 +4,7 @@ import multer from 'multer';
 import { env } from '../config/env.js';
 
 // Ruxsat etilgan papkalar - tashqariga chiqishning oldini olamiz
-export const ALLOWED_FOLDERS = ['avatars', 'frames', 'questions', 'effects', 'quizzes'];
+export const ALLOWED_FOLDERS = ['avatars', 'covers', 'frames', 'questions', 'effects', 'quizzes'];
 export const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml', 'image/avif'];
 
 export const upload = multer({

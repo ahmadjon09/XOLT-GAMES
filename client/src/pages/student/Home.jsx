@@ -2,8 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Calculator, ListChecks, Grid3x3, Keyboard, Code2, Trophy,
-  CalendarCheck2, Wallet, ChevronRight, QrCode, KeyRound, User, Users, Swords, Coins, Disc3, Car,
-  ServerCrash,
+  ChevronRight, QrCode, KeyRound, Users, Swords, Coins, Disc3, ServerCrash,
 } from 'lucide-react';
 import { useGet } from '../../api/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -12,57 +11,48 @@ import { AutoGrid, Card, CoinBadge, EmptyState } from '../../components/ui.jsx';
 import { TopBar } from '../../layouts/Layouts.jsx';
 import { fmtNum } from '../../utils/format.js';
 
-// Eng ko'p resurs talab qiladigan o'yinlar — server yuki oshganda BIRINCHI
-// bo'lib yopiladi (qolganlari ishlashda davom etadi).
-const HEAVY_GAMES = new Set(['race3d']);
-
 const gameMeta = {
   math: { color: '#5b21b6', bg: '#f0eafd' },
   quiz: { color: '#e34c6b', bg: '#fdeef1' },
   chess: { color: '#b45309', bg: '#fdf3d7' },
   checkers: { color: '#dc2626', bg: '#fdeaea' },
-  race: { color: '#0d9488', bg: '#d9f4f0' },
-  race3d: { color: '#4338ca', bg: '#e8ebfd' },
   typerace: { color: '#0284c7', bg: '#e4f4fd' },
-  code: { color: '#7c3aed', bg: '#f3eefe' },
-  ttt: { color: '#16a34a', bg: '#e6f7ec' },
+  codebattle: { color: '#7c3aed', bg: '#f3eefe' },
+  tictactoe: { color: '#16a34a', bg: '#e6f7ec' },
 };
 
 export default function Home() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  // Server RAM/yuk holati: band bo'lsa o'yinlar ochilmaydi (crash o'rniga ogohlantirish)
+  // Server load state blocks new rooms when the service is saturated.
   const server = useServerStatus();
-  const { data: groups } = useGet('/user/groups', { fallbackData: null });
-  // Guruh ichidagi reytingim (birinchi guruh bo'yicha)
-  const { data: groupRank } = useGet('/user/group-ranking', { fallbackData: [] });
-  const myGroup = (groupRank || [])[0] || null;
+  const { data: gameCatalog } = useGet('/games/catalog', { fallbackData: null, dedupingInterval: 30_000 });
 
   const games = [
     { key: 'math', to: '/game/math', icon: Calculator, title: t('home.mathTitle'), desc: t('home.mathDesc'), tag: '1v1' },
     { key: 'chess', to: '/game/chess', icon: Swords, title: t('home.chessTitle'), desc: t('home.chessDesc'), tag: '1v1' },
     { key: 'checkers', to: '/game/checkers', icon: Disc3, title: t('home.checkersTitle'), desc: t('home.checkersDesc'), tag: '1v1' },
-    { key: 'race', to: '/game/race', icon: Car, title: t('home.raceTitle'), desc: t('home.raceDesc'), tag: '4P' },
-    { key: 'race3d', to: '/game/race3d', icon: Car, title: t('home.race3dTitle'), desc: t('home.race3dDesc'), tag: '3D' },
-    { key: 'quiz', to: '/quiz/join', icon: ListChecks, title: t('home.quizTitle'), desc: t('home.quizDesc'), tag: 'LIVE' },
+    { key: 'quiz', to: '/quiz/play', icon: ListChecks, title: t('home.quizTitle'), desc: t('home.quizDesc'), tag: 'LIVE' },
     { key: 'typerace', to: '/game/typerace', icon: Keyboard, title: t('home.typingTitle'), desc: t('home.typingDesc'), tag: '10P' },
-    { key: 'code', to: '/game/codebattle', icon: Code2, title: t('home.codeTitle'), desc: t('home.codeDesc'), tag: '10P' },
-    { key: 'ttt', to: '/game/ttt', icon: Grid3x3, title: t('home.tttTitle'), desc: t('home.tttDesc'), tag: '1v1' },
+    { key: 'codebattle', to: '/game/codebattle', icon: Code2, title: t('home.codeTitle'), desc: t('home.codeDesc'), tag: '10P' },
+    { key: 'tictactoe', to: '/game/ttt', icon: Grid3x3, title: t('home.tttTitle'), desc: t('home.tttDesc'), tag: '1v1' },
   ];
 
   const stats = [
     { label: t('home.myCoins'), value: fmtNum(user?.coin ?? 0), color: '#9a6d00', bg: 'var(--color-accent-soft)', icon: Coins },
     { label: t('home.myScore'), value: fmtNum(user?.score ?? 0), color: 'var(--color-primary)', bg: 'var(--color-primary-soft)', icon: Trophy },
-    { label: t('home.myGroupRank'), value: myGroup ? `#${myGroup.myRank}/${myGroup.membersCount}` : '—', color: '#0284c7', bg: 'var(--color-info-soft)', icon: User },
-    { label: t('home.groupsCount'), value: groups ? groups.length : '…', color: 'var(--color-ink)', bg: 'var(--color-surface-2)', icon: Users },
+    { label: t('home.weekScore'), value: fmtNum(user?.week_score ?? 0), color: '#0284c7', bg: 'var(--color-info-soft)', icon: Trophy },
+    { label: t('home.monthScore'), value: fmtNum(user?.month_score ?? 0), color: 'var(--color-ink)', bg: 'var(--color-surface-2)', icon: Trophy },
   ];
 
   const quick = [
-    { to: '/quiz/join', icon: QrCode, label: t('home.scanQr'), color: 'var(--color-primary)' },
-    { to: '/game/math', icon: KeyRound, label: t('home.joinWithCode'), color: 'var(--color-primary)' },
-    { to: '/attendance', icon: CalendarCheck2, label: t('home.attendanceShort'), color: 'var(--color-success)' },
-    { to: '/payments', icon: Wallet, label: t('home.paymentsShort'), color: '#9a6d00' },
+    { to: '/friends', icon: Users, label: t('nav.friends'), color: 'var(--color-primary)' },
+    { to: '/quizzes', icon: ListChecks, label: t('quizzesP.title'), color: '#e34c6b' },
+    { to: '/quiz/play', icon: QrCode, label: t('home.scanQr'), color: 'var(--color-primary)' },
+    { to: '/lobby', icon: KeyRound, label: t('nav.lobby'), color: 'var(--color-success)' },
   ];
+  const activeGameIds = gameCatalog ? new Set(gameCatalog.map((game) => game.id)) : null;
+  const visibleGames = activeGameIds ? games.filter((game) => activeGameIds.has(game.key)) : games;
 
   return (
     <>
@@ -98,17 +88,13 @@ export default function Home() {
       </AutoGrid>
 
       {/* O'yinlar */}
-      {server.heavyBlocked ? (
+      {server.busy ? (
         <Card className="flex items-start gap-3" style={{ borderColor: 'rgba(234,179,8,.4)', background: 'rgba(234,179,8,.08)' }}>
           <ServerCrash size={20} className="mt-0.5 shrink-0" style={{ color: '#b45309' }} />
           <div className="min-w-0">
-            <div className="font-extrabold text-[15px]">
-              {server.busy ? t('server.busyTitle', 'Server band') : t('server.heavyTitle', 'Server yuki yuqori')}
-            </div>
+            <div className="font-extrabold text-[15px]">{t('server.busyTitle', 'Server band')}</div>
             <div className="text-[13px] text-muted mt-0.5">
-              {server.busy
-                ? t('server.busyDesc', 'Hozir yangi o‘yin ochib bo‘lmaydi. Bir necha daqiqadan so‘ng qayta urinib ko‘ring.')
-                : t('server.heavyDesc', '3D poyga vaqtincha yopiq (xotira tejash uchun). Boshqa o‘yinlar ishlayapti.')}
+              {t('server.busyDesc', 'Hozir yangi o‘yin ochib bo‘lmaydi. Bir necha daqiqadan so‘ng qayta urinib ko‘ring.')}
               {server.memoryPct ? ` — RAM ${server.memoryPct}%` : ''}
             </div>
           </div>
@@ -120,12 +106,11 @@ export default function Home() {
           <div className="t">{t('home.gamesTitle')}</div>
         </div>
         <AutoGrid col={260}>
-          {games.map((g) => {
+          {visibleGames.map((g) => {
             // Fallback: yangi o'yin qo'shilganda meta yo'q bo'lsa app'ni tushirmaslik
             const meta = gameMeta[g.key] || { color: 'var(--color-primary)', bg: 'var(--color-primary-soft)' };
-            // Server band — hech qanday yangi o'yin ochilmaydi.
-            // Yuk yuqori (warn) — faqat ENG OG'IR o'yin (3D poyga) yopiladi.
-            const blocked = server.busy || (server.heavyBlocked && HEAVY_GAMES.has(g.key));
+            // A busy server temporarily blocks the creation of any new game room.
+            const blocked = server.busy;
 
             const body = (
               <Card tap={!blocked} className={`h-full flex flex-col gap-3.5${blocked ? ' opacity-60' : ''}`}>
@@ -188,43 +173,6 @@ export default function Home() {
           ))}
         </AutoGrid>
       </section>
-
-      {/* Guruhlar */}
-      {groups !== null && (
-        <section>
-          <div className="section-title">
-            <div className="t">{t('profile.myGroups')}</div>
-            {groups.length > 0 && <span className="badge neutral">{groups.length}</span>}
-          </div>
-          {groups.length === 0 ? (
-            <Card>
-              <EmptyState icon={User} title={t('profile.noGroups')} />
-            </Card>
-          ) : (
-            <AutoGrid col={300}>
-              {groups.slice(0, 6).map((g) => (
-                <Link key={g.id} to="/attendance" className="block h-full">
-                  <Card tap className="h-full flex items-center gap-3.5">
-                    <div
-                      className="w-12 h-12 bg-primary-soft text-primary flex items-center justify-center font-extrabold text-[17px] shrink-0"
-                      style={{ borderRadius: 'var(--r-sm)' }}
-                    >
-                      {g.name.slice(0, 1)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-[14.5px] truncate">{g.name}</div>
-                      <div className="text-[12px] text-muted mt-0.5">
-                        {t('attendance.present')}: {g.attendance.present} • {t('attendance.absent')}: {g.attendance.absent}
-                      </div>
-                    </div>
-                    <CalendarCheck2 size={18} className="text-muted shrink-0" />
-                  </Card>
-                </Link>
-              ))}
-            </AutoGrid>
-          )}
-        </section>
-      )}
 
       {/* Reyting */}
       <div className="text-center pt-2 pb-1">

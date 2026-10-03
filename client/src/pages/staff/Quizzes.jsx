@@ -18,14 +18,14 @@ export default function QuizzesList() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  const { data: quizzes, isLoading, error } = useGet('/staff/quizzes');
+  const { data: quizzes, isLoading, error } = useGet('/user/quizzes');
 
-  const refresh = () => invalidate('/staff/quizzes');
+  const refresh = () => invalidate('/user/quizzes');
 
   const remove = async () => {
     setBusy(true);
     try {
-      await Fetch.del(`/staff/quizzes/${deleteTarget.id}`);
+      await Fetch.del(`/user/quizzes/${deleteTarget.id}`);
       toast.success(t('quizzesP.deleted'));
       setDeleteTarget(null);
       refresh();
@@ -48,7 +48,7 @@ export default function QuizzesList() {
         actions={
           <>
             <IconButton icon={RefreshCw} label={t('common.refresh')} onClick={refresh} loading={busy} />
-            <Link to="/staff/quizzes/new">
+            <Link to="/quizzes/new">
               <Button size="sm" disabled={busy}>
                 <Plus size={16} /> {t('quizzesP.createQuiz')}
               </Button>
@@ -71,7 +71,7 @@ export default function QuizzesList() {
             title={t('quizzesP.noQuizzes')}
             sub={t('hostP.waitingForPlayers')}
             action={
-              <Link to="/staff/quizzes/new">
+              <Link to="/quizzes/new">
                 <Button><Plus size={16} /> {t('quizzesP.createQuiz')}</Button>
               </Link>
             }
@@ -91,11 +91,15 @@ export default function QuizzesList() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <Link to={`/staff/host?quizId=${q.id}`}>
+                <Link to={`/quiz/host?quizId=${q.id}`}>
                   <Button variant="soft" size="sm"><Play size={14} /> {t('quizzesP.host')}</Button>
                 </Link>
-                <IconButton icon={Pencil} label={t('common.edit')} onClick={() => navigate(`/staff/quizzes/${q.id}/edit`)} />
-                <IconButton icon={Trash2} label={t('common.delete')} danger onClick={() => setDeleteTarget(q)} loading={busy} />
+                {q.isOwner && (
+                  <>
+                    <IconButton icon={Pencil} label={t('common.edit')} onClick={() => navigate(`/quizzes/${q.id}/edit`)} />
+                    <IconButton icon={Trash2} label={t('common.delete')} danger onClick={() => setDeleteTarget(q)} loading={busy} />
+                  </>
+                )}
               </div>
             </div>
           ))}
