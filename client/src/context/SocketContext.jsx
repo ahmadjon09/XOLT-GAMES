@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext.jsx';
 import { api } from '../api/api.js';
+import { getToken } from '../api/fetcher.js';
 
 const SocketData = createContext(null);
 
@@ -21,6 +22,8 @@ export function SocketProvider({ children }) {
 
     const s = io(api, {
       withCredentials: true,
+      // Cookie bo'lmasa ham ulanish uchun token handshake'da yuboriladi.
+      auth: (cb) => cb({ token: getToken() || undefined }),
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: Infinity,

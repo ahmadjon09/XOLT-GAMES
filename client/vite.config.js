@@ -1,4 +1,7 @@
-// Vite configuration: same-origin API/socket requests are proxied to the local backend.
+// Vite configuration. Proxy ishlatilmaydi — client API bilan to'g'ridan-to'g'ri
+// gaplashadi (VITE_API_URL, qarang: .env.development va src/api/api.js).
+// Auth token Authorization: Bearer header orqali yuboriladi, shuning uchun
+// cross-origin so'rovlar cookie'siz ham ishlaydi.
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -13,11 +16,6 @@ export default defineConfig({
     fs: { allow: [repoRoot] },
     port: 5173,
     allowedHosts: true,
-    proxy: {
-      '/api': { target: 'https://xolt-games-is5h.onrender.com', changeOrigin: true },
-      '/uploads': { target: 'https://xolt-games-is5h.onrender.com', changeOrigin: true },
-      '/socket.io': { target: 'https://xolt-games-is5h.onrender.com', changeOrigin: true, ws: true },
-    },
   },
   build: {
     outDir: 'dist',
