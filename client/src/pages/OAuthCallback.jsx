@@ -4,20 +4,8 @@ import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
-import { setToken } from '../api/fetcher.js';
 
-// Server /auth/callback#token=<jwt> ga redirect qiladi. Fragment'dagi tokenni
-// saqlab olamiz — keyin barcha so'rovlar Authorization: Bearer bilan ketadi.
-function captureTokenFromHash() {
-  const hash = window.location.hash?.startsWith('#') ? window.location.hash.slice(1) : '';
-  if (!hash) return;
-  const token = new URLSearchParams(hash).get('token');
-  if (token) {
-    setToken(token);
-    // Tokenni URL'dan olib tashlaymiz (tarix/ulashishda ko'rinmasligi uchun).
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  }
-}
+// main.jsx captures the OAuth fragment before AuthProvider makes its first API request.
 
 export default function OAuthCallback() {
   const { t } = useTranslation();
@@ -27,7 +15,6 @@ export default function OAuthCallback() {
 
   useEffect(() => {
     let mounted = true;
-    captureTokenFromHash();
     refresh().then((profile) => {
       if (!mounted) return;
       if (profile) {
