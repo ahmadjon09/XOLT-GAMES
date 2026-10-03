@@ -14,9 +14,9 @@ export default defineConfig({
     port: 5173,
     allowedHosts: true,
     proxy: {
-      '/api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
-      '/uploads': { target: 'http://127.0.0.1:4000', changeOrigin: true },
-      '/socket.io': { target: 'http://127.0.0.1:4000', changeOrigin: true, ws: true },
+      '/api': { target: 'https://xolt-games-is5h.onrender.com', changeOrigin: true },
+      '/uploads': { target: 'https://xolt-games-is5h.onrender.com', changeOrigin: true },
+      '/socket.io': { target: 'https://xolt-games-is5h.onrender.com', changeOrigin: true, ws: true },
     },
   },
   build: {
