@@ -174,7 +174,8 @@ async function main() {
   ).trim().toLowerCase();
   const admin = await prisma.staff.upsert({
     where: { email: adminEmail },
-    update: { full_name: 'Bosh Administrator', role: 'ADMIN', active: true },
+    // Seeding must not reactivate an administrator disabled in the panel.
+    update: { full_name: 'Bosh Administrator', role: 'ADMIN' },
     create: { full_name: 'Bosh Administrator', email: adminEmail, role: 'ADMIN', active: true },
   });
 

@@ -66,7 +66,7 @@ npm ci
 npm run dev
 ```
 
-Vite serves the client and proxies `/api`, `/uploads` and `/socket.io` to `http://127.0.0.1:4000` for local development.
+Vite runs at `http://localhost:5173` and proxies `/api`, `/uploads` and `/socket.io` to `http://127.0.0.1:4000` for local development. Keep `FRONTEND_URL=http://localhost:5173` on the server (or set `OAUTH_REDIRECT_BASE_URL` explicitly) and register `http://localhost:5173/api/auth/oauth/{google,github}/callback` with the respective OAuth providers. To use a remote API instead of the local proxy, put `VITE_API_URL=https://your-api.example.com` in `client/.env.development.local` and configure the API's CORS/origins and callback URLs accordingly.
 
 ### 3. Build and test
 
