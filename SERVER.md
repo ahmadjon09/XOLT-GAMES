@@ -50,7 +50,7 @@ https://api.example.com/api/auth/oauth/google/callback
 https://api.example.com/api/auth/oauth/github/callback
 ```
 
-OAuth tokens are placed in an `HttpOnly`, `Secure` production cookie; client JavaScript does not store the bearer token. Set `COOKIE_SAME_SITE=none` when the frontend and API are cross-site, and ensure TLS is enabled. Public users can authenticate through either provider. Only verified addresses in `ADMIN_OAUTH_EMAILS` (or active, provisioned admin records) receive the admin role.
+OAuth tokens are placed in an `HttpOnly`, `Secure` production cookie and also returned once in the frontend callback URL fragment. The client stores that bearer token to authenticate cross-site API and Socket.IO requests when third-party cookies are blocked; the fragment is removed from browser history before React starts. Set `COOKIE_SAME_SITE=none` when the frontend and API are cross-site, and ensure TLS is enabled. Public users can authenticate through either provider. Only verified addresses in `ADMIN_OAUTH_EMAILS` (or active, provisioned admin records) receive the admin role.
 
 ## Capacity protection
 

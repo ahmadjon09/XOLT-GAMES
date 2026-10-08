@@ -1,5 +1,6 @@
-// API manzili (proxy ishlatilmaydi — client API bilan to'g'ridan-to'g'ri gaplashadi):
-// - Dev: .env.development'dagi VITE_API_URL ishlatiladi.
+// API manzili:
+// - Dev: VITE_API_URL bo'sh — Vite /api va /socket.io'ni lokal serverga proxy qiladi.
+//   Alohida API uchun .env.development.local'da VITE_API_URL ni belgilang.
 // - Production (Cloudflare Workers): VITE_API_URL=https://api.v2.xolt.uz
 //   (deploy: `VITE_API_URL=https://api.v2.xolt.uz npm run deploy`)
 // - '' (bo'sh satr) ham to'g'ri qiymat — shu domain (same-origin, masalan nginx

@@ -7,6 +7,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rateLimit.js';
 import { prisma } from '../prisma/client.js';
 import { env } from '../config/env.js';
+import { provisionAllowlistedAdmin } from '../services/oauthAdmin.js';
 
 const router = Router();
 const OAUTH_STATE_COOKIE = 'xolt_oauth_state';
@@ -197,18 +198,7 @@ async function getOrCreateOAuthPrincipal(provider, profile) {
     String(process.env.ADMIN_OAUTH_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean),
   );
   if (profile.verifiedEmail && profile.email && adminEmails.has(profile.email)) {
-    const staff = await prisma.staff.upsert({
-      where: { email: profile.email },
-      update: { full_name: profile.name, role: 'ADMIN', active: true },
-      create: {
-        full_name: profile.name,
-        email: profile.email,
-        phone: null,
-        password: null,
-        role: 'ADMIN',
-        active: true,
-      },
-    });
+    const staff = await provisionAllowlistedAdmin(prisma, profile);
     await prisma.oAuthAccount.create({
       data: { provider, providerAccountId, email: profile.email, staffId: staff.id },
     });

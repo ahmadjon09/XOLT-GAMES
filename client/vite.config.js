@@ -1,7 +1,5 @@
-// Vite configuration. Proxy ishlatilmaydi — client API bilan to'g'ridan-to'g'ri
-// gaplashadi (VITE_API_URL, qarang: .env.development va src/api/api.js).
-// Auth token Authorization: Bearer header orqali yuboriladi, shuning uchun
-// cross-origin so'rovlar cookie'siz ham ishlaydi.
+// Local development keeps OAuth cookies and API requests on the Vite origin.
+// Production builds use VITE_API_URL to talk directly to the deployed API.
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -16,6 +14,11 @@ export default defineConfig({
     fs: { allow: [repoRoot] },
     port: 5173,
     allowedHosts: true,
+    proxy: {
+      '/api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/uploads': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/socket.io': { target: 'http://127.0.0.1:4000', changeOrigin: true, ws: true },
+    },
   },
   build: {
     outDir: 'dist',
